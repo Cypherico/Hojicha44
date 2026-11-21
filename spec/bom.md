@@ -28,8 +28,8 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 | 22 | Kailh Choc v1 hotswap sockets | SMD bottom (pads part of footprint) |
 | 1 | nice!nano v2 module | socketed, USB end to board notch |
 | 2 | machine-pin SIP strips 2×12, 2.54mm pitch | socket rows 15.24mm apart; ASSEMBLED STACK HEIGHT (socket + pins, no module) must measure 4.5–5.0mm — caliper at first article; the 2.11mm-height Mill-Max 315 variant is banned BY HEIGHT (cannot clear the 3.0 cell); the 43-112-41-003000 3.0-class socket + matching pins are the order |
-| 1 | Rotary encoder, **short-shaft EC11-class with push** (generic "EC11 10–15mm D-shaft, 30 detents/15 pulses, with push" — the class the Sofle Choc build guide documents; verify tip ≤14mm above the PCB + push on the listing) | ALPS EC11E15244G1 (20mm actuator, tip 24.55mm) is the fallback — pair it with a tall knob or trim the shaft; ALPS EC12 (≈8.5mm total) is lower still but has NO push switch |
-| 1 | Knob, Ø6 D bore, **round Ø15–17, height ≤12** (committed geometry: Ø16.8 × 9.2, 18 flutes, e.g. fluted aluminium EC11 knobs or 3D-print `renders/build_assets.py`'s) | skirt bottom ≥ 0.9mm above the 5.2 cover (EC11 push travel 0.5±0.3); bore ceiling above the ~13.5 tip; the Ø16.8 sweep clears the nearest cap corner (SW_L17, 24.04mm centre − 12.0 cap half-diagonal) by 3.6mm at every angle — round knobs need no 45° corner sweep check |
+| 1 | **Alps EC11E15244G1** rotary encoder with push | Reference part for PCB, firmware and clearance checks. Qualify any alternate on the first article. |
+| 1 | Knob matched to the qualified encoder shaft | Verify the bore, skirt clearance at full press, and sweep past the nearest cap. The low render knob was sized for a shorter shaft. |
 | 1 | XKB PJ-320A TRRS 3.5mm | bring-up/debug link only; 90° cable required |
 | 1 | TRRS cable, 4-pole CTIA, right-angle 3.5mm both ends, short | mouths face each other across a 22.40mm gap — straight plugs collide head-on; measure the boot, must clear the recessed mouths (0.99mm). No vendor link guessed; any CTIA right-angle cable meeting the fit check in §1 does |
 | 1 | Kapton (polyimide) tape, ≥10mm wide | cell sandwich: pouch face + nano underside before the cell goes in |
@@ -41,10 +41,10 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 
 | Qty | Part | Notes |
 |---|---|---|
-| 1 | Switch plate, **1.2mm**, laser-cut | `plate/Hojicha44-{Left,Right}-plate.dxf` (R12, mm); material per `spec/case.md` (default PC); **22× 14×14 Choc cutouts** (the 13.8 lower body must pass and the clip must overlap the plate edge — 15.0 gave no retention), **16.2×12.4 encoder window** (clears the encoder's 14.95mm terminal-block envelope at the rev-2 plate height), component windows, 8 gasket tabs (NO screws/holes beyond openings). **EXTRA INSTRUCTION TO THE VENDOR: the RELIEF layer is a 0.55mm PARTIAL-DEPTH pocket in the UNDERSIDE under each of the 22 diodes — machine it, do NOT cut through** (0.65mm of plate must remain) |
-| ~2 | Poron gasket stock, 4701-30 Very Soft 240kg/m³, 3mm adhesive (sheet/strip cut to 90×4; Keebox 32-pack -40 strips are the drop-in fallback) | per half: 16 pads (8 tabs × 2 faces) cut 7×4 (audit-round carve, corner-edge 0.71mm); swap ladder -30-15 → -40 → -50, no CAD change |
-| 16 | N52 disc magnet Ø4×2×2mm (nickel-plated) | TUB magnet pockets (8 per half, Ø4.3×2.2 recess, face-UP flush at the lip plane) |
-| 16 | N52 disc magnet Ø4×1.5mm (nickel-plated) | COVER magnet pockets (8 per half, Ø4.3×1.7 recess, face-DOWN flush — T4 review fix: 1.3mm pocket floor; asymmetric pair with the tub's 2.0s is fine, faces meet at the lip plane); supermagnete/GK-class stocked size |
+| 1 | Switch plate, **1.2mm** | Through-cut OUTLINE and CUTOUT from the plate DXF. Machine RELIEF as 22 nominal **0.55mm** underside pockets. Use PORON as a punch template. Accept the coupon with **≥0.60mm** plate remaining and **≥0.15mm** seated clearance above a **1.40mm** diode. |
+| 8 of each thickness | PORON 4701-30 Very Soft, 7×4mm pads | **3.0mm** bottom and **1.5mm** top on each tab. |
+| 8 | N52 disc magnet Ø4×2mm, axially magnetized | TUB pockets, Ø4.3×2.2mm, face up flush at the lip plane. |
+| 8 | N52 disc magnet Ø4×0.5mm, axially magnetized | COVER pockets, Ø4.3×0.7mm, face down flush at the lip plane. Verify pull force on the assembled first article. |
 
 ## Cell — locked to orderable stock (was TBD)
 

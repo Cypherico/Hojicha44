@@ -32,7 +32,7 @@ Design (spec/keymap.md is the narrative; this is the mechanics):
                         inverted-T + Home/End/PgUp/PgDn/Ins/Caps/Pscrn
                         (right half).  Encoder = prev/next track.
   * L1+L2 chord -> Adjust (conditional_layers): bootloader + reset.
-  * Encoder push (both halves) = Mute via the sideband, unchanged.
+  * Encoder push (both halves) = Mute via the composite scan and central keymap.
 
 The --check gate re-derives everything and diffs the tracked files, and
 additionally validates the structure of each EMITTED keymap (layer count,
@@ -109,7 +109,7 @@ L2_ROWS = [
     ["&kp C_MUTE", "&kp C_PREV", "&kp C_PLAY", "&kp C_NEXT",
      "&kp C_VOL_UP", "&kp C_VOL_DN",
      "&kp PG_UP", "&none", "&kp UP", "&none", "&none", "&none"],
-    ["&kp K_UNDO", "&kp K_CUT", "&kp K_COPY", "&kp K_PASTE",
+    ["Z", "X", "C", "V",
      "&none", "&none",
      "&kp PG_DN", "&kp LEFT", "&kp DOWN", "&kp RIGHT", "&kp DEL",
      "&kp BSPC"],
@@ -267,16 +267,17 @@ def adjust_layer():
     return out
 
 
-def bindings_dt(all46, indent="                "):
-    """46 bindings -> the DT block (12 per row for rows 0-2, then thumbs)."""
-    assert len(all46) == 46, len(all46)
-    rows, thumbs = all46[:36], all46[36:]
+def bindings_dt(matrix_bindings, indent="                "):
+    """Emit matrix bindings followed by the two encoder pushes."""
+    assert len(matrix_bindings) == 46, len(matrix_bindings)
+    rows, thumbs = matrix_bindings[:36], matrix_bindings[36:]
     assert len(thumbs) == 10, len(thumbs)
     lines = []
     for r in range(3):
         lines.append(indent + " ".join(rows[12 * r:12 * r + 12]))
     lines.append(indent + " ".join(thumbs[:6]))
     lines.append(indent + " ".join(thumbs[6:]))
+    lines.append(indent + "&kp C_MUTE &kp C_MUTE")
     close = indent[:-4] + ">;"
     # Rows are separated by bare newlines with NO ';' inside the `<>` array:
     # dtc has no ';' production inside an array, so an interior ';' is a
@@ -289,7 +290,10 @@ def bindings_dt(all46, indent="                "):
 def generate(variant, lrows, rrows, tleft, tright):
     base = base_layer(variant, lrows, rrows, tleft, tright)
     l1 = [f"&kp {k}" for row in L1_ROWS for k in row]
-    l2 = L2_ROWS[0] + L2_ROWS[1] + L2_ROWS[2]
+    shortcut_mod = "LG" if variant["mods"] == "CAGS" else "LC"
+    l2 = L2_ROWS[0] + L2_ROWS[1] + [
+        f"&kp {shortcut_mod}({key})" for key in L2_ROWS[2][:4]
+    ] + L2_ROWS[2][4:]
     adj = adjust_layer()
     th_l1 = th_l2 = thumbs_transparent()
     th_adj = ["&none"] * 10
@@ -374,19 +378,6 @@ def generate(variant, lrows, rrows, tleft, tright):
         }};
     }};
 
-    /* Encoder push -> Mute on BOTH halves (the dtsi defines the direct-GPIO
-     * kscan on the shared D16; the sideband keeps the 46-cell matrix
-     * untouched). First article: press on EACH half must send Mute. */
-    enc_push_sideband: sideband_enc_push {{
-        compatible = "zmk,kscan-sideband-behaviors";
-        kscan = <&enc_push_kscan>;
-        auto-enable;
-        push_mute: push_0 {{
-            row = <0>;
-            column = <0>;
-            bindings = <&kp C_MUTE>;
-        }};
-    }};
 }};
 """
 
@@ -403,7 +394,7 @@ CANON_MAP_ORDER = (
     [(r, c) for r in range(3) for band in (range(6), range(6, 12))
      for c in band]
     + [(3, 0), (3, 1), (3, 2), (3, 3), (3, 4), (3, 5),
-       (3, 6), (3, 7), (3, 8), (3, 9)])
+       (3, 6), (3, 7), (3, 8), (3, 9), (4, 0), (4, 6)])
 
 
 def dtsi_map():
@@ -423,8 +414,8 @@ def validate(text, variant, lrows, rrows, tleft, tright):
     """Structural checks on an EMITTED keymap (not just byte-compare)."""
     bad = []
     npos = dtsi_position_count()
-    if npos != 46:
-        bad.append(f"dtsi has {npos} RC positions, want 46")
+    if npos != 48:
+        bad.append(f"dtsi has {npos} RC positions, want 48")
     order = dtsi_map()
     if order != CANON_MAP_ORDER:
         for i, (got, want) in enumerate(zip(order, CANON_MAP_ORDER)):
@@ -452,11 +443,13 @@ def validate(text, variant, lrows, rrows, tleft, tright):
     if len(layers) != 4:
         bad.append(f"{len(layers)} layer nodes, want exactly 4")
     want_sensors = [BASE_SENSOR, L1_SENSOR, L2_SENSOR, ADJUST_SENSOR]
-    BIND_RE = re.compile(r"&[A-Za-z][\w-]*(?:\s+[A-Za-z0-9_+]+)*")
+    BIND_RE = re.compile(r"&[A-Za-z][\w-]*(?:\s+[A-Za-z0-9_+()]+)*")
     for (name, blk, sensor), want in zip(layers, want_sensors):
         toks = BIND_RE.findall(blk)
-        if len(toks) != 46:
-            bad.append(f"{name}: {len(toks)} bindings, want 46")
+        if len(toks) != 48:
+            bad.append(f"{name}: {len(toks)} bindings, want 48")
+        if toks[-2:] != ["&kp C_MUTE", "&kp C_MUTE"]:
+            bad.append(f"{name}: both encoder push positions must bind Mute")
         if sensor.strip() != want:
             bad.append(f"{name}: sensor {sensor!r} != {want!r}")
         if re.search(r"&(?:trans|none)(?![\w-])", sensor):
@@ -523,22 +516,11 @@ def validate(text, variant, lrows, rrows, tleft, tright):
     # adjust content: the bootloader recipe stays anchored (v0.3 label)
     want_idx = {ADJUST_BOOT_POS: "&bootloader", ADJUST_RESET_POS: "&sys_reset"}
     adj_toks = BIND_RE.findall(layers[3][1])
-    if len(adj_toks) == 46:
+    if len(adj_toks) == 48:
         for pos, want_b in want_idx.items():
             if adj_toks[pos] != want_b:
                 bad.append(f"adjust position {pos}: {adj_toks[pos]!r} "
                            f"!= {want_b!r} (boot/reset anchors moved)")
-    # the sideband: exactly one sideband node, wired to the dtsi's
-    # direct-GPIO kscan, push key at row 0 / column 0 (the dtsi contract:
-    # `input-keys` emits row 0 / column 0 events), bound to Mute
-    if text.count("zmk,kscan-sideband-behaviors") != 1 \
-            or "push_mute: push_0" not in text \
-            or "kscan = <&enc_push_kscan>" not in text \
-            or "row = <0>" not in text or "column = <0>" not in text \
-            or "&kp C_MUTE" not in text:
-        bad.append("the encoder-push sideband (Mute at row 0/column 0 on "
-                   "the enc_push_kscan) must appear exactly once with the "
-                   "dtsi wiring intact")
     # no transparent on the base layer
     if "&trans" in layers[0][1]:
         bad.append("transparent on the base layer")
@@ -578,13 +560,14 @@ def main():
 
     if "--check" in args:
         problems = 0
-        for name in names + [f"active ({default})"]:
-            is_active = name not in names
-            path = KEYMAP if is_active else \
-                os.path.join(VARDIR, f"hojicha44_{name}.keymap")
-            v = dict(variants[default if is_active else name])
-            v["name"] = default if is_active else name
+        active_text = open(KEYMAP).read()
+        active = None
+        for name in names:
+            path = os.path.join(VARDIR, f"hojicha44_{name}.keymap")
+            v = dict(variants[name], name=name)
             fresh = generate(v, lrows, rrows, tleft, tright)
+            if active_text == fresh:
+                active = name
             tracked = open(path).read()
             if tracked != fresh:
                 problems += 1
@@ -595,10 +578,14 @@ def main():
                 problems += 1
                 for b in bad[:6]:
                     print(f"  !! {os.path.relpath(path, REPO)}: {b}")
+        if active is None:
+            problems += 1
+            print("  !! config/hojicha44.keymap does not match a generated "
+                  "variant — select one with config/gen_keymap.py --use")
         if problems:
             print("keymap gate: FAILING")
             return 1
-        print(f"keymap gate: CLEAN (4 variants + active={default}, "
+        print(f"keymap gate: CLEAN (4 variants + active={active}, "
               f"validated against spec/layout.yaml and "
               f"{dtsi_position_count()} dtsi positions)")
         return 0

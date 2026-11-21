@@ -5,7 +5,7 @@ primary regulator/vendor sources cited there. Numbers marked
 **[UNVERIFIED]** were not confirmed from a primary source in that pass.
 
 The keyboard is a battery-powered Bluetooth LE (2.4 GHz) device: one
-nice!nano / Seeed XIAO nRF52840 per half, USB-C, a 301230 LiPo per half.
+nice!nano v2 per half, USB-C, a 301230 LiPo per half.
 That makes it a **short-range (SRD) intentional radiator** in every market
 we might ship to.
 
@@ -21,23 +21,10 @@ module-grant nuance: installing the nice!nano myself is fine, but
 INSTRUCTING an end-user to install it is a compliance act — another
 reason this stays a self-build (review §8).
 
-**The pilot batch is for Australia / New Zealand. The compliance path is
-the RCM via an ACMA "Responsible Supplier" self-declaration, NOT a
-bespoke certification.**
-
-Why:
-
-- At 5–20 units, a lab SDoC (AU ~AUD 600–1,500, 1–3 weeks) is
-  disproportionate, and a full certification (US ~USD 4,000–8,000, EU
-  with a Notified Body EUR 5,000–15,000) is absurd at this volume.
-- The radio module already carries the hard radio approvals; what the
-  builder owes is the HOST's EMC/label/declaration, and that is exactly
-  what a self-declaration covers.
-- Nothing about the PCB or the case has to change for the US or the EU
-  later — the same board ships; only the label, the manual statement and
-  the paperwork differ. (Recorded so the decision is not revisited
-  later: **do not print a market-specific label on the case** until the
-  market is fixed; the label is a separate sticker.)
+Australia and New Zealand are the intended first markets if the project
+moves to public supply. Finished-device classification and the evidence
+for the actual module are open. Use a separate label once the market
+and applicable requirements are established.
 
 ## 2. Australia / New Zealand — the path
 
@@ -52,28 +39,11 @@ Two independent regimes, one mark:
 - The RCM label must be on a readily accessible surface, legible to the
   unaided eye, or a QR code linking to a page showing the RCM
   prominently (acma.gov.au "label your product").
-- **Compliance level 1 — TESTING IS NOT REQUIRED.** The ACMA sorts
-  devices into compliance levels (Radiocommunications Labelling (EMC)
-  Notice 2017, s.4): "**Compliance level 1 — low risk device: There
-  are no additional requirements for a low risk device that complies
-  with an applicable standard**", and the ACMA's own summary table
-  says level 1 = "Testing is not required but you may choose to obtain
-  a test report from a testing body". Bluetooth/Wi-Fi short-range
-  devices are the canonical level-1 case. A BLE keyboard is therefore
-  a **level 1 (low risk) device**: the supplier prepares a **device
-  description** and signs a **declaration of conformity** (form C02),
-  and may optionally obtain a test report. **A paid lab test is NOT
-  required** — which is why the cost line below is a budget for an
-  OPTIONAL report, not a fixed cost. Note the medium-risk definition
-  ("contains a microprocessor / a transistor switching circuit")
-  explicitly excludes battery-powered devices: "A battery-powered
-  device is not a medium risk device unless the ACMA has declared the
-  device to be a medium risk device".
-  [UNVERIFIED: the ACMA's exact level-1/2 boundary for a BLE device
-  with a wired TRRS port and USB — the level-1/2 split turns on the
-  device class, and no primary text I could reach states the boundary
-  for "short-range device + host". The module's own FCC/CE evidence
-  plus the device description is the conservative path.]
+- **Finished-device classification is open.** Confirm the applicable
+  ACMA EMC and radiocommunications requirements for the assembled
+  keyboard with USB and BLE. The classification determines what
+  evidence and testing are needed before a declaration can be signed.
+  See [ACMA's compliance evidence guidance](https://www.acma.gov.au/step-2-show-your-product-complies).
 - Penalties: supplying with no label, or labelling before complying,
   can attract up to **500 penalty units**.
 - **Bluetooth SIG** is the one item with a real fee, and the numbers
@@ -127,18 +97,10 @@ Two independent regimes, one mark:
 - BLE digital devices: **FCC Part 15 Subpart C (§15.247)**. Two
   routes: Certification, or a **Supplier's Declaration of Conformity
   (§2.1077)** for Class B unintentional radiators.
-- The module is already a **Single Modular Approval: FCC ID
-  Z4T-XIAONRF52840** (Seeed, granted 2022-04-22, Part 15C, 2402–2480
-  MHz, 0.0032 W conducted).
-- The grant explicitly says **"compliance of this device in all final
-  host configurations is the responsibility of the Grantee"** — the
-  host's own EMC/immunity/ESD and its labelling are NOT inherited.
-- Labelling: the finished keyboard carries the **module's FCC ID plus
-  the host's own Class B statement** (§15.19); the user manual carries
-  the §15.21 modification statement. The host does **not** get its own
-  FCC ID. **[UNVERIFIED]: the exact §15.19 text was not retrieved in
-  the research pass — treat the label wording above as the standard
-  interpretation and confirm with the test lab.**
+- **Radio evidence is open for nice!nano v2.** Obtain the exact module
+  identification and applicable grant or other evidence. Confirm host
+  integration conditions, finished-device requirements and the label
+  and manual wording before supplying units in the US.
 - Indicative cost: SDoC test ≈ USD 1,500–3,000 per model, 2–3 weeks;
   certification ≈ USD 4,000–8,000, 4–8 weeks. **[UNVERIFIED: no
   primary price list retrieved.]**
@@ -160,19 +122,17 @@ Two independent regimes, one mark:
   (EU) 2024/2847.
 - **WEEE** (producer registration per member state) and **RoHS
   2011/65/EU** apply to the finished product.
-- Seeed publishes RED EU Declarations of Conformity for XIAO products.
-  **[UNVERIFIED: the XIAO-BLE-specific DoC was not opened — request
-  the file from Seeed before relying on it.]**
+- Obtain conformity evidence for the exact nice!nano v2 revision and
+  confirm how it applies to the finished product.
 - Indicative cost: RED self-declaration with a lab report EUR
   2,000–5,000, 3–5 weeks; with a Notified Body add EUR 5,000–15,000,
   4–8 weeks. **[UNVERIFIED: no primary quote retrieved.]**
 
 ## 5. What is inherited vs. what is owed (all markets)
 
-**Inherited from the module:** the radio conformity (Part 15C / RED
-radio), the conducted-power characterisation, the antenna/layout
-constraints (do not change the antenna or the keepout), the RF-exposure
-assumptions.
+**Module evidence:** document the exact module and revision, antenna
+and layout conditions, RF-exposure assumptions, and the scope of any
+applicable radio evidence before relying on it.
 
 **Owed by the builder:** the host's own unintentional-emitter
 compliance and its Class A/B classification, the §15.19/§15.21 (or
@@ -183,8 +143,8 @@ electrical safety of the host, and the Bluetooth SIG listing.
 
 1. Register as an ACMA-only Responsible Supplier (free) — the RCM is
    illegal to apply before this.
-2. Get the module's evidence: XIAO nRF52840 RED DoC, the datasheet's
-   Class B statement, the FCC grant.
+2. Obtain the applicable evidence for the installed nice!nano v2
+   revision, including its integration conditions.
 3. If the pilot units will be **sold or branded**, get a Bluetooth
    qualification consultant to confirm the Unmodified-Design listing
    path on Nordic's nRF52840 QDID, and settle the entity question
@@ -192,13 +152,10 @@ electrical safety of the host, and the Bluetooth SIG listing.
    $0 + $12,000 Product Qualification Fee + $1,250 Company
    Identifier) — one-off, and only if you sell. If the pilot is
    self-built and never sold, this is $0 of work.
-4. Write the **device description** (model, the XIAO's FCC ID and its
-   reports, the firmware version, photos) and sign the **C02 SDoC**.
-   **A lab test report is OPTIONAL, not required** — a level-1 (low
-   risk) BLE device needs no testing; if you want one anyway, quote an
-   ACMA-accredited lab (EMC Bay / MiCOM / TÜV Rheinland Australia) —
-   budget AUD 600–1,500 and 1–3 weeks. **[UNVERIFIED price — confirm
-   by quote.]**
+4. Record the finished keyboard's classification and evidence
+   requirements, including any applicable testing. Prepare the device
+   description and sign the C02 declaration once those requirements
+   have been met.
 5. Produce the RCM label artwork as a **sticker**, not as case
    printing, until the market is fixed.
 6. Keep the evidence (test report, module certificates, this file) for

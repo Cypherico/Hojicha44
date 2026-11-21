@@ -27,12 +27,14 @@ which thumb carries Space (spec/layout.yaml `keymap.variants`):
 | `win_left`   | GACS (Gui Alt Ctrl Shft)| left        | Windows/Linux |
 | `win_right`  | GACS                    | right       | Windows/Linux |
 
-The active variant is `config/hojicha44.keymap` (what CI builds and what
-`MANIFEST.txt`-tracked firmware ships from); the default is `mac_left`
-(macOS-heavy). Switch with:
-`python3 config/gen_keymap.py --use win_right` — it rewrites
-`config/hojicha44.keymap`, commit it, CI builds it. All four are always
-regenerated into `config/variants/` for diffing and local flashing.
+CI builds both halves from the active `config/hojicha44.keymap`. Select a
+variant with `python3 config/gen_keymap.py --use win_right` and commit the
+result. The static gate accepts an exact generated copy of any of the
+four variants. Running the generator without arguments refreshes all
+four files in `config/variants/` and restores the default in
+`spec/layout.yaml` (`mac_left`). The PCB release manifest covers PCB
+artifacts. Record the CI run, source revision, selected variant, and the
+hashes of both UF2 files when preparing firmware for a pilot.
 
 Mod-order rationale (precondition's frequency data; both orders keep
 **Shift on F/J** — the index fingers, the strongest):
@@ -167,13 +169,17 @@ conditional_layers: if-layers = <1 2>, then-layer = <3>
 
 | layer | rotation | push |
 |-------|----------|------|
-| base  | volume ± | Mute (kscan sideband `enc_push_sideband`, both halves) |
-| L1    | scroll ± | — |
-| L2    | prev/next track | — |
-| adjust| volume ± | — |
+| base  | volume ± | Mute (both halves) |
+| L1    | scroll ± | Mute |
+| L2    | prev/next track | Mute |
+| adjust| volume ± | Mute |
 
-The push stays a **sideband**: the 46-cell matrix is untouched, the EC11
-press maps through `enc_push_kscan` → `C_MUTE` on each half.
+The composite scan adds the two encoder pushes after the existing matrix
+positions. The split sends the right push position to the central,
+which resolves Mute for both encoders on every layer.
+
+L2 uses Command+Z/X/C/V in the macOS variants and Control+Z/X/C/V in
+the Windows/Linux variants.
 
 ## 8. Gates
 
@@ -182,18 +188,17 @@ press maps through `enc_push_kscan` → `C_MUTE` on each half.
 1. re-derives every binding from `spec/layout.yaml` and byte-compares
    the tracked active keymap + all 4 variants (a legend edit without
    regeneration, or vice versa, fails);
-2. structurally validates each emitted keymap: exactly 4 layers × 46
+2. structurally validates each emitted keymap: exactly 4 layers × 48
    bindings matching the dtsi `RC()` count, one real `sensor-bindings`
    per layer (`&trans`/`&none` there is rejected by pinned v0.3 and
    would kill CI), mods exactly on the 8 home positions with the right
    variant codes, Space/Enter on the variant's thumb pair, `&mo 1`/`&mo
    2` fixed, hold-trigger lists == the other hand's 22 positions,
-   hold-trigger-on-release present, the L1+L2→3 chord present, exactly
-   one sideband Mute.
+   hold-trigger-on-release present, the L1+L2→3 chord present, and both encoder pushes bound to Mute on every layer.
 
 Negative controls (proven non-vacuous 2026-10-22, each reverts to
 CLEAN): wrong tap keycode → caught as position drift AND stale-file;
-deleted binding → 45-want-46; legend drift in the spec → both halves
+deleted binding → incorrect layer length; legend drift in the spec → both halves
 stale; truncated hold-trigger list → caught; thumbs canonical-order edit
 → spec-parse assert.
 

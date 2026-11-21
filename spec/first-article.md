@@ -25,14 +25,12 @@ add supports only for a poor bridger.
 
 ## 0. Pilot batch
 
-- [ ] **Build 5 half-pairs (10 halves)** for the first article: enough
-  to test switch retention, plate fit, case fit and battery life with
-  a spare in every failure-prone class, small enough that a design
-  mistake is not expensive. Order quantities (spec/research-open-items-2026-10-21.md):
+- [ ] **Build 5 half-pairs (10 halves)** for the pilot after the
+  engineering sample passes. Allow spares for assembly and replacement:
   20 PCBs (10 halves + 10 spares), 20 plates, 12–15
   cases (3–4 printed spares per design), 490 switches (14 packs of
-  35), 450–500 hotswap sockets, 500 diodes, 12–14 cells, 150 magnets
-  (16/half + spares), 12 modules, 20 polyfuses.
+  35), 450–500 hotswap sockets, 500 diodes, 12–14 cells, 80 tub magnets
+  and 80 cover magnets plus spares, 12 modules, 20 polyfuses.
 - [ ] **PRE-MJF caliper (review 2026-10-24):** the case floor keeps
   1.0mm over the deepest below-PCB part, but the WS-SLTV (<=-3.5) and
   JST PH (~-2.5) bounds are FAMILY estimates with zero verified data.
@@ -44,9 +42,10 @@ add supports only for a poor bridger.
   half, PG1350 ~USD 1.1 ea, LiPo USD 1.5–6, N52 USD 0.01–0.08).
 
 **Order policy (rev 3, review 2026-10-24):** *engineering-sample*
-orders — the plate coupon below, the encoder coupon, one PCB pair,
-one printed tub/cover set — are permitted and REQUIRED before §0; what
-§1–§7 gate is the **production/batch order** (the §0 quantities). The
+orders — the plate coupon below, the encoder coupon, one corrected PCB
+pair, and one printed tub/cover set — are required before §0. The current
+PCB files are on [fabrication hold](../pcb/MANUFACTURING.md). Sections
+1–7 gate the **production batch** (the §0 quantities). The
 cheap sequence is: coupon + 1 PCB pair + 1 tub (~USD 60–100), then the
 10-half pilot. "Before ordering anything" in older revisions meant the
 batch; it never forbade coupons.
@@ -79,30 +78,15 @@ batch; it never forbade coupons.
   1.00mm underside and the 14.8mm ears seat on the 2.20mm top face;
   13.8 may be line-to-line (a switch that will not insert); 15.0
   reproduces the old rev-1 failure (the ears fall into the hole, no
-  retention, the switch rocks out). On the relief square: the pocket
-  must be 0.55mm deep, NOT through (0.65mm of material must remain),
-  and the plate must still sit flat on the switch housings.
-  *Why it is worth a day:* the decisions are 0.1–0.2mm of hole size
-  and 0.05mm of ear seating — smaller than the datasheet tolerance
-  and smaller than any drawing can promise. If 14.0 does not catch,
-  drop to 13.9 and re-cut the coupon, rather than discovering it
-  after ordering 2 plates and 44 switches.
-- [ ] **Plate relief pocket (PRE-ORDER, new in rev 2)** — the plate
-  carries a 0.55mm-deep pocket in its UNDERSIDE under each of the 22
-  diodes (RELIEF layer in the plate DXF: machine 0.55mm, do NOT cut
-  through; a through-cut leaves the switch without plate support).
-  Test on the coupon: with the pocket floor 1.55mm above the PCB top
-  there must be no contact with the diode (worst-case part is 1.40mm
-  high: floor−top = 0.15mm; a measured 1.26mm SOD-123 gives 0.29mm)
-  and the plate must still sit flat on the switch housings. Verify
-  the pocket is 0.55mm, NOT through: the remaining material under it
-  is 0.65mm. (0.40/1.40/0.14 numbers anywhere are rev-2-audit STALE —
-  the part ceiling rose to 1.40mm, hence 0.55; gen_plate asserts it.)
-  The stack to check on the same coupon: the plate underside 1.00mm
-  above the PCB top, the plate top 2.20mm — the switch's clip lip
-  (0.9–1.3mm above the PCB) must grab the underside and the 14.8mm
-  ears (starting at 2.2mm) must seat on the plate's top face with no
-  interference.
+  retention, the switch rocks out). Check the relieved square on the
+  assembled switch-and-diode stack.
+- [ ] **Plate relief pocket (PRE-ORDER).** Machine the RELIEF layer from
+  the underside to 0.55mm nominal. The coupon must retain **at least
+  0.60mm** of plate above each pocket and leave **at least 0.15mm**
+  above a **1.40mm** diode with the plate seated. Measure stock thickness,
+  pocket depth and the seated PCB-to-plate gap. At 1.20mm stock and
+  1.00mm gap these criteria allow 0.55–0.60mm of relief. Confirm the
+  switch ears seat flat and the clips capture the underside.
 - [ ] **Encoder window (PRE-ORDER, new in rev 2)** — the plate's encoder
   window is now **16.2 x 12.4** (rev 1 had a 12.7 square, which fouled
   the encoder's terminal blocks once the plate moved down to the 1.00mm
@@ -122,50 +106,19 @@ batch; it never forbade coupons.
   the housing hits the shoulders beside the notch, widen it to ~14mm. Plug
   axis rides high on 4.5mm sockets with a ~9mm-inboard shell, so verify the
   housing clears the plate top in the solid-board overlap zone (seating depth), not just the notch width.
-- [ ] Case port bores (case v3.3 **measured breach** + v3.4 shaped
-  bores + v3.5 pwrsw aperture — no fixed depths): **USB = 14.0-wide
-  bottom-filleted slot (z 2.0..top, plug axis rides at the lip plane) /
-  TRRS = Ø9.5 round bore (axis z 2.5, measured off the vendored STEP)**;
-  all three reach past the skin (printed `out=20.20` USB / `10.70` TRRS /
-  `10.70` pwrsw at OUTSET 8.2 — re-read the live census line).
-  Caliper the actual cables at the bore
-  plane (with the bores open in a printed 1:1 slice — pre-v3.4 slices
-  are the "gaping rectangle" and must not be printed): USB-C housing
-  must clear **14.0 with margin** and the USB plug must SLIDE FULLY to
-  the receptacle in the printed slice; the 90° TRRS boot must measure
-  **≤ 8.5** across (it then swings freely inside the Ø9.5 bore).
-  Measure the Z bands too: an overmold bottom below z 2.0 above the PCB
-  means lowering `USB_MOUTH_Z0`; a jack axis far off the z 2.5 estimate
-  (mouth-face centre vertex of the vendored PJ-320A STEP) means
-  shifting `TRRS_MOUTH_ZC` (the bore then recentres on
-  the jack); if the slicing shows a clipped-looking bore mouth, check
-  the axis first. A boot wider than 8.5 means increasing `TRRS_MOUTH_R`
-  in `case/params.py` and re-running `gen_case.py` BEFORE the real case
-  order. Bores stop at the floor slab top (sill under each opening
-  stays solid) — print slices must show **no through-hole in the case
-  bottom**.
-- [ ] PWR aperture (v3.5): 5.0-wide slot at the north rim plateau
-  (mouth centre x 106.3/185.2, slot SILL 0.7 below the switch body top
-  z 5.0). Flick test in the printed slice: a fingernail entering from
-  above must reach and slide the red lever across its travel; caliper
-  the lever blade across the 10mm body (design assumed ~2.0 blade +
-  ±0.8 travel = ~3.6 sweep, 0.7/side margin in `params.py` — if the
-  real sweep is wider, widen `PWRSW_MOUTH_W` and re-run
-  `case/gen_case.py` BEFORE the case order). The window is centred on
-  the switch origin (M3: the neutral lever band = origin ±1.8 sits
-  centred in the 5.0 mouth at 0.7/side; the M2-era "window east of the
-  switch centre" premise was a datasheet misread of the drawn nub — it
-  is one travel extreme, the neutral lever is centred on the COM
-  pin/footprint origin). SAT stands: mouth ≥3 to tab-4's pocket, ~1.8
-  web to the USB mouth.
-- [ ] Magnets — 16× Ø4×2×2mm N52 (TUB pockets) + 16× Ø4×1.5mm N52
-  (COVER pockets, T4 review fix: shallower cover pocket -> 1.3mm floor
-  over the magnet; the Ø4×2/Ø4×1.5 pair is asymmetric-tolerant, faces
-  magnets still meet exactly at the lip plane): the tub has 8 × Ø4.3×2.2
-  recesses in the band top, faces flush at the lip plane; the ring
-  cover mirrors them face-down with 8 × Ø4.3×1.7 recesses. Glue: tub
-  magnets FACE-UP flush, cover magnets FACE-DOWN flush (the 0.2mm glue
-  seat decides the zero-gap stop). **Polarity (review 2026-10-24):**
+- [ ] **Case port bores.** In a printed slice of the current tub and cover,
+  seat the actual USB-C plug through the 14.0mm slot. Fully mate the
+  right-angle TRRS plug through the roofed Ø6.0mm bore with the boot
+  clear of the case. Check the length of the exposed barrel as well as
+  its diameter, and check that both plugs can seat with the halves at
+  the planned spacing.
+- [ ] **Power-switch aperture.** With the real switch installed, check that the
+  cover seats against the tub without contacting the switch body and
+  that the actuator is reachable across its full travel on both halves.
+- [ ] **Magnets.** Use 16 axially magnetized N52 Ø4×2mm magnets in the tub
+  pockets (Ø4.3×2.2mm) and 16 Ø4×0.5mm in the cover pockets
+  (Ø4.3×0.7mm). Seat tub magnets face up and cover magnets face down,
+  both flush, allowing 0.2mm nominal adhesive depth. Check polarity:
   face-up/face-down fixes the GEOMETRY, not the pole — a flipped disc
   still seats. Pick the orientation on ONE tub/cover pair (must
   attract), then dry-stack ALL 16 in their pockets and confirm every
@@ -188,19 +141,11 @@ batch; it never forbade coupons.
   then with magnets it must snap-seat without rocking; poron must not
   stick to either case part. **Pull test (M4 gate): with the plate
   installed, a straight lift must hold ≥1.5 kg before the cover lifts**
-  (8 mixed pairs ≈ 2–2.8 kg predicted; the glue lap is the weak link,
-  not the 1.3mm pocket floor — the floor's rim shear is ~10mm² of
-  perimeter at FDM in-plane strength, orders above the pull).
-- [ ] Ring cover dry-fit: outer face FLUSH with the tub skin (lid seam
-  visible but flush — fingernail probe), inner edge = PCB rim + 0.5
-  (key field clear; the ring BRIDGES the tabs and presses the top
-  pads), the plug's overmold rides through
-  the cover slot and pokes ~0.2 above the top face (the module tops at
-  7.7, below the ring), the jack boot
-  clears the blind W2 tunnel (solid ceiling above the boot at 7.25),
-  and the tub/ring pwrsw slots are ALIGNED into a single 5.0 flick
-  channel (the ring's slot keeps a 1.1 inner web — confirm it prints
-  intact).
+  with the specified 0.5mm cover magnets and the actual adhesive.
+- [ ] **Cover dry-fit.** Close the cover flush with the tub without
+  rocking. Check that all top pads make contact and the keycaps travel
+  freely. With the cover closed, confirm both plugs seat and both power
+  switches can be operated.
 - [ ] Encoder shaft hole over the anchor — **FIRST pre-order bench check,
   order (1) hole sample, (2) Choc clip fit + kerf on the 0.71mm pad
   margin (needs a laser-cut sample), (3) the plug slices below**. The
@@ -209,23 +154,18 @@ batch; it never forbade coupons.
   plate gap — ~0.34mm/side in y (gen_plate.py asserts >=0.2/side).
   Drop the real (or spec-identical) encoder through a laser-cut window
   sample before ordering the plate batch: ±0.2 fab tolerance can still
-  rub. The knob sits ABOVE the cover on the short-shaft encoder
-  (verify >=6mm shaft engagement; the skirt must stay ~0.9mm off the
-  5.2 cover through a full push — EC11 travel 0.5±0.3). The committed
-  knob is ROUND (Ø16.8) so its sweep is constant — spin it through a
-  full turn and feel for rub at the nearest cap (SW_L17, 3.6mm clear
-  on paper); and the shaft carries a D-flat — press the bore on with
-  the flat aligned (it transmits the torque and prevents a 90°
-  mis-seat). If the calipered terminal blocks
+  rub. Fit a knob to the qualified encoder shaft. Check shaft
+  engagement, clearance above the cover at full push, and clearance
+  from the nearest keycap through a full turn. The low render knob
+  assumes a shorter shaft than the reference part. If the calipered terminal blocks
   do not protrude above ~1.5mm, the window may return to 12.7 square —
   but only with that measurement in hand (see the coupon bullet above).
 - [ ] 301230 cell outline (12×30mm) fits between the socket rows on print.
 - [ ] TRRS gap on print/caliper: board-edge to board-edge **20.42mm** at
   the jack height; plastic mouth-to-mouth **22.40mm** with each mouth
   **0.99mm recessed** behind its edge (silk tops at 21.40mm, 0.49mm
-  recessed — NOT protruding). 90-degree plugs fit easily in this gap.
-  Measure the boot diameter of the chosen 90° cable; straight plugs are
-  prohibited (two noses would meet head-on across the 22.40mm mouth gap).
+  recessed). Verify that both ends of the selected right-angle cable can
+  seat through the case bores at the intended spacing.
 - [ ] Fab limits confirmed with the chosen fab BEFORE ordering: 2-layer
   1.6mm, 0.25mm track / 0.2mm clearance / 0.30mm-drill-in-0.65mm-pad
   signal vias (0.50-in-1.00 power) accepted — the old "0.8-0.4mm" line
@@ -320,15 +260,14 @@ batch; it never forbade coupons.
   (Laser kerf enlarges cutouts ~0.1–0.2mm, so expect a slip fit, not
   interference — rock is the reject criterion. If loose in every region,
   the cutout tightens 14.0 → 13.9.)
-- [ ] Poron pads (rev-2 plate): 7×4mm 4701-30-15 pads stuck top+bottom on all
-  8 tabs per half per the PORON DXF layer — full tab coverage, none
-  overhanging into cutouts/windows; peel-test one: adhesive holds the
-  tab, not the case.
-- [ ] Gasket preload: dry-stack plate + pads (no PCB) and measure sandwich
-  vs the **6.0–6.3mm** cavity target (rev 2's 1.2mm plate; the case as
-  built measures 6.25mm — 15–20% foam compression per `spec/case.md`).
-  Under 6.0 crushes past 20% (bright/harsh); over 6.3 leaves the stack
-  loose (rattle).
+- [ ] **Poron pads.** Use eight 7×4mm pads per side of the plate, per
+  half: 3.0mm stock below and 1.5mm stock above. Keep the pads on the
+  tabs and away from adjacent cutouts.
+- [ ] **Gasket preload.** The nominal distance from the tab shelf to the
+  seated cover is 4.75mm: 2.55mm compressed bottom foam, 1.20mm plate,
+  and 1.00mm compressed top foam. Confirm the cover seats flush and
+  each pad contacts its mating face. Nominal compression is 15% below
+  and 33% above.
 
 ### 3b. Service story (review 2026-10-24)
 
@@ -369,16 +308,12 @@ batch; it never forbade coupons.
 
 ## 5. Firmware bring-up (first flash)
 
-- [ ] First flash per half MUST use full chip erase (`--erase`): P0.09/P0.10
-  (spare D10 + encoder push) are NFC pins and stay locked to the NFC
-  peripheral until UICR `nfct-pins-as-gpios` is written, which needs the
-  erase. A non-erased first flash boots fine but leaves encoder push and
-  the spare dead with no error.
-- [ ] After flashing both halves: BLE-pair halves, confirm keys from each
-  side, then verify the encoder push-click registers. If it is dead,
-  re-flash that half with `--erase` before suspecting hardware. Then run
-  the firmware bench below — the keymap of record is the generated
-  variant (spec/keymap.md), so prove behaviors, not just inputs.
+- [ ] Flash each stock nice!nano with the matching left/right UF2 via
+  its USB bootloader. Verify both halves pair and report their matrix
+  keys. Document a verified programmer and bootloader recovery procedure
+  before using a full chip erase.
+- [ ] Verify D16 is usable as GPIO on each half and check both encoder
+  pushes send Mute to the host over BLE.
 - [ ] The SPARE input (D10) has no keymap binding and no test pad, so
   it cannot be "verified by toggling" — check it with a DMM: the spare
   pin is MCU **D10 = P0.09** (module header pin 13, the pin labelled
@@ -404,8 +339,8 @@ Matrix/base:
 - [ ] Encoder per layer: base = volume ±, L1 = scroll ±, L2 =
   track prev/next, and rotating looks RIGHT compared to the printed
   detent direction on both halves (per-half).
-- [ ] Encoder push on EACH half = Mute only (the sideband also proves
-  `--erase`'s NFC-pin unlock).
+- [ ] Encoder push on each half sends Mute to the host. Complete the
+  firmware bench with the two halves paired.
 
 Home-row mods (all 8 home positions A S D F / ; L K J):
 - [ ] Deliberate hold (slow press, other hand key, release): the intended

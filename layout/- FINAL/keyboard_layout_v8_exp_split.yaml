@@ -2,13 +2,11 @@ meta:
   engine: 4.2.1
   name: kbd-v2-curved-thumb
   version: 0.9.3
-
 units:
   kx: u
   ky: u
   px: kx + 3
   py: ky + 3
-
 points:
   zones:
     matrix:
@@ -169,7 +167,6 @@ points:
     # EXPERIMENTAL SPLIT VARIANT — widened from the v7 baseline; the
     # frozen-width twin is keyboard_layout_v8.yaml.
     distance: 4.5kx + 16
-
 outlines:
   board:
     - what: polygon
@@ -250,8 +247,8 @@ outlines:
       what: rectangle
       where: [usb, mirror_usb]
       size: [11, 5.4]
-    # NOTE: `expand`/`fillet` below are hoisted by Ergogen to every item in
-    # this group, so both halves come out identically expanded/filleted.
+      # NOTE: `expand`/`fillet` below are hoisted by Ergogen to every item in
+      # this group, so both halves come out identically expanded/filleted.
   # The encoder knock-through belongs to the plate/case, NOT the PCB: the
   # EC11E body sits ON the PCB and all seven of its pads need copper (the
   # A/B/C row sits within 7.9mm of the knob centre, i.e. inside an

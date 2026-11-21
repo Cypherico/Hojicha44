@@ -3,7 +3,7 @@
  *  - spec/electronics.yaml parses + erc stanza states the exact gate
  *  - Ergogen TRRS comment matches measured 22.40/20.42/recessed geometry
  *  - gen_schematic.py NEED has no duplicate (lib, symbol) entries
- *  - gen_pcb.py W1 gate asserts the exact 28-entry mismatch set, verified
+ *  - gen_pcb.py W1 gate asserts the exact release mismatch set, verified
  *    against the TRACKED release DRC copies (generated/release/vX.Y.Z/)
  *  - release MANIFEST exists for the spec version and lists both halves
  *  - ZMK structure: transform map RC count == keymap bindings per layer,
@@ -104,7 +104,7 @@ import sys
 sys.path.insert(0, ${JSON.stringify(
     path.join(REPO, "pcb", "generators")
   )})
-import gen_pcb, glob, os
+import gen_pcb, os, re
 reldir = ${JSON.stringify(
     path.join(
       REPO,
@@ -116,17 +116,20 @@ reldir = ${JSON.stringify(
     )
   )}
 rc = 0
+manifest = open(os.path.join(reldir, "MANIFEST.txt")).read()
+router = re.search(r"^router: gen_route[.]py r([0-9]+)$", manifest, re.M)
+native_choc = router is not None and int(router[1]) >= 14
 for tag, half in (("L", "Left"), ("R", "Right")):
     p = os.path.join(reldir, half, f"Hojicha44-{half}-drc.rpt")
     assert os.path.exists(p), f"missing {p}"
-    rc |= gen_pcb.check_drc_report(p, tag)
-# negative control: a 29th mismatch must fail
+    rc |= gen_pcb.check_drc_report(p, tag, native_choc=native_choc)
+# negative control: an extra mismatch must fail
 s = open(os.path.join(reldir, "Left", "Hojicha44-Left-drc.rpt")).read()
 s += "[lib_footprint_mismatch]: Footprint 'D_SOD-123' does not match copy in library 'Diode_SMD'\\n    Local override; warning\\n    @(0, 0): Footprint D_L99\\n"
 open("/tmp/hojicha-w1-neg.rpt", "w").write(s)
-neg = gen_pcb.check_drc_report("/tmp/hojicha-w1-neg.rpt", "L")
-assert neg == 1, "W1 gate must reject a 29th mismatch"
-print("w1-gate: exact 28/half passes, 29th rejected")
+neg = gen_pcb.check_drc_report("/tmp/hojicha-w1-neg.rpt", "L", native_choc=native_choc)
+assert neg == 1, "W1 gate must reject an extra mismatch"
+print("w1-gate: exact release exception set checked, extra mismatch rejected")
 sys.exit(rc)
 `;
   execFileSync("python3", ["-c", py], { stdio: "inherit", cwd: REPO });
@@ -149,9 +152,10 @@ try {
     .filter((l) => !l.trim().startsWith("#") && !l.trim().startsWith("//"))
     .join("\n");
   const dtsi = strip(d("boards/shields/hojicha44/hojicha44.dtsi"));
-  const cols = parseInt(/columns\s*=\s*<(\d+)>/.exec(dtsi)[1], 10);
-  const rows = parseInt(/rows\s*=\s*<(\d+)>/.exec(dtsi)[1], 10);
-  const rcs = [.../map\s*=\s*<([\s\S]*?)>/.exec(dtsi)[1]
+  const transform = /default_transform:\s*transform\s*\{([^}]+)\}/.exec(dtsi)[1];
+  const cols = parseInt(/columns\s*=\s*<(\d+)>/.exec(transform)[1], 10);
+  const rows = parseInt(/rows\s*=\s*<(\d+)>/.exec(transform)[1], 10);
+  const rcs = [.../map\s*=\s*<([\s\S]*?)>/.exec(transform)[1]
     .matchAll(/RC\((\d+),\s*(\d+)\)/g)].map((m) => [+m[1], +m[2]]);
   const have = (r, c) => rcs.some(([a, b]) => a === r && b === c);
   // all 4 variants + the active one must match spec/layout.yaml; a
@@ -281,30 +285,47 @@ try {
   }
 }
 
-// 6. print-order manifest (audit-2 F-12): the shops are sent exactly the
-//    files hashed in generated/print/vX.Y.Z/MANIFEST.txt — a tracked plate
-//    file that drifted from the manifest must fail the gate (in CI the
-//    case/out solids are gitignored and not buildable, so their hashes are
-//    order-time records verified only where the files exist locally).
+// 6. Print-order manifest inventory and hashes. STEP files are tracked.
+// STL files are optional on disk, but any local STL must match its entry.
 try {
   const crypto = require("crypto");
   const mpath = "generated/print/v0.5.0/MANIFEST.txt";
   const txt = fs.readFileSync(path.join(REPO, mpath), "utf8");
   const entries = new Map();
-  for (const line of txt.split("\n")) {
-    const m = /^([0-9a-f]{64})\s+(\S+)$/.exec(line);
-    if (m) entries.set(m[2], m[1]);
-  }
   const problems = [];
+  const expected = new Set(["Left", "Right"].flatMap((half) => [
+    `plate/Hojicha44-${half}-plate.dxf`,
+    `plate/Hojicha44-${half}-plate.svg`,
+    `plate/Hojicha44-${half}-lands.json`,
+    ...["tub", "cover"].flatMap((part) => [
+      `case/out/Hojicha44-${half}-${part}.step`,
+      `case/out/Hojicha44-${half}-${part}.stl`,
+    ]),
+  ]));
+  for (const line of txt.split("\n")) {
+    if (!line.trim() || line.startsWith("#")) continue;
+    const m = /^([0-9a-f]{64})\s+(\S+)$/.exec(line);
+    if (!m || !expected.has(m[2])) {
+      problems.push(`invalid print manifest entry: ${line}`);
+      continue;
+    }
+    if (entries.has(m[2])) problems.push(`duplicate entry for ${m[2]}`);
+    entries.set(m[2], m[1]);
+  }
   const sha = (f) =>
     crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
   let verifiedPlate = 0, verifiedCase = 0;
-  for (const [f, h] of entries) {
+  for (const f of expected) {
+    const h = entries.get(f);
+    if (!h) {
+      problems.push(`${f} missing from manifest`);
+      continue;
+    }
     const p = path.join(REPO, f);
     if (!fs.existsSync(p)) {
-      if (f.startsWith("plate/"))
+      if (!f.endsWith(".stl"))
         problems.push(`${f} listed in manifest but missing`);
-      continue; // gitignored case/out: record-only outside the local tree
+      continue;
     }
     if (sha(p) !== h) problems.push(`${f} drifted from ${mpath}`);
     else if (f.startsWith("case/out/")) verifiedCase += 1;

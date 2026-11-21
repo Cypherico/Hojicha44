@@ -1,4 +1,8 @@
-# Manufacturing order guide (v0.5.0)
+# Manufacturing order guide (v0.5.1)
+
+> **Use v0.5.1 for PCB samples.** The v0.5.0 drill files mirror the asymmetric
+> Choc v1 contact pattern. Check the revised cover with the installed power
+> switch before ordering the case.
 
 The exact answers for the JLCPCB Online PCB Quote, derived from the
 committed design + vendor research (2026-10; sources at the bottom).
@@ -47,33 +51,21 @@ but every design-shaped field below has exactly one right answer.
   "Different Design: 2", or two orders — each design is billed its own
   5-pc minimum. Don't merge them into one panel/gerber: per-extra-design
   fees exist and a shared panel of this size gains nothing.
-- The released artifacts are `generated/release/v0.5.0/{Left,Right}/`
+- The released artifacts are `generated/release/v0.5.1/{Left,Right}/`
   (9 gerbers + job + drill + pos + pos-smt + bom + ERC/DRC each; zip
   each half's folder for upload). Cross-check the MANIFEST stamp
   (`git commit:` / `board sha256:` lines in
-  `generated/release/v0.5.0/MANIFEST.txt`) — the ERC/DRC reports in the
+  `generated/release/v0.5.1/MANIFEST.txt`) — the ERC/DRC reports in the
   release are re-run at cut time, and the manifest records the board's
   hash, so the release certifies those exact bytes.
-- **Only `generated/release/vX.Y.Z/` is fab-pointable.** The pre-M3
+- **Use an approved bundle from `generated/release/vX.Y.Z/`.** The pre-M3
   `pcb/- FINAL/` tree is removed; it had stale power-switch pads and
   pinned an uncommitted board (`3016153-dirty`). Historical audit
   reports may still mention it.
-- **Frame note (v0.5.0):** the `.kicad_pcb` is stored y-negated so
-  KiCad's y-up Gerber/drill/pos exports land in the plate/case design
-  frame. The board title block records
-  `(comment 3 "frame: storage-yneg")`; readers convert with
-  `pcb/generators/frame.py`. The release gate
-  `python3 pcb/generators/check_board.py --self-test` proves the
-  released T12/T10 holes and USB-notch outline match the plate, and
-  proves a Y-negated control fails. DRC is run on the geometrically
-  identical design-frame reflection (same project rules), because
-  KiCad compares footprint-local geometry to the libraries.
-- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** The
-  measured minimum copper-to-edge is **0.406mm Left / 0.575mm Right**
-  (M3.6 nudge 2026-10-23, was 0.292/0.330) — above the 0.2mm
-  **tab-route** rule (JLCPCB 2026: "0.3mm for V-cut panelization and
-  0.2mm for tab-routing") AND PCBWay's 0.3mm profile-to-copper figure,
-  so the board is fab-agnostic with routing-tolerance headroom. CNC
+- **Drill verification:** the release gate checks the exported Choc v1
+  contact holes against the physical top-side pattern on both halves.
+- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** Both
+  v0.5.1 boards passed a 0.30 mm copper-to-edge check. CNC
   routing tolerance ±0.1mm precision / ±0.2mm regular (capabilities
   page) — prefer the precision tier at quote if offered. Put this in
   the fab order verbatim:
@@ -124,7 +116,9 @@ but every design-shaped field below has exactly one right answer.
   plate** (at 1.5/1.6mm the switch has no retention).  The plate also
   carries a **0.55mm relief pocket in its underside under each of the
   22 diodes** (RELIEF layer in the DXF; the DXF text entity repeats the
-  depth) — machine that depth, do NOT cut through it.  The **encoder
+  depth). Approve the coupon only if the pocket leaves **at least 0.60mm**
+  of plate and **at least 0.15mm** of seated clearance above the worst-case
+  diode. The **encoder
   window is 16.2 x 12.4** (rev 1's 12.7 square fouled the encoder's
   terminal blocks at the rev-2 plate height — measured off the
   vendored EC11E STEP).  The
@@ -134,7 +128,8 @@ but every design-shaped field below has exactly one right answer.
   `plate/gen_plate.py`
   (DXF/SVG kept in `plate/`).
 - Acrylic is the anti-recommendation: brittle at the gasket tabs.
-- **Magnets ordered separately** (N52 Ø4×2, axially magnetized) — see
+- **Magnets ordered separately** (axially magnetized N52, Ø4×2mm tub and
+  Ø4×0.5mm cover) — see
   `spec/first-article.md` for the seat-force verify gates and the
   tub/cover polarity pairing note.
 - **H-7 mirror gate (v0.4.0+):** the plate/case halves must be exact
@@ -145,21 +140,9 @@ but every design-shaped field below has exactly one right answer.
   negative controls. The right plate's gasket tabs are now derived from
   the left roots (`plate/gen_plate.py`), not re-walked independently.
 
-- **Compliance (decided, see `spec/compliance.md`):** the pilot market
-  is **AU/NZ** and the path is the **RCM via an ACMA-only Responsible
-  Supplier** (free registration) + the ACMA **C02 SDoC** + the RCM
-  label.  Do NOT buy a certification at pilot volume (a lab SDoC is
-  ~AUD 600–1,500, 1–3 weeks).  Two things to settle BEFORE the board
-  order: (1) the **Bluetooth SIG** listing — the Adopter tier is
-  **free**, and the money is the one-off Product Qualification Fee
-  (**USD 12,000** + a **USD 1,250** Company Identifier) which is only
-  due if a unit is **sold or branded** (the SIG's trigger is
-  "selling, branding, manufacturing, or representing a product as its
-  own"). Our keyboard is an Unmodified Design (Nordic's qualified
-  nRF52840 + ZMK), so it lists with no new RF testing. A self-built
-  pilot that is never sold owes the SIG nothing; SIG membership is
-  also company-only, so an individual needs an entity. (2) keep the RCM
-  label a **sticker**, not case printing, until the market is fixed.
+- **Public supply:** confirm the finished keyboard's requirements and
+  collect evidence for the actual nice!nano v2 revision before release.
+  See [the compliance record](../spec/compliance.md).
 - **Pilot batch: 5 half-pairs (10 halves)** — see `spec/first-article.md`
   §0 for the order quantities and the indicative ~USD 35–70/half unit
   cost.

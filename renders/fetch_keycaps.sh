@@ -4,15 +4,41 @@
 # regenerates mesh assets from these on every run).
 set -euo pipefail
 DIR="${KEYCAP_DIR:-/tmp/kbd-renders/keycaps}"
+COMMIT=8e4b89b484cafe3bcaced6b459a4e29660991a40
+STAMP="pinned commit: $COMMIT"
+BASE="https://raw.githubusercontent.com/braindefender/KLP-Lame-Keycaps/$COMMIT/STEP/Choc%20Stem%20%2B%20Choc%20Size"
+VARIANTS=(Saddle Saddle_Tilted Saddle_Homing Normal Normal_Homing Normal_Tilted Thumb)
 mkdir -p "$DIR"
-BASE="https://raw.githubusercontent.com/braindefender/KLP-Lame-Keycaps/master/STEP/Choc%20Stem%20%2B%20Choc%20Size"
-for v in Saddle Saddle_Tilted Saddle_Homing Normal Normal_Homing Normal_Tilted Thumb; do
-  f="$DIR/klp_${v}.step"
-  if [ -s "$f" ]; then echo "have $f"; continue; fi
-  curl -sL -o "$f" "$BASE/Choc_Stem_Choc_Size_${v}.step"
-  echo "fetched $f ($(stat -f%z "$f") bytes)"
+
+if [ -f "$DIR/PINNED_SOURCE.txt" ] && [ "$(cat "$DIR/PINNED_SOURCE.txt")" = "$STAMP" ]; then
+  complete=true
+  for v in "${VARIANTS[@]}"; do
+    if ! grep -q '^ISO-10303-21;' "$DIR/klp_${v}.step"; then
+      complete=false
+      break
+    fi
+  done
+  if [ "$complete" = true ]; then
+    printf '%s\n' "$STAMP"
+    exit 0
+  fi
+fi
+
+staged=$(mktemp -d "$DIR/.keycaps.XXXXXXXX")
+trap 'rm -rf -- "$staged"' EXIT
+for v in "${VARIANTS[@]}"; do
+  f="$staged/klp_${v}.step"
+  curl --fail --silent --show-error --location --output "$f" \
+    "$BASE/Choc_Stem_Choc_Size_${v}.step"
+  if ! grep -q '^ISO-10303-21;' "$f"; then
+    printf 'Expected a STEP file for %s\n' "$v" >&2
+    exit 1
+  fi
 done
-curl -s "https://api.github.com/repos/braindefender/KLP-Lame-Keycaps/commits/master" \
-  | python3 -c "import json,sys; d=json.load(sys.stdin); print('pinned commit:', d['sha'], '|', d['commit']['committer']['date'])" \
-  > "$DIR/PINNED_SOURCE.txt"
-cat "$DIR/PINNED_SOURCE.txt"
+rm -f -- "$DIR/PINNED_SOURCE.txt"
+for v in "${VARIANTS[@]}"; do
+  mv -- "$staged/klp_${v}.step" "$DIR/"
+done
+printf '%s\n' "$STAMP" > "$staged/PINNED_SOURCE.txt"
+mv -- "$staged/PINNED_SOURCE.txt" "$DIR/"
+printf '%s\n' "$STAMP"

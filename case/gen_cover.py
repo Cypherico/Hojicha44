@@ -122,9 +122,10 @@ def build_cover(tag):
         s = rrect(kw, kh, P.CAP_ROUND, cx, cy, ang, z0 - 1.0, z1 + 1.0)
         cutter = s if cutter is None else cutter.fuse(s)
     # ---- component windows (MCU / encoder / pwrsw body; mirrored) ------
-    for (x0, y0, x1, y1) in (win2(tag, P.MCU_WIN), win2(tag, P.ENC_WIN),
-                             win2(tag, P.PWRSW_WIN)):
-        s = rrect(x1 - x0, y1 - y0, 2.0, (x0 + x1) / 2, (y0 + y1) / 2,
+    for bounds, radius in ((P.MCU_WIN, 2.0), (P.ENC_WIN, 2.0),
+                           (P.PWRSW_WIN, 0.5)):
+        x0, y0, x1, y1 = win2(tag, bounds)
+        s = rrect(x1 - x0, y1 - y0, radius, (x0 + x1) / 2, (y0 + y1) / 2,
                   0.0, z0 - 1.0, z1 + 1.0)
         cutter = cutter.fuse(s)
     solid = solid.cut(cutter)
@@ -255,6 +256,12 @@ def check_cover(tag, solid, info):
                False)
     pox = info["ports"]["pwrsw"]["o"][0]
     expect("pwrsw window open to the north skin", pox, 66.0, mid, False)
+    # The nominal switch body is 10 × 2.5 mm on the PCB, centered 7 mm
+    # inboard of the port anchor. Probe the body and its corners.
+    poy = info["ports"]["pwrsw"]["o"][1] - 7.0
+    for dx in (-5.0, 0.0, 5.0):
+        for dy in (-1.25, 0.0, 1.25):
+            expect("pwrsw body clearance", pox + dx, poy + dy, mid, False)
     # cover material between the component windows and the key field
     # (probe just outside each window edge; void here means an opening
     # merged the window into the key field — the plate must keep the

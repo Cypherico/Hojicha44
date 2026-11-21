@@ -5,6 +5,8 @@
 # merge, zero row-webs) + ledge extended over the component strip with rim-
 # port keepouts; tub hashes unchanged since v4.1; STEP files committed and
 # CI-verified; board stamp = release v0.5.0 @8eef566).
+# Cover update: clear the actual power-switch body and check both halves.
+# The PCB release remains on fabrication hold.
 # plate files are tracked + CI-verifiable (tests/spec_checks print-manifest gate);
 # if any generator constant changes, regenerate everything and re-record this
 # manifest in the SAME commit (never order from a stale hash).
@@ -17,9 +19,9 @@ b4d3bdc06522476bdd7cfe076de97e6a8af2033aeb5a63646b3ec03fa8a0a363  plate/Hojicha4
 4ac6a9a5700181f512b21f351c69a5ad79700d1eb160c250674a16a6eb4040ab  plate/Hojicha44-Right-lands.json
 76041fe22d53c81342d01c83b20079afc64d1653c26b4de5238690d10943735d  case/out/Hojicha44-Left-tub.step
 29b171cad816327d3376ee6ec832969677c6f928b283c8ef49c993219cf4c9dd  case/out/Hojicha44-Left-tub.stl
-8da2310689dc0091192b79013824fca9c1da707c257276dec86ac35ce4ced7c3  case/out/Hojicha44-Left-cover.step
-f453d76b53ed2664344e93deb9d4eae375673faf21ac337003a1ea30b7944f29  case/out/Hojicha44-Left-cover.stl
+8a45427beb09bcf57f85a1c043438772ef2404ff96ba325b2523a1d4503d7e01  case/out/Hojicha44-Left-cover.step
+ff3b83015938b4c40e92fd6c817ba34b7c4bec45753753ae1617b4d8827818bf  case/out/Hojicha44-Left-cover.stl
 f80ec07edfa2c89b9bd222d4c5fb4c623f79dc74f3d425d4c5320d93dd465390  case/out/Hojicha44-Right-tub.step
 52fc27dbc05aa44d21e1ddb20aca07fcafd4f401aa3104d5473315871304cfba  case/out/Hojicha44-Right-tub.stl
-6fd34311f7712269756b6314d7276d798613fbdabbb7ddef9dccc0a313797137  case/out/Hojicha44-Right-cover.step
-1cc8bd0e250e465bee71761a0522a243317c261ae332a6def50117d1cd93cf37  case/out/Hojicha44-Right-cover.stl
+a736daaa3bfd076c7fef4e602bf4dd7e1c55cd0183ab3a4deb19808ebd163dd0  case/out/Hojicha44-Right-cover.step
+7ae6106ad8db3e88f00aecd4c14ac8792ff68ca3fa3574ae18943c05908c8b3f  case/out/Hojicha44-Right-cover.stl

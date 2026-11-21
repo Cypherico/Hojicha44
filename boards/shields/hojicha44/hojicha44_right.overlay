@@ -9,7 +9,7 @@
 #include "hojicha44.dtsi"
 
 /* Right half reports its physical 6 columns at logical offset 6, so both
- * halves share one 12-column transform and one 46-cell keymap (Corne-style
+ * halves share one 12-column transform and one 48-position keymap (Corne-style
  * col-offset into the combined RC(.,0..11) span). */
 &default_transform {
     col-offset = <6>;

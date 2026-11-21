@@ -320,7 +320,7 @@ ENC_WIN = (111.5, -14.35, 124.5, -1.65)   # x0, y0, x1, y1: EC11
                        # old 17.2x13.2 window exposed the whole part;
                        # this one covers the rectangular terminal base
                        # and leaves only the body top + bushing/shaft.
-PWRSW_WIN = (101.0, 56.4, 111.6, 70.0)    # x0, y0, x1, y1: body window
+PWRSW_WIN = (101.0, 49.2, 111.6, 70.0)    # clears the 10×2.5 body at (106.3, 51)
                        # extended through the north skin in ONE clean
                        # notch (a 5mm nail slot beside the USB slot left
                        # an enclosed 3x7mm cover island between them).

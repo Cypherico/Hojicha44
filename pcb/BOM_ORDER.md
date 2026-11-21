@@ -1,5 +1,7 @@
 # Part order list (v0.5.0) — with live-verified SKUs
 
+> The PCB and case orders are on hold. See [the fabrication hold](MANUFACTURING.md).
+
 Prices/stock verified 2026-10-19 against vendor pages — they WILL drift;
 re-check at cart time. PCB fab choices are NOT here: see
 `MANUFACTURING.md`. Quantity basis: the full split (2 halves).
@@ -21,13 +23,13 @@ re-check at cart time. PCB fab choices are NOT here: see
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
-| ☐ | 2 | **Short-shaft EC11-class rotary encoder, D-flat Ø6, with push** — the generic "EC11 10–15mm D-shaft, 30-detent/15-pulse, with push" (the class the Sofle Choc build guide documents: "prefer short shaft… 10mm, D-shaped shaft, 30 positions"); the tip must land **≤14mm above the PCB** and the body must match the EC11E 11mm-class envelope (the case window is sized to it) — **verify tip height + "with switch" on the listing before ordering** | ~$1.50–2.50 | ⚠ ALPS **EC11E15244G1** (TME, $2.58) is the fallback: it is the **20mm-actuator** part (tip 24.55mm — the low knob's bore tops out ~15.1), so pair it with a tall knob or trim the shaft. The **ALPS EC12** (e.g. EC12E1220301, ≈8.5mm total) is the lowest same-footprint-family part but has **NO push switch** (the keymap's encoder-push binding orphans) and a 12.4mm body that needs the case window opened ~0.5mm — a case rev, not a drop-in |
+| ☐ | 2 | **Alps EC11E15244G1** rotary encoder with push | — | Reference part for PCB, firmware and clearance checks. A shorter part needs a verified pinout, mounting pattern, body clearance, detent count and push travel before substitution. |
 | ☐ | 2 | Würth **450301014042** (DigiKey) | $2.15 | WS-SLTV slide SPDT; no drop-in alternate (clones need footprint check) |
 | ☐ | 2 | JST **S2B-PH-K-S** (DigiKey) | $0.12 | side-entry battery header |
 | ☐ | 2 | JST **PHR-2** housing | $0.10 | |
 | ☐ | 1 | JST **SPH-002T-P0.5S** contacts, strip of 100 | $4.09 | 4 needed; strip = cheapest entry + spares |
 | ☐ | 2 | XKB **PJ-320A** (LCSC **C2884926**, MOQ 5) | $0.75 | footprint is PJ-320A-specific — don't substitute PJ-3xx variants |
-| ☐ | 2 | **Low round EC11 knob, Ø6 D bore**: OD 15–17mm, height ≤12mm, bore deep enough to swallow the ~13.5mm shaft tip — e.g. a fluted aluminium EC11 knob (beekeeb stocks ≤15.5mm ones) or print the committed geometry (`renders/build_assets.py` knob_glb: Ø16.8 × 9.2, 18 flutes) | ~$4–8 | committed geometry: skirt bottom at 6.1 abs — must stay ≥0.9mm above the 5.2 cover (EC11 push travel 0.5±0.3); the Ø16.8 sweep clears the nearest cap (SW_L17, 24.04mm centre) by 3.6mm at every angle. The old kriscables 13×13 **square** knob is a tall-shaft part — do not pair it with the short-shaft encoder. Shaft is D-flat: align the bore's flat on press-on |
+| ☐ | 2 | Knob matched to the qualified encoder shaft | — | Dry-fit the knob through full rotation and push travel. The low render knob was sized for a shorter shaft and does not fit the unmodified EC11E15244G1 at the shown height. |
 
 ## D. Keyboard-specialty pass
 
@@ -40,7 +42,7 @@ re-check at cart time. PCB fab choices are NOT here: see
 | ☐ | 1 | KEEBD **24cm dual right-angle TRRS cable**, 4-pole CTIA | $6.00 | both ends MUST be 90° — straight plugs collide across the 22.4mm mouth gap |
 | ☐ | 44–50 | **MBK Choc keycaps** (PBT, Typeractive ~$1/cap) | ~$44 | Choc v1 stems only (MX won't fit); MBK legend sets spotted sold out at splitkb — CFX (~$25/set) is the budget fallback |
 | ☐ | 1 | supermagnete **S-04-02-N** ×20 (Ø4×2mm) | €5.60 | TUB magnets, face-up flush, 16 needed |
-| ☐ | 1 | supermagnete **S-04-1.5-N** ×20 (Ø4×1.5mm) | €4.60 | COVER magnets, face-down flush, 16 needed; the height pair is deliberate — faces meet at the lip plane |
+| ☐ | 16 + spares | N52 disc magnets, Ø4×0.5mm, axially magnetized | — | COVER magnets, face-down flush in Ø4.3×0.7mm pockets. Confirm supply and pull force before the batch. |
 | ☐ | — | glue for the magnets: **B-7000** | $5 | flexible, nylon-safe (PA12); JB-Weld rigid alt; no hot glue |
 
 ## E. Case-shop pass
@@ -52,8 +54,8 @@ re-check at cart time. PCB fab choices are NOT here: see
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
-| ☐ | — | Rogers **PORON 4701-30** Very Soft ~3mm sheet (McMaster search "Rogers 4701-30" or silicone-foams.com) | ~$10–15 | 16 pads/half cut **7×4** (4/7mm punch — the audit-round carve; 8mm pads leave only 0.35mm to the plate edge, 7mm leaves 0.71mm); ≈12 pads per 90mm strip; Keebox 32-strip pack (AliExpress) is the sanctioned swap-in fallback; ladder −30→−40→−50, no CAD change |
-| ☐ | 2 | plate cut, **1.2mm**, from `plate/Hojicha44-{Left,Right}-plate.dxf` (mm) | ~$10–20 ea | **1.2mm is mandatory** — the Choc v1 clip only engages 1.2mm; 1.5/1.6 gives friction-only, no retention (`MANUFACTURING.md`). Default material PC per `spec/case.md` (POM = the firmer upgrade); 42keebs/PCBWay/JLCCNC accept DXF; ask no kerf comp. **The DXF carries four layers — paste this into the order:** OUTLINE + CUTOUT cut **through**; **RELIEF = 22 × 0.55mm-deep pockets milled into the UNDERSIDE — machine that depth, do NOT cut through** (0.65mm of plate must remain; a diode fouls a through-cut plate); **PORON = gasket punch template, do not cut it**. **Ask the shop FIRST whether they can do the 0.55mm partial depth** (a plain laser CUT cannot; controlled-depth laser ENGRAVING or CNC depth milling can — PCBWay's Z-Axis Milling is a documented service, depth tolerance ±0.15mm → order **0.70mm nominal** and caliper the delivered 0.55–0.85 on the coupon; JLCPCB publishes no controlled-depth service, checked 2026-10-23) — if not, this order waits (see `spec/bom.md` vendor instruction + first-article coupon) |
+| ☐ | — | Rogers **PORON 4701-30** Very Soft, 3.0mm bottom and 1.5mm top | — | Per half, cut eight 7×4mm pads from each thickness. |
+| ☐ | 2 | **1.2mm** plate from the Left and Right DXFs | — | Through-cut OUTLINE and CUTOUT. Machine 22 nominal 0.55mm underside pockets from RELIEF. PORON is a punch template. Approve the fabrication process on a coupon that leaves ≥0.60mm of plate and ≥0.15mm seated clearance above a 1.40mm diode. At nominal thickness and gap the allowable relief is 0.55–0.60mm. |
 | ☐ | — | case + top plate **MJF PA12** (JLC), files from `gen_case.py`/`gen_cover.py` | per quote | volumes L 57.5 / R 57.5 cm³ (tub, floor −6.35) + cover 15.2 cm³ (key-field ledge) — measured 2026-10-24 (71.1/10.7 predates the thin-top + floor revs); MJF quotes from volume, so quote THESE. Self-print alternative: **PETG 100% infill** is supported (strength audit in `spec/case.md`) — a printed set is the cheap pre-MJF fit article |
 | ☐ | 1 roll | Kapton/polyimide tape ≥10mm | $2–5 | cell sandwich + nano underside |
 | ☐ | 1 | SAC305 no-clean 0.5mm solder (e.g. SRA) + **NC-559-class flux pen** | ~$25 + ~$10 | ENIG pads, hand work |
@@ -99,13 +101,13 @@ otherwise).
 
 ## Verify-at-cart flags (things research flagged or spec demands)
 
-1. **Encoder must have the push switch** (ALPS "G1" suffix; the B2 clone is cheaper and wrong — and the generic short-shaft parts come with and without push: order WITH).
+1. **Encoder**: use the specified Alps EC11E15244G1 and qualify the matching knob on the first article.
 2. **Socket kit = 3.0mm 315 sockets + pins** (assembled 4.5–5.0mm). The
    2.11mm set is banned by the cell sandwich.
 3. **Battery = 301230 only** (30×12×3). Any other clearance story is
    fiction; measure nothing, just match the size.
 4. **TRRS cable: right-angle both ends.**
-5. **Magnet codes**: S-04-02-N and S-04-1.5-N (supermagnete).
+5. **Magnets**: S-04-02-N for the tub. Source Ø4×0.5mm axially magnetized N52 discs separately for the cover.
 6. KiCad 10.0.6 measurements hold steady in this doc; if the layout
    ever re-cuts, re-read `spec/bom.md` first — this list derives from it.
 

@@ -2,10 +2,10 @@
 
 Custom split columnar mechanical keyboard (44 keys + 2 encoders, nice!nano x2).
 Roadmap: `KEYBOARD_PROJECT_ROADMAP.md`.
-**Current phase: PCB release v0.5.0 cut + fab-pointable; plate rev-8 gated
-(+ new z-stack gate); case/cover v4.1 generated + gated (thin top plate,
-key-field ledge, floor −6.35) with committed STEP solids; ZMK CI green.**
-Board release evidence: `generated/release/v0.5.0`; order-time print
+**PCB v0.5.1** corrects the Choc v1 contact drill pattern on both halves.
+The revised cover clears the power switch in CAD and needs a physical fit check.
+See [the order guide](pcb/MANUFACTURING.md).
+Board release evidence: `generated/release/v0.5.1`; order-time print
 geometry: `generated/print/v0.5.0/MANIFEST.txt` (STEP files verified in CI);
 renders: `generated/renders/v0.5.0`. Remaining before any batch: the
 first-article checklist (`spec/first-article.md`) — coupon-first, per its
@@ -25,7 +25,7 @@ each half has a placed+routed board file — see [Schematic](#schematic).
 | `build.yaml` | yes | **CI firmware matrix** consumed by `.github/workflows/build.yml` (one ZMK build per shield, pinned ZMK v0.3) |
 | `pcb/` | yes | KiCad project + generators (`gen_schematic.py`, `gen_pcb.py`, `gen_route.py`) + the committed `.net` netlists CI parses (no KiCad in CI) + vendored stock |
 | `plate/`, `case/`, `layout/` | yes | Generators + tracked outputs (plate DXF/SVG/lands; case scripts; layout points). `case/.venv/` and `case/out/` are local-only |
-| `generated/` | yes, selective | **Derived artifacts worth versioning**: `release/v0.5.0` (the shipped gerbers/reports bundle), `renders/v0.5.0` (final PNGs), layout points, print manifest. The regenerable mesh tree `generated/renders/assets/` is ignored |
+| `generated/` | yes, selective | **Derived artifacts worth versioning**: `release/v0.5.1` (the shipped gerbers/reports bundle), `renders/v0.5.0` (final PNGs), layout points, print manifest. The regenerable mesh tree `generated/renders/assets/` is ignored |
 | `tests/` | yes | `spec_checks.cjs` — the static gate suite (`npm test`) |
 | `renders/` | yes | Phase-10 render pipeline scripts (see `renders/README.md`) |
 | `node_modules/` | **no** | npm deps for the gate suite — recreated with `npm ci`; pinned by `package-lock.json` |

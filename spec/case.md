@@ -26,7 +26,7 @@ Encoder push over the window zone stays soft by design.
 
 | Layer | Spec |
 |---|---|
-| Top case | BUILT — **top plate v4** (`case/gen_cover.py`, gates exit-0): thin plate spanning z **3.20..5.20** (lip 3.20 = plate top 2.20 + 1.00 compressed top foam; 2.0mm thick). It covers the key field between caps and the MCU/encoder strip: ONE merged key-field opening around the 22 KLP cap footprints (17.48×16.48 + 1.0/side), windows for the MCU, the EC11 body (12.0×11.7 measured at the cover band +0.5/side, hiding the terminal base), the pwrsw body/nail, the shared USB slot and a **Ø6.0 round TRRS side hole** (zc 1.5) closed by a 0.7mm roof (straight 3.5mm plugs; the old Ø9.5 boot bore was the "gaping" opening the review rejected). The cover is **FLAT (no-indent)**: the 0.8mm ledge was removed after the second geometry review ("questionable near the encoder; don't be afraid to simplify") — the only embellishment is a **0.4mm chamfer on the outer-rim top edges**. Openings are CAP_CLEAR **1.5/side** so the 19mm-pitch caps merge across rows AND columns — one clean field, zero row-webs/enclosed scraps (the 0.52mm webs read as "ridges and dots" at 1.0). Renders wear the KLP **Normal_Tilted** caps (top ~11.1mm, **5.9mm proud of the plate**); the case geometry is cap-agnostic (Saddle foot shared). Presses the top poron pads; 8×Ø4.3×0.7 magnet pockets mirroring the tub's; no cover material within 3mm of the antenna (gated) |
+| Top case | BUILT — **top plate v4** (`case/gen_cover.py`, gates exit-0): thin plate spanning z **3.20..5.20** (lip 3.20 = plate top 2.20 + 1.00 compressed top foam; 2.0mm thick). It covers the key field between caps and the MCU/encoder strip: ONE merged key-field opening around the 22 KLP cap footprints (17.48×16.48 + 1.5/side), windows for the MCU, the EC11 body (12.0×11.7 measured at the cover band +0.5/side, hiding the terminal base), the pwrsw body/nail, the shared USB slot and a **Ø6.0 round TRRS side hole** (zc 1.5) closed by a 0.7mm roof (straight 3.5mm plugs; the old Ø9.5 boot bore was the "gaping" opening the review rejected). The cover is **FLAT (no-indent)**: the 0.8mm ledge was removed after the second geometry review ("questionable near the encoder; don't be afraid to simplify") — the only embellishment is a **0.4mm chamfer on the outer-rim top edges**. Openings are CAP_CLEAR **1.5/side** so the 19mm-pitch caps merge across rows AND columns — one clean field, zero row-webs/enclosed scraps (the 0.52mm webs read as "ridges and dots" at 1.0). Renders wear the KLP **Normal_Tilted** caps (top ~11.1mm, **5.9mm proud of the plate**); the case geometry is cap-agnostic (Saddle foot shared). Presses the top poron pads; 8×Ø4.3×0.7 magnet pockets mirroring the tub's; no cover material within 3mm of the antenna (gated) |
 | Top gaskets | Poron pads 7×4mm on each tab (PORON layer in the DXF), **1.5mm** thick (thin-top revision; compressed to 1.00 at 33% — TOP_FOAM_T/TOP_PRELOAD in `case/params.py`) |
 | Plate | **1.2mm** (material below), outline = PCB outline + tabs (USB notch included). 1.2mm is the Choc v1 clip-engagement thickness (Keebio: a Choc plate must be 1.2mm for the clip to engage; at 1.5/1.6mm the "lower catch doesn't engage" and the switch is held by friction alone) |
 | Plate↔PCB gap | **1.00mm** — the Choc v1 clip band. MEASURED from the Kailh Choc v1 outline drawing + a community STEP model (`spec/research-open-items-2026-10-21.md` §PG1350): above the PCB the switch is skirt 0–0.9, **flexible clip arms 0.9–1.3 (their lip grabs the plate underside)**, then the **14.8–15.0 "ears" at 2.2–3.0 that bear on the plate's top**. So the plate must sit between the lip (≤1.3) and the ears (2.2): a 1.2mm plate on a 1.00mm gap occupies **1.00–2.20** — the lip grabs the underside, the ears seat exactly on the top. A 1.05 gap lifts the ears 0.05 into the plate; a 1.3 gap drives the plate top through the ears (no grab at all). The 22 top-side diodes are the only thing under the plate in the matrix field, so the plate carries a **0.55mm relief pocket** under each one (RELIEF layer in the DXF: machine 0.55mm into the underside, do NOT cut through; `plate/gen_plate.py` `DIODE_RELIEF_D`, asserted against `DIODE_TOP_MAX_Z = 1.40`). The pocket XY is the **SOD-123 outline MAX (DS30086 rev 31-2: E 2.55–2.85 long, D 1.40–1.70 wide — `D` is width, A 1.00–1.35 is the height)**, which also covers the KiCad STEP's widest section (2.700 × 1.550 at the plate plane; the earlier 2.566 × 1.416 was the chamfered top face), + **0.15/side** → pocket **3.15 × 2.00** (measured top **1.260mm**; relief floor at 1.00 + 0.55 = **1.55mm**, **0.15mm** over the 1.40 window top and 0.65mm of plate under it) |
@@ -226,7 +226,7 @@ now structural, not numeric:
   bore covers the boot swing inside it, and the boot/jack z bands get
   measured at the slice dry-fit.
 
-## Retention: recessed magnets + ring cover (v3.5, gate-enforced)
+## Retention: recessed magnets and cover
 
 User-approved scheme: ring-cover retention with recessed magnets — no
 snap lips, no heat-set inserts, nothing internal pokes through the
@@ -249,50 +249,17 @@ exterior.
   from the antenna centre, and ≥14mm from every other station, snapped
   at perimeter/8 spacing (8 per half — measured 8/8 exact mirrors at
   band min 7.68 / web min 1.69; the gate floor is ≥8).
-- **Pockets**: vertical cylinders cut down from the band top, faces
-  flush at the lip plane (z 4.70) — the magnet (2.0 thick) glues in
-  face-UP. The cover glues its magnets FACE-DOWN opposite, so the
-  adjacent faces meet exactly at 4.70: a rigid zero-gap stop (the 0.2mm
-  glue seat in the 2.2 pocket is the only compliance). The preload
-  stays geometric: uncompressed top foam 5.20 (plate top 2.20 + 3.0)
-  vs the 4.70 ring underside
-  = the designed 15-20% poron compression from this spec, enforced by
-  the magnet stack instead of pressing force. 8 pairs of 4×2 N52 hold
-  the cover far beyond the ~200g half-load.
-- **Ring cover** (`case/gen_cover.py`, gates exit-0):
-  prism(skin) z 4.70..7.70 minus prism(rim + RIM_CLEAR) — the inner edge
-  follows the PCB RIM, not the plate outline, the outer face is the
-  skin face itself (the lid seam is intentional and flush), and the
-  ring bridges all 8 tab pockets so its underside presses the top
-  poron pads at the designed 16.7% (review-feed: v1 cut the outline
-  cavity and left tab-shaped bites — pads pressing nothing; the pad
-  press gate now fails in that state; the 0..0.5mm sliver at each pad
-  root stays unpressed, ~87% of the pad still loads). The key field
-  stays exactly the rim line. Passages come from
-  `compute_ports` VERBATIM (same anchors, widths and measured extents
-  as the tub):
-  - W1 USB: full-depth 14.0 slot — the plug's overmold rides through
-    and pokes ~0.2 past the top face (~9.2 abs; the module itself tops
-    at 7.7, below the ring).
-  - W2 TRRS: the SAME Ø9.5 cylinder. In the 6..9 slice it is a BLIND
-    tunnel topping at 7.25 > boot swing 6.75, and its widest chord in
-    that slice (6.42 at the lip plane) never reaches the local band
-    width (7.7 at OUTSET 8.2) — the ring is NOT split (the old "≤4.82" was the
-    bore's chord below the lip, not the slice's).
-  - PWR: full-depth 5.0 slot BUT starting 1.6 outboard, leaving a 1.1
-    web next to the cavity edge: W1 must remain the ring's ONLY full
-    radial severance or the cover falls into two pieces (the
-    single-solid gate proves one piece; the lever reaches through, the
-    nail enters from above).
-  Magnet pockets cut up from the underside (faces at 4.70, 1.3mm floor
-  above). Gates: bbox z window, single solid, ring census ≥5.0,
-  passage voids at real band t, pwrsw inner web solid, trrs ceiling
-  solid, pocket void/floor/web battery, station floor, antenna rings +
-  no-plastic-over-antenna, volume tripwire [6,13] cm³, and a
-  port-agnostic skin-hug battery: the ring must be solid 0.6mm inside
-  every skin sample hugging (≤1.6mm from) a port rect — ring resumes
-  everywhere a passage meets an outer face, with no hand-placed resume
-  coordinates (the USB bite's outline is wider than the mouth frame).
+- **Pockets**: the tub uses Ø4.3×2.2mm pockets for Ø4×2mm magnets.
+  The cover uses Ø4.3×0.7mm pockets for Ø4×0.5mm magnets. Seat the
+  opposite faces flush at the 3.20mm lip plane, allowing 0.2mm nominal
+  adhesive depth. The cover pocket leaves 1.30mm of material.
+- **Preload**: the tab shelf sits at z −1.55mm and the seated cover
+  underside at z 3.20mm. The 4.75mm stack comprises 2.55mm compressed
+  bottom foam, 1.20mm plate, and 1.00mm compressed top foam. Verify
+  contact at each pad and magnet pull force on the first article.
+- **Ports**: check the actual USB and TRRS plugs through the closed
+  case. The Ø6.0mm TRRS bore has a roof. Check cover seating and full
+  actuator travel with the power switch installed.
 
 ## Poron pad-to-tab margin (rev-1 verified 2026-10-16; fix adopted 2026-10-20)
 
