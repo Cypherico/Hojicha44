@@ -11,9 +11,9 @@
 			(title_block
 				(title "Hojicha44 Hojicha44-Left")
 				(company "BitPeppr")
-				(rev "0.3")
+				(rev "0.5")
 				(date "")
-				(source "Hojicha44-Left.kicad_sch")
+				(source "pcb/kicad/Hojicha44-Left.kicad_sch")
 				(comment
 					(number "1")
 					(value "")

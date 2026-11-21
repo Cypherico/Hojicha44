@@ -22,6 +22,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "pcb", "generators"))
@@ -79,6 +80,16 @@ def tool_versions():
     return cli, f"r{gen_route.ROUTER_VERSION}"
 
 
+def choc_drill_findings(half, drill):
+    from check_board import dxf_polylines, frame_residuals, parse_drill
+
+    hits = parse_drill(drill)
+    plate = os.path.join(REPO, "plate", f"Hojicha44-{half}-plate.dxf")
+    findings, _, _ = frame_residuals(hits.get(3.45, []),
+                                     hits.get(3.05, []), dxf_polylines(plate))
+    return findings
+
+
 def export_half(half, outdir):
     pcb = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
     sch = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_sch")
@@ -121,6 +132,11 @@ def export_half(half, outdir):
         w = csv.DictWriter(f, fieldnames=rows[0].keys())
         w.writeheader()
         w.writerows(smt)
+    drill = os.path.join(outdir, f"Hojicha44-{half}.drl")
+    findings = choc_drill_findings(half, drill)
+    if findings:
+        sys.exit(f"release cut refused: {half} Choc drill geometry: "
+                 + "; ".join(findings[:3]))
     # ERC/DRC reports are produced FRESH here, on the exact board and
     # schematic that are exported below (audit round 2026-10-21: the cut
     # used to COPY the generator's committed reports, so a hand-edited
@@ -128,12 +144,9 @@ def export_half(half, outdir):
     # the cut's own comment demanded "a failing or stale report must
     # not ride beside fresh gerbers" but only the FAILING case was
     # detected). kicad-cli is already required for the gerber export.
-    # DRC uses the design-frame reflection of the exported board: storage
-    # is y-negated so KiCad's y-up gerber/drill export matches the plate,
-    # while KiCad's library comparison sees footprint-LOCAL geometry.  The
-    # reflection is an isometry; this is the same physical board with the
-    # libraries in their native frame, so the W1 set stays the intentional
-    # 28 edits instead of flagging all 54 mirrored footprints.
+    # DRC uses the same design-frame copy and exact footprint exception
+    # set as gen_pcb. The exported drill check above verifies that the
+    # manufactured Choc pattern has the correct handedness.
     drc_stem = os.path.join(PCB_DIR, f".release-{half}-drc-design")
     drc_src = drc_stem + ".kicad_pcb"
     copied = [drc_src]
@@ -174,7 +187,8 @@ def export_half(half, outdir):
     import gen_pcb as _gp
     import gen_schematic as _gs
     drc_rc = _gp.check_drc_report(
-        os.path.join(outdir, f"Hojicha44-{half}-drc.rpt"), half[0])
+        os.path.join(outdir, f"Hojicha44-{half}-drc.rpt"), half[0],
+        native_choc=True)
     erc_rc = _gs.check_erc_report(
         os.path.join(outdir, f"Hojicha44-{half}-erc.rpt"), half[0])
     if drc_rc or erc_rc:
@@ -243,8 +257,14 @@ def verify_release(reldir, with_manifest=True):
             bad.append(f"{half}: want 9 gerbers, got {len(gerbers)}")
         if not any(f.endswith(".gbrjob") for f in files):
             bad.append(f"{half}: job file missing")
-        if not any(f.endswith(".drl") for f in files):
+        drill = os.path.join(d, f"Hojicha44-{half}.drl")
+        if not os.path.isfile(drill):
             bad.append(f"{half}: drill file missing")
+        elif with_manifest:
+            findings = choc_drill_findings(half, drill)
+            if findings:
+                bad.append(f"{half}: {len(findings)} Choc drill findings "
+                           f"(first: {findings[0]})")
         for f in files:
             p = os.path.join(d, f)
             if os.path.getsize(p) == 0:
@@ -332,19 +352,27 @@ def main():
                  "sources):\n" + "\n".join(mod[:12]))
     if st:
         print(f"  note: {len(st)} untracked file(s) present (not certified)")
-    # Capture the tree stamp BEFORE the cut rewrites the release dir.
-    # The cut deletes the tracked generated/release files, which makes
-    # the tree dirty — a stamp taken after that reads "-dirty" and
-    # mislabels a cut that started from a clean tree (found 2026-10-20
-    # by the six-review audit: MANIFEST.txt carried
-    # "pcb-baseline-r10-63-ge67bb0a-dirty" for a clean cut). The
-    # manifest must certify the state the cut STARTED from.
     _, tree_stamp = git_info()
-    # clean cut: no stale artifacts from previous exports can survive
-    # beside the new ones (a half-updated tree shipped exactly that way
-    # once — drill+manifest refreshed, gerbers not)
-    if os.path.isdir(reldir):
-        shutil.rmtree(reldir)
+    parent = os.path.dirname(reldir)
+    os.makedirs(parent, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".cut-", dir=parent) as temp:
+        staged = os.path.join(temp, "staged")
+        cli, router = cut_release(staged, ver, bhead, tree_stamp)
+        backup = os.path.join(temp, "previous")
+        if os.path.exists(reldir):
+            os.rename(reldir, backup)
+        try:
+            os.rename(staged, reldir)
+        except BaseException:
+            if os.path.exists(backup):
+                os.rename(backup, reldir)
+            raise
+    print(f"release v{ver}: {reldir}")
+    print(f"  spec {ver} boards @{bhead[:12]} router {router} cli {cli[:24]}")
+    print("  CLEAN: 9 gerbers + job + drill + pos + pos-smt + bom + erc + drc per half")
+
+
+def cut_release(reldir, ver, bhead, tree_stamp):
     cli, router = tool_versions()
     for half in ("Left", "Right"):
         export_half(half, os.path.join(reldir, half))
@@ -371,7 +399,7 @@ def main():
         # hand-edited board could ride along under a clean commit stamp)
         f"board sha256: Left {board_hash['Left']}  Right {board_hash['Right']}",
         "ERC: 0 errors + 5 documented spare warnings/half (check_erc_report gate)",
-        "DRC: 0 non-waived (exact W1 set of 28/half asserted); "
+        "DRC: 0 non-waived (exact W1 set of 46/half asserted); "
         "unconnected NOT waived; PTH/NPTH-in-courtyard = error",
         "reports: ERC on the exported schematic; DRC on the design-frame "
         "reflection of the exported y-negated board (same physical "
@@ -385,9 +413,7 @@ def main():
         for f in files:
             lines.append(f"  {sha256(os.path.join(d, f))}  {f}")
     open(os.path.join(reldir, "MANIFEST.txt"), "w").write("\n".join(lines) + "\n")
-    print(f"release v{ver}: {reldir}")
-    print(f"  spec {ver} boards @{bhead[:12]} router {router} cli {cli[:24]}")
-    print("  CLEAN: 9 gerbers + job + drill + pos + pos-smt + bom + erc + drc per half")
+    return cli, router
 
 
 if __name__ == "__main__":

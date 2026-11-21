@@ -662,7 +662,8 @@ def _check_design(tag, pts, path, txt):
     libof = {r: (lib, name)
              for kind, lib, name, r, *rest in placements}
     ndiffs = 0
-    for fpname, ref in sorted(G.w1_want(tag)):
+    waived = G.w1_want(tag, native_choc=True)
+    for fpname, ref in sorted(waived):
         if ref not in committed or ref not in libof:
             bad.append(f"W1 content: {ref} missing from board/placements")
             continue
@@ -676,7 +677,7 @@ def _check_design(tag, pts, path, txt):
             bad.append(f"W1 content {ref} ({fpname}): pads differ — "
                        f"extra-in-lib {onlyl}, extra-on-board {onlyb}, "
                        f"val-diff {mag}")
-    print(f"  w1 content {tag}: {len(G.w1_want(tag))} waived refs, "
+    print(f"  w1 content {tag}: {len(waived)} waived refs, "
           f"{ndiffs} pad-diff refs")
 
     # 8. artifact-vs-model drift: every committed copper pad must equal
@@ -981,10 +982,10 @@ def frame_residuals(t12, t10, cutouts):
         matched[key] = i
     max_t12 = max(t12_res) if t12_res else 0.0
 
-    # The standard Choc post pair is (0,-5.9) and (5,-3.8) in footprint-local
-    # coordinates.  A mirror maps it to (0,+5.9)/(5,+3.8), which is NOT a
-    # rotation of the original pair — so this test catches handedness
-    # independently of the board file.  The plate square gives the 90-degree
+    # The standard Choc contact holes in the top-side y-up drill view
+    # are (0,+5.9) and (5,+3.8), relative to the switch centre. These
+    # offsets use the physical part frame independently of the generator.
+    # The plate square gives the 90-degree
     # lattice; try all four rotations and require one to fit both posts.
     max_post = 0.0
     for cut in [p for p in candidates if id(p) in matched]:
@@ -996,8 +997,8 @@ def frame_residuals(t12, t10, cutouts):
         theta = math.degrees(poly_side_angle(cut))
         for k in range(4):
             rot = -theta + k * 90.0
-            want = [rot_cw(px, py, rot) for px, py in ((0.0, -5.9),
-                                                       (5.0, -3.8))]
+            want = [rot_cw(px, py, rot) for px, py in ((0.0, 5.9),
+                                                       (5.0, 3.8))]
             res = max(min(math.hypot(w[0] - a[0], w[1] - a[1])
                           for a in actual) for w in want)
             if best is None or res < best[0]:
@@ -1099,11 +1100,11 @@ def case_ports():
     return mod.PORTS
 
 
-def check_frame(tag, pts):
+def check_frame(tag, pts, reldir=None):
     """Cross-artifact frame/ports gate for one half.  Returns findings."""
     half = "Left" if tag == "L" else "Right"
     bad = []
-    reldir = release_dir()
+    reldir = reldir or release_dir()
     drill = os.path.join(reldir, half, f"Hojicha44-{half}.drl")
     gerber = os.path.join(reldir, half,
                           f"Hojicha44-{half}-Edge_Cuts.gm1")
@@ -1237,7 +1238,7 @@ def tick_selftest():
     return bad
 
 
-def frame_selftest():
+def frame_selftest(reldir=None):
     """Negative controls for the frame gate (no KiCad, current tree only).
 
     Proves the gate is not a tautology: the released T12/T10 set must pass
@@ -1246,10 +1247,11 @@ def frame_selftest():
     """
     bad = []
     pts = G.load_points()
+    reldir = reldir or release_dir()
     for tag in ("L", "R"):
         half = "Left" if tag == "L" else "Right"
         hits = parse_drill(os.path.join(
-            release_dir(), half, f"Hojicha44-{half}.drl"))
+            reldir, half, f"Hojicha44-{half}.drl"))
         cutouts = dxf_polylines(os.path.join(
             PLATE_DIR, f"Hojicha44-{half}-plate.dxf"))
         t12, t10 = hits.get(3.45, []), hits.get(3.05, [])
@@ -1268,7 +1270,7 @@ def frame_selftest():
         # outline negative control: the USB notch floor must pass on the
         # release and fail when the Gerber segments are Y-negated.
         ux, uy, _ = pts["usb" if tag == "L" else "mirror_usb"]
-        gerber = os.path.join(release_dir(), half,
+        gerber = os.path.join(reldir, half,
                               f"Hojicha44-{half}-Edge_Cuts.gm1")
         gsegs = parse_gerber_segments(gerber)
         plate_outline = next((p for l, p in cutouts if l == "OUTLINE"), [])
@@ -1286,7 +1288,7 @@ def frame_selftest():
         # and a 1-degree rotation nudge must be rejected.
         inst = board_instances(frame.read_design(
             os.path.join(PCB_DIR, PROJECT[tag] + ".kicad_pcb")))
-        rows = parse_pos(os.path.join(release_dir(), half, "pos.csv"))
+        rows = parse_pos(os.path.join(reldir, half, "pos.csv"))
         if pos_findings(rows, inst):
             bad.append(f"self-test {tag}: current pos.csv fails the "
                        f"design-frame check")
@@ -1321,18 +1323,24 @@ def frame_selftest():
 
 
 def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--release-dir", help="PCB export directory to check")
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
     pts = G.load_points()
     rc = 0
     for tag in ("L", "R"):
         rc |= check(tag, pts)
-        for b in check_frame(tag, pts):
+        for b in check_frame(tag, pts, args.release_dir):
             print(f"  !! {b}")
             rc = 1
     for b in check_mirror():
         print(f"  !! {b}")
         rc = 1
-    if "--self-test" in sys.argv:
-        for b in frame_selftest():
+    if args.self_test:
+        for b in frame_selftest(args.release_dir):
             print(f"  !! {b}")
             rc = 1
         for b in mirror_selftest():

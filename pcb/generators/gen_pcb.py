@@ -322,7 +322,13 @@ def fp_source(lib, name):
                          name + ".kicad_mod")
         p = v if os.path.exists(v) else \
             os.path.join(STOCK_FP, lib + ".pretty", name + ".kicad_mod")
-    return open(p).read()
+    source = open(p).read()
+    if (lib, name) == FP_SRC["SW"]:
+        # Routing uses the y-up design frame. Convert the switch's native
+        # KiCad local coordinates before placing it. to_storage() converts
+        # them back when writing the board, preserving physical handedness.
+        return frame.mirror_geometry(source)
+    return source
 
 
 # KiCad footprint rotation is CLOCKWISE-positive (verified: stock TRRS at
@@ -1460,16 +1466,11 @@ def drc(tag):
     """
     out = os.path.join(PCB_DIR, PROJECT[tag] + "-drc.rpt")
     src = os.path.join(PCB_DIR, PROJECT[tag] + ".kicad_pcb")
-    # DRC on the design-frame reflection, not the y-negated storage file.
-    # The two are the same physical board (frame.py); KiCad's library
-    # comparison, however, compares footprint-LOCAL geometry, and the
-    # storage file deliberately mirrors every local primitive so the
-    # Gerber export lands in the plate frame.  Running DRC on storage would
-    # flag all 54 footprints as lib_footprint_mismatch (the 20 intentional
-    # W1 edits would be buried); the reflection is an isometry, so DRC on
-    # the design copy is the same geometry with the library in its native
-    # frame.  Keep the copy inside the project dir so KIPRJMOD/lib tables
-    # resolve exactly as for the exported board.
+    # Retain the design-frame DRC convention. Reflection preserves the
+    # electrical distances, but KiCad's footprint comparison uses local
+    # coordinates. The Choc switches have native geometry in the storage
+    # board, so all 22 are expected to differ in this copy. check_board
+    # validates their pads and the release validates the exported drills.
     stem = os.path.join(PCB_DIR, f".{PROJECT[tag]}-drc-design")
     tmp = stem + ".kicad_pcb"
     # KiCad picks design rules from <board-stem>.kicad_pro.  Without the
@@ -1504,29 +1505,27 @@ def drc(tag):
         return 1
     assert os.path.exists(out) and os.path.getsize(out) > 0, \
         f"drc wrote no report for {tag}"
-    return check_drc_report(out, tag)
+    return check_drc_report(out, tag, native_choc=True)
 
 
-def w1_want(tag):
-    """Waiver W1: exact expected lib_footprint_mismatch set per half.
-    28 = 22x D_SOD-123 (stripped silk + cathode tick) + 4x thumb Choc
-    (rotated) + MCU socket (reversed column) + TRRS (renamed pads).
-    NOTE (verified 2026-10-15): (model ...) lines do NOT participate in
-    the mismatch check — relinking the encoder/slide-switch bodies to
-    vendored files left the set at exactly 28. Geometry only.
-    A 29th mismatch (or a missing one) fails the build instead of passing
-    silently under the old blanket skip. Shared with check_board (the
-    content gate compares each waived ref's committed pads here)."""
+def w1_want(tag, *, native_choc=False):
+    """Exact library comparison exceptions for the design-frame DRC copy.
+
+    The corrected board has all 22 Choc footprints reflected in that copy.
+    Old release reports only list the four thumb switches. check_board
+    independently verifies the pad content of the footprints.
+    """
+    switch_ids = range(22) if native_choc else range(18, 22)
     return (
         {("D_SOD-123", f"D_{tag}{i:02d}") for i in range(22)}
         | {("SW_Hotswap_Kailh_Choc_V1_1.00u", f"SW_{tag}{i:02d}")
-           for i in (18, 19, 20, 21)}
+           for i in switch_ids}
         | {("Socket_Strips_2x12_P2.54mm_NiceNano", f"U_{tag}1"),
            ("TRRS-PJ-320A", f"J_{tag}1")}
     )
 
 
-def check_drc_report(path, tag=None):
+def check_drc_report(path, tag=None, *, native_choc=False):
     """0 if clean (modulo waivers), 1 otherwise. Prints non-waived items."""
     import collections
     if tag is None:
@@ -1561,15 +1560,16 @@ def check_drc_report(path, tag=None):
                             for p in pads) and pads):
                 continue
         bad.append((typ, desc, body))
-    if w1_got != w1_want(tag):
-        print(f"  drc W1 mismatch {tag}: want {len(w1_want(tag))}, "
+    w1_expected = w1_want(tag, native_choc=native_choc)
+    if w1_got != w1_expected:
+        print(f"  drc W1 mismatch {tag}: want {len(w1_expected)}, "
               f"got {len(w1_got)}")
-        for m in sorted(w1_want(tag) - w1_got)[:10]:
+        for m in sorted(w1_expected - w1_got)[:10]:
             print(f"  !! W1 missing {m}")
-        for m in sorted(w1_got - w1_want(tag))[:10]:
+        for m in sorted(w1_got - w1_expected)[:10]:
             print(f"  !! W1 extra {m}")
         bad.append(("lib_footprint_mismatch", "W1 set drift",
-                    f"want {sorted(w1_want(tag))}\ngot {sorted(w1_got)}\n"))
+                    f"want {sorted(w1_expected)}\ngot {sorted(w1_got)}\n"))
     print(f"  drc: {dict(counts)}" +
           ("" if not bad else f" — {len(bad)} NON-WAIVED"))
     for typ, desc, body in bad[:10]:

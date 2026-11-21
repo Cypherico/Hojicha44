@@ -31,7 +31,7 @@ GRID = 0.25
 MARGIN = 0.15  # quantization slop: segments between free cell centres still
 # graze pad corners (r5 at 0.10 left 0.025mm grazes: ROW2/COL4 on F vs diode
 # pad2). Carve uses the same margin so THT pin escape stays open.
-ROUTER_VERSION = 13  # bump when routing behavior changes: stale generator
+ROUTER_VERSION = 14  # bump when routing behavior changes: stale generator
 # copper from older revisions is dropped (it would dangle/short); GUI-added
 # copper is preserved only within the same revision.
 W = {"s": 0.25, "p": 0.5}
@@ -304,7 +304,7 @@ DIRS = [(1, 0, 1.0), (-1, 0, 1.0), (0, 1, 1.0), (0, -1, 1.0),
         (1, 1, 1.41421356), (1, -1, 1.41421356),
         (-1, 1, 1.41421356), (-1, -1, 1.41421356)]
 BEND = 0.35
-POP_CAP = 300000
+POP_CAP = 800000
 
 
 def astar2(gF, gB, s_xy, s_layers, t_xy, t_layers, ownF, ownB,
@@ -701,6 +701,33 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
         raise RuntimeError(f"pad {ref}.{num} missing")
 
 
+    def route_ground():
+        # ---- GND chain (nearest-neighbour over GND pads, any layer each)
+        gnds = []
+        for (x, y, hw, hh, ang, drill, n, r, layers, num) in board.pads:
+            if n == "GND":
+                if "*.Cu" in layers:
+                    ls = {"F", "B"}
+                else:
+                    ls = {"B"} if "B.Cu" in layers else {"F"}
+                gnds.append((x, y, ls))
+        assert gnds, "no GND pads"
+        order = [gnds[0]]
+        rest = gnds[1:]
+        while rest:
+            nxt = min(rest, key=lambda q: math.hypot(q[0] - order[-1][0], q[1] - order[-1][1]))
+            order.append(nxt)
+            rest.remove(nxt)
+        chain("GND", order)
+
+
+    # Reserve the split links before the matrix routes enter the MCU bay.
+    for pin in ("T", "R1"):
+        ref = f"J_{tag}1"
+        net = next(p[6] for p in board.pads if p[7] == ref and p[9] == pin)
+        mcu = next(p for p in board.pads if p[7] == f"U_{tag}1" and p[6] == net)
+        connect(net, P(ref, pin), (mcu[0], mcu[1], {"F", "B"}))
+
     # ---- anode links: SW.2 -> D.2 (different layers: vias auto-placed)
     for idx in range(22):
         sref, dref = f"SW_{tag}{idx:02d}", f"D_{tag}{idx:02d}"
@@ -737,6 +764,10 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
             tap(net, t)
 
 
+    # On the right, reserve the USB-end ground bridge before row taps.
+    if tag == "R":
+        route_ground()
+
     # ---- ROW rails: finger-row D.1 pads in x order; thumb row chained.
     for r in range(4):
         net = f"/ROW{r}_{tag}"
@@ -772,8 +803,7 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
         up = [p for p in board.pads if p[7].startswith("U_") and p[6] == net]
         assert len(up) == 1, f"{net}: want 1 MCU pin, got {len(up)}"
         jobs.append((net, ep, (up[0][0], up[0][1], {"F", "B"})))
-    for ref, pin in [(f"J_{tag}1", "T"), (f"J_{tag}1", "R1"),
-                     (f"J_{tag}2", "1"), (f"SW_{tag}PWR1", "2")]:
+    for ref, pin in [(f"J_{tag}2", "1"), (f"SW_{tag}PWR1", "2")]:
         ep = P(ref, pin)
         net = [p[6] for p in board.pads if p[7] == ref and p[9] == str(pin)][0]
         if net.startswith("unconnected"):
@@ -789,24 +819,8 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
 
 
 
-    # ---- GND chain (nearest-neighbour over GND pads, any layer each)
-    gnds = []
-    for (x, y, hw, hh, ang, drill, n, r, layers, num) in board.pads:
-        if n == "GND":
-            if "*.Cu" in layers:
-                ls = {"F", "B"}
-            else:
-                ls = {"B"} if "B.Cu" in layers else {"F"}
-            gnds.append((x, y, ls))
-    assert gnds, "no GND pads"
-    order = [gnds[0]]
-    rest = gnds[1:]
-    while rest:
-        nxt = min(rest, key=lambda q: math.hypot(q[0] - order[-1][0], q[1] - order[-1][1]))
-        order.append(nxt)
-        rest.remove(nxt)
-    chain("GND", order)
-
+    if tag == "L":
+        route_ground()
 
     return board, tracks, vias
 
