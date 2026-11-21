@@ -31,7 +31,7 @@ jobs:
         variant: [mac_left, mac_right, win_left, win_right]
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Select variant (the spec/keymap.md swap, done for the compiler)
         run: python3 config/gen_keymap.py --use ${{ matrix.variant }}
@@ -76,7 +76,7 @@ jobs:
             -DZMK_EXTRA_MODULES="$GITHUB_WORKSPACE"
 
       - name: Archive (${{ matrix.variant }})
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: variant-${{ matrix.variant }}-left
           path: ${{ env.build_dir }}/zephyr/zmk.uf2
