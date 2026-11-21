@@ -416,65 +416,47 @@ def screw_glb(glb_path):
 # ------------------------------------------------------ choc + artisan
 
 def choc_glb(glb_path):
-    """Kailh-Choc-style low-profile switch (PG1350 language), centred on
-    the shaft axis at z=0 = PCB top. The 14.6mm base frame hides inside
-    the plate in the assembled product and shows in the exploded
-    diagram; everything above it is what reads at ~0.8 m:
-      - base frame 14.6 x 14.6 x 1.9 (z 0..1.9)
-      - four 1.6 x 1.6 x 1.2 corner clip posts (z 1.9..3.1), rising
-        clear of the housing corners — the signature choc detail
-      - top housing 13.2 x 13.2 x 2.0 (z 1.9..3.9) with a 2mm chamfer on
-        the top edges (a full-height 45deg bevel down to the 9.2 top
-        face) and two thin side-ledge steps (0.7/0.6 deep) cut around
-        the top
-      - central stem 6.0 x 6.0 x 0.9 (z 3.9..4.8) the cap pushes onto
-      - LED window slot, 3.0 wide x 1.5 tall x 0.4 deep, cut into the
-        front-bottom edge
+    """Kailh Choc v1 (PG1350) switch, centered on the shaft axis at z=0 = PCB top.
+    Accurate mechanical features:
+      - Lower housing (13.8x13.8x2.0) with 15.0mm retention clips on N/S
+      - Center locator post (Ø3.4mm, z=-2.5..0) and side locator pins (Ø1.9mm, z=-1.8..0)
+      - Upper housing (z 2.0..4.4) with 1.2mm top chamfer, latch ears, and LED cutout
+      - Signature Choc stem (z 2.4..5.6) with twin rectangular keycap mounting sockets (1.2x3.0mm)
     """
     import cadquery as cq
     import trimesh
 
-    # base frame
-    switch = cq.Workplane("XY").box(14.6, 14.6, 1.9,
-                                    centered=(True, True, False))
-    # four corner clip posts, tops at z 3.1
-    off = 14.6 / 2 - 1.6 / 2
-    for sx in (-1, 1):
-        for sy in (-1, 1):
-            switch = switch.union(
-                cq.Workplane("XY").workplane(offset=1.9)
-                .center(sx * off, sy * off)
-                .box(1.6, 1.6, 1.2, centered=(True, True, False)))
-    # top housing: a 2mm chamfer on the top edges of a 2.0-tall box is a
-    # full-height bevel, which OCCT refuses in place — so chamfer a
-    # 4mm-tall box (where it succeeds) and drop it back; the 0.1 that
-    # sinks below z 1.9 is buried in the base frame
-    housing = (cq.Workplane("XY")
-               .box(13.2, 13.2, 4.0, centered=(True, True, False))
-               .edges(">Z").chamfer(2.0)
-               .translate((0, 0, -0.1))
-               .cut(cq.Workplane("XY").workplane(offset=-1.0)
-                    .box(20.0, 20.0, 2.8, centered=(True, True, False))))
-    # side ledges: cut the outer shell above each step height, leaving
-    # thin 0.7/0.6mm-deep steps ringing the top housing
-    for z_step, keep in ((2.5, 10.6), (3.0, 9.4)):
-        ring = (cq.Workplane("XY").workplane(offset=z_step)
-                .box(14.4, 14.4, 2.4, centered=(True, True, False))
-                .cut(cq.Workplane("XY").workplane(offset=z_step - 0.1)
-                     .box(keep, keep, 2.6, centered=(True, True, False))))
-        housing = housing.cut(ring)
-    switch = switch.union(housing)
-    # LED window slot: 3.0 wide x 1.5 tall, 0.4 deep into the front face
-    switch = switch.cut(
-        cq.Workplane("XY").workplane(offset=0.2)
-        .center(0, -(14.6 / 2) + 0.1)
-        .box(3.0, 0.6, 1.5, centered=(True, True, False)))
-    # round 19: TWO materials — the housing and the stem export as
-    # separate meshes so the exploded can tint the housing cream and
-    # the stem charcoal (real chocs are exactly this two-tone); the
-    # stem also reads as its own piece at diagram distance
-    stem = cq.Workplane("XY").workplane(offset=3.9).box(
-        6.0, 6.0, 0.9, centered=(True, True, False))
+    # 1. Base frame with retention clips (z 0..2.0)
+    base = cq.Workplane("XY").box(13.8, 13.8, 2.0, centered=(True, True, False))
+    clip_n = cq.Workplane("XY").workplane(offset=1.0).center(0, 7.15).box(8.0, 0.7, 1.0, centered=(True, True, False))
+    clip_s = cq.Workplane("XY").workplane(offset=1.0).center(0, -7.15).box(8.0, 0.7, 1.0, centered=(True, True, False))
+    base = base.union(clip_n).union(clip_s)
+
+    # 2. Locator pins (z < 0)
+    center_post = cq.Workplane("XY").circle(1.7).extrude(-2.5)
+    pin1 = cq.Workplane("XY").center(0, 5.5).circle(0.95).extrude(-1.8)
+    pin2 = cq.Workplane("XY").center(0, -5.5).circle(0.95).extrude(-1.8)
+    base = base.union(center_post).union(pin1).union(pin2)
+
+    # 3. Upper housing (z 2.0..4.4)
+    cover = (cq.Workplane("XY").workplane(offset=2.0)
+             .box(13.4, 13.4, 2.4, centered=(True, True, False))
+             .edges(">Z").chamfer(1.2))
+    ear_e = cq.Workplane("XY").workplane(offset=1.8).center(6.85, 0).box(0.5, 3.2, 2.0, centered=(True, True, False))
+    ear_w = cq.Workplane("XY").workplane(offset=1.8).center(-6.85, 0).box(0.5, 3.2, 2.0, centered=(True, True, False))
+    cover = cover.union(ear_e).union(ear_w)
+    # Stem aperture through top
+    cover = cover.cut(cq.Workplane("XY").workplane(offset=1.8).box(6.2, 6.2, 3.0, centered=(True, True, False)))
+    # LED window on South face
+    cover = cover.cut(cq.Workplane("XY").workplane(offset=1.8).center(0, -5.5).box(4.2, 2.5, 1.6, centered=(True, True, False)))
+
+    switch_housing = base.union(cover)
+
+    # 4. Choc stem with signature twin mounting sockets (z 2.4..5.6)
+    stem = cq.Workplane("XY").workplane(offset=2.4).box(5.8, 5.8, 3.2, centered=(True, True, False))
+    slot1 = cq.Workplane("XY").workplane(offset=3.8).center(-1.5, 0).box(1.2, 3.0, 2.0, centered=(True, True, False))
+    slot2 = cq.Workplane("XY").workplane(offset=3.8).center(1.5, 0).box(1.2, 3.0, 2.0, centered=(True, True, False))
+    stem = stem.cut(slot1).cut(slot2)
 
     def tessellate(shape, deflection):
         verts, faces = [], []
@@ -493,21 +475,21 @@ def choc_glb(glb_path):
             tris = BRep_Tool.Triangulation_s(face, loc)
             if tris is not None:
                 trsf = loc.Transformation()
-                base = len(verts)
+                base_idx = len(verts)
                 for i in range(1, tris.NbNodes() + 1):
                     p = tris.Node(i).Transformed(trsf)
                     verts.append((p.X(), p.Y(), p.Z()))
                 for i in range(1, tris.NbTriangles() + 1):
                     a, b, c = tris.Triangle(i).Get()
-                    faces.append((base + a - 1, base + b - 1,
-                                  base + c - 1))
+                    faces.append((base_idx + a - 1, base_idx + b - 1,
+                                  base_idx + c - 1))
             exp.Next()
         m = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
         m.merge_vertices()
         return m
 
     scene = trimesh.Scene({
-        "choc_housing": tessellate(switch, 0.03),   # round 19: finer
+        "choc_housing": tessellate(switch_housing, 0.03),
         "choc_stem": tessellate(stem, 0.02)})
     scene.export(glb_path)
     for name, mesh in scene.geometry.items():

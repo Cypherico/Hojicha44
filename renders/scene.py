@@ -50,36 +50,26 @@ import argparse
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ASSETS = os.path.join(REPO, "generated", "renders", "assets")
-OUTROOT = os.path.join(REPO, "generated", "renders", "v0.5.0")
+OUTROOT = os.path.join(REPO, "generated", "renders", "v0.5.1")
 
 SCALE = 0.001            # design-frame mm -> Blender meters
 PCB_TOP_IN_STEP = 1.60   # substrate top inside the kicad-cli STEP
 PLATE_Z = 1.00           # plate underside above the PCB top (GAP)
 CAP_STEM_Z = 1.5         # cap stem tip above the PCB top (inside switch)
-# exploded view (round-9 spec, renders/SHOTLIST.md): the TUB DROPS
-# -58 so the PCB is finally visible (round-8 review: "where's your
-# interior detail?" — the board sat hidden inside the un-exploded
-# tub), board at 0 = the reference layer, then gaskets +14, plate +
-# switches +30 (switches clip into the plate, they ride together),
-# caps +48, cover +66, knob +82.
-# round-13 motion (review: "there need only be one layer below the
-# PCB"): the case foam drops WITH the case and rests on its floor —
-# the open tray shows the foam lying inside it, so below the PCB
-# there is exactly ONE layer. The top gaskets sit ON the lifted plate
-# (+12 above it); switches clip into the plate and ride with it.
-# round 16: the foam is its OWN exploded layer — floating as a
-# separated sheet between the case and the PCB (round 13-15 put it
-# inside/resting-on the case, which read as "not exploded"). Gaps:
-# case rim (-55) -> foam -> PCB bottom (-1.6) split evenly.
-# round 17: the layer drops put each layer's visual centre on an
-# EVEN 22mm label ladder (70, 48, 26, 4, -18, -40) — round-16 review:
-# "top plate and keycaps are very close, but pcb and case foam text
-# is extremely far; actual components may also need to be moved"
-# round 23: tub -56 -> -40 — the foam-to-case label gap was 40mm
-# vs ~20mm everywhere else
+
+# Exploded view: vertical disassembly sequence (each layer distinct)
+# - Knob pulled off encoder (+82mm)
+# - Top cover lifted (+66mm)
+# - Keycaps popped off switches (+44mm)
+# - Switch plate + Kailh Choc switches lifted (+24mm)
+# - Rotary encoder lifted off PCB (+12mm, hovering above its solder pads)
+# - PCB reference plane at 0.0mm (revealing real copper traces, pads & diodes)
+# - Poron bottom case foam dropped (-17.5mm)
+# - Bottom tub dropped (-40.0mm)
 EXPLODE = {"knob": 82.0, "cover": 66.0, "caps": 44.0,
            "gaskets": 24.0, "gaskets_b": -17.5,
            "swbodies": 24.0, "plate": 24.0,
+           "encoder": 12.0,
            "foam": -17.5, "tub": -40.0}
 # nice!nano courtyard in the FOOTPRINT's local (file) frame, from the
 # embedded Socket_Strips_2x12_P2.54mm_NiceNano footprint (KiCad 10)
@@ -90,7 +80,7 @@ def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     p = argparse.ArgumentParser()
     p.add_argument("--samples", type=int, default=96)
-    p.add_argument("--res", default="1600x1000")
+    p.add_argument("--res", default="2400x1500")
     p.add_argument("--setups", default="dark,bright")
     p.add_argument("--shots", default="hero,exploded,macro,orbit")
     p.add_argument("--out", default=OUTROOT)
@@ -1008,19 +998,21 @@ def build_keyboard(args):
         # (b) split body/bush from shaft at the 11.3 step plane for a
         # two-tone finish (gunmetal body, bright steel shaft). The knob
         # then covers everything above the rim — no bare shaft shows.
-        enc_objs = [o for o in parts[h]["board"]
+        parts[h]["encoder"] = []
+        enc_objs = [o for o in list(parts[h]["board"])
                     if o.type == "MESH" and o.name.startswith("ENC_")]
         if enc_objs:
             import bmesh
             ENC_SPLIT_Z, ENC_SHAFT_TOP_Z = 11.35, 13.5
             for o in enc_objs:
-                # round-4 debug: the board glb keeps its -90 deg X
+                # Remove from board group so PCB materials don't overwrite the encoder
+                if o in parts[h]["board"]:
+                    parts[h]["board"].remove(o)
+                parts[h]["encoder"].append(o)
+
+                # Round-4 debug: the board glb keeps its -90 deg X
                 # counter-rotation (and the 0.001 scale) ON THE OBJECT,
                 # so raw mesh-local z is NOT design z (it is design y!)
-                # -- the first truncation silently matched nothing and
-                # the full 24.5mm shaft kept rendering. All selection is
-                # therefore done in world design metres via matrix_world;
-                # the mesh itself stays untouched in its local frame.
                 mw = o.matrix_world.copy()
                 bm = bmesh.new()
                 me_body = o.data.copy()
@@ -1064,27 +1056,20 @@ def build_keyboard(args):
                     bm_shaft.to_mesh(me_shaft)
                     bm_shaft.free()
                     so = bpy.data.objects.new(o.name + "_shaft", me_shaft)
-                    # inherit the body's full local transform + parent so
-                    # the local-frame shaft mesh lands exactly on it
                     so.parent = o.parent
                     so.matrix_basis = o.matrix_basis.copy()
                     so.rotation_mode = o.rotation_mode
                     bpy.context.collection.objects.link(so)
                     bpy.context.view_layer.update()
                     assign([so], m_enc_shaft)
-                    parts[h]["board"].append(so)
+                    parts[h]["encoder"].append(so)
                 print(f"  [enc] {o.name}: truncated {n_trunc} verts "
                       f"(top {ENC_SHAFT_TOP_Z}mm), shaft faces "
                       f"{len(vmap_shaft)}", flush=True)
-            # ---- low fluted knob on the short shaft (user review round 4:
-            # "add a knob to it, not too tall, not too thin, not toooo
-            # fat"). parts/knob.glb: OD 16.8, H 9.2, 18 grip ridges, a
-            # lighter machined-aluminium finish. The skirt bottom lands
-            # rim+0.9 = 6.1 abs (push-travel clearance), the crown
-            # reaches ~15.3 — just above the 11.14 cap tops. Placed on
-            # each truncated shaft's axis.
+
+            # ---- low fluted knob on the short shaft
             bpy.context.view_layer.update()
-            for o in list(parts[h]["board"]):
+            for o in list(parts[h]["encoder"]):
                 if o.type == "MESH" and o.name.endswith("_shaft"):
                     (kx0, ky0, _), (kx1, ky1, _) = bbox_mm([o])
                     _, knob_roots, knob_objs = import_glb(
