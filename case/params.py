@@ -256,11 +256,10 @@ COVER_T = 2.0          # 3.20..5.20 (TOP_LIP_Z + 2.0): a thin top
 # so it hides the plate/switch bodies between caps and covers the
 # MCU/encoder wiring strip. Openings are fixed here so the render and
 # the CAD read the same numbers:
-#   key field = union of the 22 cap footprints (KLP Lamé Saddle/Thumb
-#               are all 17.48x16.48 in plan) dilated CAP_CLEAR/side —
-#               1.0 makes the 19mm-pitch caps merge into ONE opening
+#   key field = straight openings along each column of the key matrix,
+#               with separate rotated profiles for the thumb keys
 #   MCU       = module courtyard + margin; the south edge is pulled to
-#               y=12.0 so the cover is >=3mm (in 3D) from the antenna
+#               y=12.25 so the cover is >=3mm (in 3D) from the antenna
 #               centre at (118, 15.55) (ANT_CASE_CLEAR)
 #   encoder   = EC11 body 16.2x12.4 + 0.2/side
 #   USB/TRRS  = the SAME compute_ports passages as the tub (shared
@@ -283,8 +282,8 @@ CAP_ROUND = 2.0        # cutter corner radius (molded look)
 JST_SERVICE_W = 4.50
 JST_SERVICE_L = 7.00  # plug, wires and straight withdrawal beyond header face
 JST_PLATE_WIN = (115.85, 4.30, 131.65, 9.65)
-JST_WIN = (115.85, 3.30, 134.50, 10.70)  # header, plug and tool access
-MCU_WIN = (106.5, 12.0, 129.0, 48.6)      # x0, y0, x1, y1
+JST_WIN = (116.15, 3.55, 131.85, 10.45)  # header and straight plug withdrawal
+MCU_WIN = (107.05, 12.25, 127.95, 48.6)    # courtyard, antenna and USB access
 ENC_WIN = (111.5, -14.35, 124.5, -1.65)   # x0, y0, x1, y1: EC11
                        # BODY at the cover band (measured 12.0x11.7 at
                        # z 3.2..5.2, centred (118,-8)) + 0.5/side. The

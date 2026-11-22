@@ -1,142 +1,24 @@
-# Hojicha44 — split columnar keyboard (case + plate phase)
+# Hojicha44
 
-Custom split columnar mechanical keyboard (44 keys + 2 encoders, nice!nano x2).
-Roadmap: `KEYBOARD_PROJECT_ROADMAP.md`.
-**Fabrication candidate v0.5.2.** This revision corrects the PJ-320A
-footprint and port, clears the JST assembly, and specifies the finished
-power-switch lead length. The PCB and print files share a revision.
-Build one pair and complete the first-article checks before a batch.
-[PCB files](generated/release/v0.5.2) · [Print manifest](generated/print/v0.5.2/MANIFEST.txt) · [First article](spec/first-article.md) · [Product audit](audit.md).
-Layout geometry lives in
-`layout/ergogen/config.yaml` (frozen snapshot: `layout/- FINAL/keyboard_layout_v7`);
-each half has a placed+routed board file — see [Schematic](#schematic).
+A low-profile wireless split keyboard with 44 keys, two knobs, and a gasket-mounted plate.
 
-## Repository layout (what every top-level thing is)
+![Concept render of the two Hojicha44 halves with cream keycaps and a rotary knob on each side](generated/renders/v0.5.1/bright/hero.png)
 
-| Path | Tracked? | What it is |
-|---|---|---|
-| `boards/shields/hojicha44/` | yes | The **ZMK shield definition** (devicetree `hojicha44.dtsi`, left/right overlays, Kconfig) — standard ZMK module layout; consumed by the firmware build via `zephyr/module.yml` |
-| `config/` | yes | **ZMK build inputs** — `hojicha44.keymap` (+ 4 variant keymaps), `*.conf` Kconfig, `west.yml`. The keymaps are **generated** by `config/gen_keymap.py` from the spec (byte-compared by CI every run) |
-| `spec/` | yes | **Engineering source of truth** (human-authored): `layout.yaml`, `electronics.yaml`, `case.md`, `bom.md`, `first-article.md`, open items. Generators read this; `config/` is its firmware-facing output — same pipeline, different roles: spec = source, config = consumed by west/Zephyr |
-| `zephyr/module.yml` | yes | Declares this repo as a **Zephyr module** (makes `boards/` + `config/` visible to west) |
-| `zmk/gpio-map.md` | yes | Machine-generated pin-map doc (cross-checked against the dtsi) |
-| `build.yaml` | yes | **CI firmware matrix** consumed by `.github/workflows/build.yml` (one ZMK build per shield, pinned ZMK v0.3) |
-| `pcb/` | yes | KiCad project + generators (`gen_schematic.py`, `gen_pcb.py`, `gen_route.py`) + the committed `.net` netlists CI parses (no KiCad in CI) + vendored stock |
-| `plate/`, `case/`, `layout/` | yes | Generators, plate DXF/SVG/lands, layout points and four tracked tub/cover STEP solids in `case/out/`. The case virtual environment and derived STL meshes are local. |
-| `generated/` | yes, selective | **Derived artifacts worth versioning**: `release/v0.5.2` (Gerbers and reports), `renders/v0.5.0` (final PNGs), layout points, print manifest. The regenerable mesh tree `generated/renders/assets/` is ignored |
-| `tests/` | yes | `spec_checks.cjs` — the static gate suite (`npm test`) |
-| `renders/` | yes | Phase-10 render pipeline scripts (see `renders/README.md`) |
-| `node_modules/` | **no** | npm deps for the gate suite — recreated with `npm ci`; pinned by `package-lock.json` |
-| `out/` | **no** | Local build outputs: `out/firmware` (west/Zephyr build destination — the build *result* stays out of git; the CI rebuilds it), `out/fit` (fit prints) |
-| `opencode/` | **no** | Agent-harness scratch: run logs, probe scripts, and `gen_pcb`'s **pre-regen board archive** (rejected/`pre-regen-*` snapshots cited from notes and `hand-copper.txt`) |
+Set each half where your hands naturally land. The staggered columns follow your fingers, and four keys along each thumb’s arc put everyday controls within reach. Turn either knob for volume, scrolling, or track control, depending on the active layer. Push either one to mute.
 
-## Layout
+[Download the v0.5.2 build files](https://github.com/Cypherico/Hojicha44/releases/tag/v0.5.2) · [See the keymap](spec/keymap.md) · [Explore the assembly](generated/renders/v0.5.1/bright/exploded.png)
 
-| What | Where | Notes |
-|---|---|---|
-| Parametric source of truth | `layout/ergogen/config.yaml` | Ergogen 4.2.1, 46 pts: 6×3 + 4 thumbs + encoder/side |
-| KLE sketch (derived) | `layout/- FINAL/keyboard_layout_v2.json` | Do not hand-edit; regenerate |
-| KLE sketch (archive) | `layout/- FINAL/keyboard_layout_v1.json` | Original row-staggered sketch |
-| Layout decisions | `spec/layout.yaml` | Keymap, thumb roles, relocated keys |
-| Board outline | `layout/generated/v2/outlines/board.dxf` | PCB edge, no encoder hole — the EC11E needs copper under it |
-| Plate outline | `plate/Hojicha44-{Left,Right}-plate.dxf` | Same contour + tabs, 16.2 × 12.4mm chamfered encoder window |
-| Generators | `layout/generators/` | `export_kle.py` (points → KLE), `render_preview.mjs` (KLE → labeled PNG) |
-| Ergogen outputs | `layout/generated/v2/` | Points, outlines, demo SVGs, keymap render |
-| Snapshots | `layout/- FINAL/` | v1–v4 KLE, v5–v6 Ergogen, v7 config, v8 layout (frozen) |
+## What’s inside
 
-## Schematic
+- **Low-profile Choc v1 switches.** Hotswap sockets let you change the switches without soldering.
+- **A floating polycarbonate plate.** PORON pads cradle the switch plate, and magnets hold each removable cover in place.
+- **A wireless split.** Two nice!nano v2 controllers run ZMK and link the halves over Bluetooth. Connect to your computer over Bluetooth or plug into the left half for USB.
+- **Familiar QWERTY with thumb layers.** Tap home-row keys for letters and hold them for modifiers. The thumb layers bring numbers, symbols, function keys, and navigation into reach. Choose a macOS or Windows/Linux keymap and put Space under either thumb.
 
-| What | Where | Notes |
-|---|---|---|
-| Electronics spec | `spec/electronics.yaml` | Source of truth: matrix, pin map, parts |
-| Generator | `pcb/generators/gen_schematic.py` | Spec → `.kicad_sch` + ERC + net audit; never hand-edit the schematic |
-| Left project | `pcb/kicad/Hojicha44-Left.kicad_sch` | One project + one board file per half (a split is two PCBs) |
-| Right project | `pcb/kicad/Hojicha44-Right.kicad_sch` | Same; both share the vendored libs below |
-| Board files | `pcb/kicad/Hojicha44-{Left,Right}.kicad_pcb` | Placed+routed: 54 footprints / 48 nets per half, outline from `board.dxf`. Hand copper is preserved via `hand-copper.txt`; router-owned copper regenerates on every run |
-| Hand-copper manifest | `pcb/kicad/hand-copper.txt` | The authoritative preserve set, scoped per half (`[Left]`/`[Right]`). A regen keeps only items matching manifest signatures; a manifest line the committed board lacks is a hard error |
-| Placement generator | `pcb/generators/gen_pcb.py` | Points + outline + netlist → boards. Extraction reads the committed baseline (git HEAD), gates run before the write, and a DRC-rejected board is reverted so it can never leak into the next build |
-| ZMK firmware | `boards/shields/hojicha44/` + `config/` | Shield dtsi/overlays/Kconfig + keymap/conf; compiled by CI (`.github/workflows/build.yml`), no local `west build` |
-| ZMK evidence | `zmk/gpio-map.md` | Machine-generated GPIO continuity map |
-| Project symbols | `pcb/kicad/Hojicha44.kicad_sym` | Local `nice!nano` (stock libs cover the rest) |
-| Project footprints | `pcb/kicad/Hojicha44.pretty/` | Choc hotswap, PJ-320A, 2x12 nice!nano socket (vendored, see spec `sources`) |
+## Build one
 
-Why two projects: a single flat sheet produces one netlist, so
-"Update PCB from schematic" would drop both halves into one board file.
-One project per half keeps each outline, netlist and DRC separate; the
-half-to-half link (TRRS_T/TRRS_R1 crossover) lives in the spec, not the netlist.
+**v0.5.2 is ready for a first-article build.** The download includes both PCBs’ fabrication files, plate drawings, case models, a parts list, and matching left and right firmware for all four keymap variants. Build one pair and check the real parts before ordering a batch. The images show an earlier CAD revision.
 
-Each half differs from the other only in the TRRS TX/RX swap: `D1→TRRS_T`
-on the left, `D1→TRRS_R1` on the right, for a straight cable. The crossover
-is copper, so both halves share identical UART pinctrl (`TX=P0.06 RX=P0.08`)
-— no firmware swap; see `zmk/`.
+[Parts list](spec/bom.md) · [Fabrication guide](pcb/MANUFACTURING.md) · [First-article checklist](spec/first-article.md)
 
-```sh
-python3 pcb/generators/gen_schematic.py   # spec check + both sheets + audit + ERC
-```
-
-```sh
-python3 pcb/generators/gen_pcb.py         # place both boards + containment + DRC gate
-```
-
-The schematic generator also asserts the two things ERC and DRC cannot catch:
-
-- **Socket rows are 15.24mm apart, pitch 2.54mm.** `Socket_Strips_2x12_P2.54mm_NiceNano` numbers 1–12
-  down the TX/D1 edge and 13–24 down the RAW edge in the *opposite*
-  direction, so pads 1 (D1) and 24 (RAW) share the USB end. The stock
-  `PinSocket_2x12` is row-major with 2.54mm row spacing and would land every MCU net on the wrong
-  pad while still passing both checks — and the module would not fit.
-- **Reference designators.** KiCad treats a refdes not ending in a digit as
-  un-annotated, which makes every netlist/PCB export warn even though ERC is
-  clean.
-
-`kicad-cli` lives inside the KiCad bundle
-(`/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli`, v10.0.6 here) —
-it is not on `PATH` by default. The generator finds it automatically.
-
-## Build notes (things that will bite you at assembly)
-
-**BLE carries the split link.** The TRRS is a service connector. Check
-both ends of the chosen cable in the v0.5.2 plug bays. Switch off and
-unplug USB on both halves before mating or removing the debug cable.
-
-The intended battery location is under the socketed module. Measure the
-fully seated stack, pack, insulation and wire exit before assembly.
-Check rated charge current, polarity and BLE range with the installed
-pack. See the [product audit](audit.md).
-
-## Regenerate
-
-```sh
-npx ergogen layout/ergogen -o layout/generated/v2 --svg --clean
-node layout/generators/dump_points.cjs            # restores the JSON/YAML sidecars (4.2.1 no longer writes them)
-python3 layout/generators/export_kle.py --check
-node layout/generators/render_preview.mjs
-```
-
-PCB (place + route; generator copper + preserved GUI copper):
-
-```sh
-python3 pcb/generators/gen_schematic.py   # spec check + both sheets + guards + audit + ERC
-python3 pcb/generators/gen_pcb.py         # place + route + containment + copper checks + DRC
-```
-
-`gen_pcb.py` owns the outline, footprints, nets, placement and generator
-copper (deterministic router `gen_route.py`, revision-tagged so stale copper
-is dropped, never silently kept). **GUI copper is the
-other way round:** `(segment …)`, `(via …)` and `(zone …)` are preserved verbatim
-from the board file (net codes remapped by *name*, since codes are not stable
-across netlist exports). GUI routes survive regeneration (generator copper is
-revision-tagged, so a router rev drops only stale generator copper, never
-GUI copper). The build fails, rather than quietly producing a
-broken board, if preserved copper no longer lands on a pad/via/track — the usual
-result of moving a footprint without re-routing — or if it enters the r=5mm
-antenna keepout.
-
-## Previews
-
-- Paste `layout/- FINAL/keyboard_layout_v2.json` into keyboard-layout-editor.
-- Paste `layout/ergogen/config.yaml` into ergogen.xyz.
-- `layout/generated/v2/keymap.png` (+`.svg`) is a labeled render with the
-  keymap baked in — no Ergogen PNG export exists, so this script draws it
-  from the KLE (ImageMagick required).
-- Never cross-paste: the KLE importer rejects mid-row rotation by design.
+The design files are available for anyone who wants to inspect or adapt the board. [KiCad projects](pcb/kicad/) · [Ergogen layout](layout/ergogen/config.yaml) · [Case design](case/) · [Hardware audit](audit.md)

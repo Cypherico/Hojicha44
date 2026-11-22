@@ -1043,7 +1043,7 @@ def _(CFG, KICAD_CLI, KICAD_ENV, PATCHES, REPO, VENV_BIN, VENV_PY, WORK,
         "plate/Hojicha44-Left.glb", "plate/Hojicha44-Right.glb",
         "case/Hojicha44-Left-tub.glb", "case/Hojicha44-Left-cover.glb",
         "case/Hojicha44-Right-tub.glb", "case/Hojicha44-Right-cover.glb",
-        "parts/choc.glb", "parts/knob.glb", "parts/artisan.glb",
+        "parts/choc.glb", "parts/nano.glb", "parts/knob.glb", "parts/artisan.glb",
         "parts/klp_normal_tilted.glb", "parts/klp_saddle.glb",
         "placements.json", "cutouts.json",
     ]

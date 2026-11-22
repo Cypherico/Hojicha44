@@ -1,66 +1,50 @@
-# dependencies
+# Local dependencies, environments, and caches
 node_modules/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
 
-# agent-harness scratch: run logs, probe scripts, and gen_pcb's pre-regen
-# board archive (pcb/kicad/hand-copper.txt documents the convention) —
-# untracked by design; the archived snapshots are cited from notes.md
-opencode/
+# Local work and build output
+/opencode/
+/out/
+/pcb/kicad/export/
+/case/out*/
+!/case/out/
+/case/out/**
+!/case/out/*.step
 
-# macOS
-.DS_Store
+# Keep the canonical layout inputs consumed by PCB, plate, and CI.
+/layout/generated/**
+!/layout/generated/v2/
+!/layout/generated/v2/points/
+!/layout/generated/v2/points/points.yaml
+!/layout/generated/v2/outlines/
+!/layout/generated/v2/outlines/board.dxf
 
-# reproducible outputs (regenerate via README; sources are the truth)
-# Two tracked exceptions: they are gate INPUT — board.dxf (the outline,
-# fed to build_placements) + points.yaml (the usb anchors check_board +
-# plate/gen_plate --check referee) are read on CI, where nothing
-# regenerates layout outputs. Keep the verified geometry committed so
-# CI checks the same numbers the boards were cut from; a regen that
-# moves either dirties the tree visibly and must ride the next commit.
-layout/generated/**
-!layout/generated/v2/
-!layout/generated/v2/points/
-!layout/generated/v2/points/points.yaml
-!layout/generated/v2/outlines/
-!layout/generated/v2/outlines/board.dxf
-*.log
-
-# KiCad working-tree noise (release reports go to generated/release/)
+# KiCad local state and reports. Keep reports inside versioned PCB releases.
 *.kicad_prl
+*-backups/
+.backup/
 *.rpt
-*-erc.rpt
-*-drc.rpt
 
-# versioned release evidence stays tracked (roadmap Phase 7/12).
-# Ignore generated/* children, not generated/ itself: Git cannot
-# re-include a path whose parent directory is excluded, so /generated/
-# would also swallow the !release rules (and force -f for every release).
+# Versioned releases, print records, and renders belong in Git.
 /generated/*
 !/generated/release/
-!generated/release/**
-# print-order manifest (audit-2 F-12): the hashes the shops are sent
+!/generated/release/**
 !/generated/print/
-!generated/print/**
-
-# regenerable render exports (kicad-cli sch export ...)
-pcb/kicad/export/
-
-# KiCad lock files + local scratch backups (never versioned)
-*.lck
-.backup/
-
-# generated fit-print / release PDFs (kicad-cli; regenerate on demand)
-out/
-case/.venv/
-# case solids: the STEP files ARE tracked since 2026-10-24 (review §5.3 —
-# CI must verify the exact order-time geometry, not just its hashes); the
-# STLs stay regenerable. case/out-dev/ remains fully local.
-case/out*/
-!case/out/
-case/out/**
-!case/out/*.step
-
-# renders: the regenerable mesh/asset tree is a dev artifact; scripts +
-# final PNGs under generated/renders/v0.5.0/ ARE tracked (see renders/README)
 !/generated/renders/
-!generated/renders/**
-generated/renders/assets/
+!/generated/renders/**
+/generated/renders/assets/
+
+# Keep these last so they also apply inside versioned output directories.
+.DS_Store
+._*
+Thumbs.db
+Desktop.ini
+*.log
+*.lck
+*.swp
+*.swo

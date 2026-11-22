@@ -8,15 +8,11 @@ Two cameras over the SAME posed keyboard build_keyboard() assembles:
         with pens, notebook + pen, ceramic mug with coffee, desk
         lamp (a real light in a real shade), walnut desk, plastered
         wall + baseboard
-  mat   low closeup across the mat: the TRRS cable dressed between
-        the halves (chunky plugs with strain boots, stiff wide U —
-        round-7 review: "limp, almost like a thread, too thin"),
-        the USB-C running back to the aluminium dock, shallow depth
-        of field on the cable loop
+  mat   a close product photograph over woven cloth and honed stone, with a
+        short braided TRRS link and molded right-angle plugs
 
-The environment pose widens the split by an extra 200 mm so the cable
-loop has room to read as a real cable (product shots keep the tight
-pose); the halves sit ON the 3 mm mat, lifted by its thickness.
+Each environment adds space between the mirrored halves. In the compact
+mat scene, the case edges and tenting feet rest on the fabric.
 
 Round 8 texture pass: the mat is FABRIC now (crossed-thread weave
 bump + fuzz noise + wash variation), the wall is mottled plaster
@@ -36,7 +32,6 @@ parse_args supplies the flags; the studio-only ones (setups/palette/
 hide_*/stack-colors/no_floor) are ignored here.
 """
 import bpy
-import json
 import math
 import os
 import sys
@@ -840,6 +835,339 @@ def detail_sweep():
 
 # ------------------------------------------------------------- the scene
 
+def closeup_weave():
+    """Alternating over-under yarn at a physical pitch of 0.72 mm."""
+    mat = S.pbr("mat_heather_weave", (0.095, 0.110, 0.099), rough=0.89)
+    fuzz = S.studio_grain(mat, frequency=4900, relief=0.000014, roughness=(0.81, 0.95))
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Sheen Weight"].default_value = 0.22
+    bsdf.inputs["Specular IOR Level"].default_value = 0.22
+    link = nt.links.new
+    position = nt.nodes.new("ShaderNodeNewGeometry").outputs["Position"]
+    axes = nt.nodes.new("ShaderNodeSeparateXYZ")
+    link(position, axes.inputs[0])
+
+    def calc(operation, *inputs):
+        node = nt.nodes.new("ShaderNodeMath")
+        node.operation = operation
+        for socket, value in zip(node.inputs, inputs):
+            if isinstance(value, (int, float)):
+                socket.default_value = value
+            else:
+                link(value, socket)
+        return node.outputs[0]
+
+    u, v = (calc("COSINE", calc("MULTIPLY", axes.outputs[axis], math.pi / 0.00072))
+            for axis in ("X", "Y"))
+    crossing = calc("MULTIPLY", u, v)
+    warp = calc("MULTIPLY", calc("POWER", calc("ABSOLUTE", u), 3.5),
+                calc("ADD", 0.73, calc("MULTIPLY", crossing, 0.23)))
+    weft = calc("MULTIPLY", calc("POWER", calc("ABSOLUTE", v), 3.5),
+                calc("SUBTRACT", 0.73, calc("MULTIPLY", crossing, 0.23)))
+    yarn = calc("MAXIMUM", warp, weft)
+    heather = _noise(nt, 76.0, 2.5, "Yarn dye variation")
+    link(position, heather.inputs["Vector"])
+    tone = nt.nodes.new("ShaderNodeValToRGB")
+    tone.color_ramp.elements[0].color = (0.065, 0.079, 0.067, 1)
+    tone.color_ramp.elements[1].color = (0.117, 0.132, 0.113, 1)
+    link(heather.outputs["Fac"], tone.inputs[0])
+    interstices = calc("ADD", 0.66, calc("MULTIPLY", yarn, 0.34))
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    mix.blend_type = "MULTIPLY"
+    mix.inputs[0].default_value = 1
+    link(tone.outputs["Color"], mix.inputs[1])
+    link(interstices, mix.inputs[2])
+    link(mix.outputs["Color"], bsdf.inputs["Base Color"])
+
+    # Keep fibre tooth in the yarn height as well as the roughness.
+    relief = nt.nodes.new("ShaderNodeBump")
+    relief.inputs["Strength"].default_value = 0.42
+    relief.inputs["Distance"].default_value = 0.00013
+    link(calc("ADD", yarn, calc("MULTIPLY", fuzz, 0.11)), relief.inputs["Height"])
+    link(relief.outputs["Normal"], bsdf.inputs["Normal"])
+    return mat
+
+
+def mat_link(parts, mat_top):
+    """Seat compact plugs in the real case bores and dress the link on cloth."""
+    from mathutils import Vector
+
+    from case.params import TRRS_BAY_W
+
+    ends = []
+    rubber = S.pbr("mat_plug_rubber", (0.034, 0.036, 0.035), rough=0.58)
+    S.studio_grain(rubber, frequency=3500, relief=0.000013, roughness=(0.53, 0.64))
+    metal = S.pbr("mat_plug_collar", (0.38, 0.37, 0.32), rough=0.36, metal=0.88)
+    for half in ("L", "R"):
+        jack = parts[half]["jack"][0]
+        tub = next(obj for obj in parts[half]["tub"] if obj.type == "MESH")
+        pose = tub.parent.matrix_world @ tub.matrix_parent_inverse
+        mouth = jack.matrix_world @ Vector(jack["bore_center"])
+        axis = (jack.matrix_world.to_3x3() @ Vector(jack["bore_outward"])).normalized()
+        back = (pose.to_3x3() @ Vector((0, 1, 0))).normalized()
+        inverse = tub.matrix_world.inverted()
+        direction = inverse.to_3x3() @ -axis
+        # Interpolate the wall at the middle of the jack bay from solid
+        # surfaces on either side of the opening.
+        wall_depths = []
+        rim_offset = (TRRS_BAY_W / 2 + 0.8) * S.SCALE
+        for offset in (-rim_offset, rim_offset):
+            origin = mouth + axis * 0.04 + back * offset
+            hit, point, _, _ = tub.ray_cast(inverse @ origin, direction)
+            if not hit:
+                raise RuntimeError(f"Could not locate the {half} TRRS sidewall")
+            wall_depths.append((tub.matrix_world @ point - mouth).dot(axis))
+        wall_depth = sum(wall_depths) / 2
+        wall = mouth + axis * wall_depth
+        # The sleeve bears on the jack face inside the open bay. The
+        # overmold starts inside the rim and exits on the same axis.
+        pin = mouth - axis * 0.0015
+        cyl(f"mat_contact_{half}", pin, 0.00175, 0.0032, metal,
+            track_to=pin + axis)
+        sleeve = mouth + axis * 0.00065
+        cyl(f"mat_collar_{half}", sleeve, 0.00230, 0.0013, metal,
+            track_to=sleeve + axis)
+        neck_length = wall_depth - 0.00115
+        neck = mouth + axis * (0.0012 + neck_length / 2)
+        cyl(f"mat_plug_nose_{half}", neck, 0.00250, neck_length,
+            rubber, track_to=neck + axis)
+        bend_r = 0.005
+        start = wall
+        corner = start + axis * 0.002
+        end_bend = corner + (axis + back) * bend_r
+        exit_point = end_bend + back * 0.0046
+        boot = cable(f"mat_elbow_{half}", [start, corner, end_bend, exit_point],
+                     0.00275, rubber)
+        # A circular quarter-turn joins the two straight runs tangentially.
+        arc_handle = 4/3 * math.tan(math.pi / 8) * bend_r
+        handles = ((axis, 0.0007, 0.0007, 1.03),
+                   (axis, 0.0007, arc_handle, 1.03),
+                   (back, arc_handle, 0.0015, 1.0),
+                   (back, 0.0015, 0.0015, 0.74))
+        for point, (tangent, before, after, width) in zip(
+                boot.data.splines[0].bezier_points, handles):
+            point.handle_left_type = point.handle_right_type = "FREE"
+            point.handle_left = point.co - tangent * before
+            point.handle_right = point.co + tangent * after
+            point.radius = width
+        boot.data.use_fill_caps = True
+        for i in range(3):
+            ridge = exit_point + back * (i * 0.0013 - 0.0032)
+            cyl(f"mat_relief_{half}_{i}", ridge, 0.00315 - i * 0.00012,
+                0.00058, rubber, track_to=ridge + back)
+        ends.append((exit_point, back))
+
+    (left, left_back), (right, right_back) = ends
+    radius = 0.0019
+    # Both low controls sit on the cloth and have horizontal tangents.
+    center = (left + right) / 2
+    rest_z = mat_top + radius + 0.00010
+    rest_l = Vector((left.x + 0.011, center.y + 0.030, rest_z))
+    rest_mid = Vector((center.x - 0.016, center.y + 0.049, rest_z))
+    rest_r = Vector((right.x - 0.008, center.y + 0.032, rest_z))
+    rise = Vector((0.72, 0.69, 0)).normalized()
+    fall = Vector((0.70, -0.72, 0)).normalized()
+    forward = Vector((1, 0, 0))
+    braid = EM.proc_cable_braid("mat_cable_braid")
+    braid_bsdf = braid.node_tree.nodes["Principled BSDF"]
+    braid_bsdf.inputs["Coat Weight"].default_value = 0.0
+    braid_bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    lead = cable("mat_braided_link", [left, rest_l, rest_mid, rest_r, right], radius, braid)
+    for point, tangent, reach in zip(lead.data.splines[0].bezier_points,
+                                     (left_back, rise, forward, fall, -right_back),
+                                     (0.010, 0.009, 0.014, 0.010, 0.009)):
+        point.handle_left_type = point.handle_right_type = "FREE"
+        point.handle_left = point.co - tangent * reach
+        point.handle_right = point.co + tangent * reach
+    lead.data.use_fill_caps = True
+    lead.data.resolution_u = 48
+
+
+def mat_worktop(cx, cy, height):
+    """Lightly mottled, honed limestone with shallow mineral grain."""
+    mat = S.pbr("mat_limestone", (0.139, 0.128, 0.113), rough=0.67)
+    grain = S.studio_grain(mat, frequency=1100, relief=0.000032,
+                          roughness=(0.60, 0.75))
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Specular IOR Level"].default_value = 0.24
+    variation = _noise(nt, 12.0, 3.0, "Limestone sediment")
+    position = nt.nodes.new("ShaderNodeNewGeometry").outputs["Position"]
+    nt.links.new(position, variation.inputs["Vector"])
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    mix.inputs[0].default_value = 0.22
+    nt.links.new(variation.outputs["Fac"], mix.inputs[1])
+    nt.links.new(grain, mix.inputs[2])
+    tone = nt.nodes.new("ShaderNodeValToRGB")
+    tone.color_ramp.elements[0].position = 0.18
+    tone.color_ramp.elements[0].color = (0.106, 0.099, 0.089, 1)
+    tone.color_ramp.elements[1].position = 0.82
+    tone.color_ramp.elements[1].color = (0.164, 0.153, 0.139, 1)
+    nt.links.new(mix.outputs["Color"], tone.inputs["Fac"])
+    flecks = nt.nodes.new("ShaderNodeTexVoronoi")
+    flecks.inputs["Scale"].default_value = 970
+    nt.links.new(position, flecks.inputs["Vector"])
+    pore = nt.nodes.new("ShaderNodeMapRange")
+    pore.inputs["From Min"].default_value = 0.07
+    pore.inputs["From Max"].default_value = 0.27
+    pore.inputs["To Min"].default_value = 0.71
+    pore.inputs["To Max"].default_value = 1.0
+    nt.links.new(flecks.outputs["Distance"], pore.inputs["Value"])
+    pigment = nt.nodes.new("ShaderNodeMixRGB")
+    pigment.blend_type = "MULTIPLY"
+    pigment.inputs[0].default_value = 1.0
+    nt.links.new(tone.outputs["Color"], pigment.inputs[1])
+    nt.links.new(pore.outputs["Result"], pigment.inputs[2])
+    nt.links.new(pigment.outputs["Color"], bsdf.inputs["Base Color"])
+    bpy.ops.mesh.primitive_plane_add(size=2.0, location=(cx, cy + 0.28, height))
+    worktop = bpy.context.object
+    worktop.name = "mat_worktop"
+    S.assign([worktop], mat)
+
+
+def add_mat_pencil(cx, cy, height):
+    """Small hexagonal pencil with a sharpened cedar tip and graphite point."""
+    from mathutils import Vector
+
+    radius = 0.00365
+    center = Vector((cx + 0.053, cy - 0.154, height + radius))
+    along = Vector((1.0, 0.155, 0.0)).normalized()
+    lacquer = S.pbr("pencil_ochre", (0.40, 0.19, 0.047), rough=0.51)
+    cedar = S.pbr("pencil_cedar", (0.46, 0.29, 0.16), rough=0.75)
+    lead = S.pbr("pencil_graphite", (0.035, 0.035, 0.036), rough=0.51)
+    S.studio_grain(lacquer, frequency=3100, relief=0.000022, roughness=(0.43, 0.58))
+    nt = cedar.node_tree
+    wood_bsdf = nt.nodes["Principled BSDF"]
+    coords = nt.nodes.new("ShaderNodeTexCoord")
+    map_grain = nt.nodes.new("ShaderNodeMapping")
+    map_grain.inputs["Scale"].default_value = (16, 16, 1.5)
+    fibre = _noise(nt, 1.6, 3.0, "Longitudinal cedar grain")
+    tones = nt.nodes.new("ShaderNodeValToRGB")
+    tones.color_ramp.elements[0].color = (0.26, 0.138, 0.064, 1)
+    tones.color_ramp.elements[1].color = (0.57, 0.38, 0.218, 1)
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.35
+    bump.inputs["Distance"].default_value = 0.000028
+    for output, input_socket in (
+            (coords.outputs["Generated"], map_grain.inputs["Vector"]),
+            (map_grain.outputs["Vector"], fibre.inputs["Vector"]),
+            (fibre.outputs["Fac"], tones.inputs["Fac"]),
+            (fibre.outputs["Fac"], bump.inputs["Height"]),
+            (tones.outputs["Color"], wood_bsdf.inputs["Base Color"]),
+            (bump.outputs["Normal"], wood_bsdf.inputs["Normal"])):
+        nt.links.new(output, input_socket)
+
+    length = 0.116
+    bpy.ops.mesh.primitive_cylinder_add(vertices=6, radius=radius, depth=length,
+                                        location=center)
+    body = bpy.context.object
+    body.name = "mat_pencil_lacquer"
+    body.rotation_euler = along.to_track_quat("-Z", "Y").to_euler()
+    bevel = body.modifiers.new("Soft lacquer edges", "BEVEL")
+    bevel.width, bevel.segments = 0.00016, 3
+    S.assign([body], lacquer)
+    bpy.context.view_layer.update()
+    rotation = body.matrix_world.to_3x3()
+    facet = max(body.data.polygons, key=lambda face: (rotation @ face.normal).z)
+    upper = (rotation @ facet.normal).normalized()
+    across = upper.cross(along).normalized()
+    grade = bpy.data.curves.new("Pencil grade", "FONT")
+    grade.body = "HB"
+    grade.size = 0.0029
+    grade.align_x = "CENTER"
+    grade.align_y = "CENTER"
+    mark = bpy.data.objects.new("mat_pencil_grade", grade)
+    bpy.context.collection.objects.link(mark)
+    mark.location = body.matrix_world @ facet.center - along * 0.036 + upper * 0.000015
+    mark.rotation_euler = mathutils.Matrix((along, across, upper)).transposed().to_euler()
+    S.assign([mark], S.pbr("pencil_grade_ink", (0.085, 0.050, 0.022), rough=0.65))
+    end = center - along * (length / 2 + 0.00006)
+    cyl("mat_pencil_cedar_end", end, radius * 0.83, 0.00022, cedar,
+        track_to=end + along, smooth=False)
+    core = end - along * 0.00013
+    cyl("mat_pencil_graphite_core", core, 0.00105, 0.00012, lead,
+        track_to=core + along, smooth=False)
+    shoulder = center + along * (length / 2 - 0.0003)
+    cone("mat_pencil_cedar", shoulder + along * 0.0055, radius * 0.93, 0.00095,
+         0.011, cedar, track_to=shoulder - along)
+    cone("mat_pencil_graphite", shoulder + along * 0.0122, 0.00095, 0.00012,
+         0.0025, lead, track_to=shoulder - along)
+
+
+def mat_finish(name, colour, roughness, frequency, relief, contrast):
+    """Subtle grain that carries into the colour as well as the highlight."""
+    material = S.pbr(name, colour, rough=sum(roughness) / 2)
+    grain = S.studio_grain(material, frequency, relief, roughness)
+    tree = material.node_tree
+    tone = tree.nodes.new("ShaderNodeValToRGB")
+    for stop, position, factor in zip(tone.color_ramp.elements, (0.24, 0.76), contrast):
+        stop.position = position
+        stop.color = (*[channel * factor for channel in colour], 1)
+    tree.links.new(grain, tone.inputs["Fac"])
+    tree.links.new(tone.outputs["Color"], tree.nodes["Principled BSDF"].inputs["Base Color"])
+    return material
+
+
+def render_mat(args, res):
+    S.init_scene()
+    parts, keyboard = S.build_keyboard(args)
+    S.apply_colourway(parts, args.colourway)
+    for half, sign in (("L", -1), ("R", 1)):
+        bpy.data.objects[f"pose_{half}"].location.x += sign * 0.036
+    lo, hi = S.bbox_mm(keyboard)
+    cx, cy = (lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2
+    top = min(S.bbox_mm(groups["tub"])[0][2] for groups in parts.values())
+    desk_z = top - ES.MAT_T
+    feet = S.add_tenting_feet(parts, top, args.colourway)
+
+    fabric = closeup_weave()
+    stitch = mat_finish("mat_binding", (0.22, 0.24, 0.19), (0.70, 0.86),
+                        5300, 0.000017, (0.84, 1.11))
+    stitch.node_tree.nodes["Principled BSDF"].inputs["Sheen Weight"].default_value = 0.26
+    ES.build_closeup_mat((cx, cy + 0.016, desk_z), 0.54, 0.268, fabric, stitch)
+    mat_worktop(cx, cy, desk_z)
+    mat_link(parts, top)
+    add_mat_pencil(cx, cy, desk_z)
+    if args.colourway == "bright":
+        caps = mat_finish("mat_warm_pbt", (0.30, 0.281, 0.247), (0.48, 0.64),
+                          3800, 0.000046, (0.92, 1.06))
+        shell = mat_finish("mat_satin_case", (0.19, 0.185, 0.173), (0.58, 0.76),
+                           1750, 0.000082, (0.86, 1.10))
+        knob = mat_finish("mat_satin_aluminium", (0.48, 0.47, 0.45), (0.33, 0.48),
+                          4600, 0.000018, (0.94, 1.04))
+        knob.node_tree.nodes["Principled BSDF"].inputs["Metallic"].default_value = 0.94
+        for groups in parts.values():
+            S.assign(groups["caps"], caps)
+            S.assign(groups["tub"] + groups["cover"], shell)
+            S.assign(groups["knob"], knob)
+
+    env_world()
+    view = bpy.context.scene.view_settings
+    view.view_transform = "AgX"
+    view.look = "AgX - Medium High Contrast"
+    key = light("mat_window", "AREA", 4.15, (cx - 0.30, cy - 0.22, top + 0.36),
+                (cx, cy, top), (1.0, 0.89, 0.77), size=0.42)
+    key.data.shape = "DISK"
+    light("mat_bounce", "AREA", 1.7, (cx + 0.30, cy - 0.12, top + 0.24),
+          (cx, cy, top), (0.83, 0.91, 1.0), size=0.44)
+    light("mat_rim", "AREA", 1.9, (cx + 0.02, cy + 0.34, top + 0.22),
+          (cx, cy, top), (1.0, 0.93, 0.82), size=0.28)
+
+    look = mathutils.Vector((cx, cy, top + 0.007))
+    cam = S.add_cam("env_mat", (cx - 0.23, cy - 0.46, top + 0.285), look, lens=46)
+    cam.data.dof.use_dof = True
+    cam.data.dof.focus_distance = (look - cam.location).length
+    cam.data.dof.aperture_fstop = 13.0
+    subject = keyboard + feet
+    S.center_subject(cam, subject, res)
+    if not S.frame_report(cam, subject, "env_mat", res):
+        raise RuntimeError("The mat composition clips the keyboard")
+    if not args.framecheck:
+        S.render_to(cam, os.path.join(args.out, "env", "mat.png"),
+                    res, args.samples, args.device, pp=args.pp)
+
+
 def main():
     args = S.parse_args()
     res = tuple(int(v) for v in args.res.split("x"))
@@ -847,6 +1175,13 @@ def main():
              if s in ("desk", "mat", "gaming", "dev", "laptop")
              ] or ["desk", "mat"]
     os.makedirs(os.path.join(args.out, "env"), exist_ok=True)
+    if "mat" in shots:
+        render_mat(args, res)
+        shots.remove("mat")
+        if not shots:
+            return
+        PROPS.clear()
+        CABLES.clear()
     S.init_scene()
     parts, all_objs = S.build_keyboard(args)
 
@@ -890,9 +1225,6 @@ def main():
     # cable jacket: darker rubber with a tight surface tooth so the
     # thick cable reads as a jacketed lead, not a rendered tube
     m_cable = EM.proc_cable_braid("env_cable")   # round 12: braided
-    m_connector = S.pbr("env_connector", (0.09, 0.09, 0.10), rough=0.30,
-                        metal=0.7)
-    m_gold = S.pbr("env_gold", (0.75, 0.58, 0.24), rough=0.28, metal=1.0)
     m_ceramic = S.pbr("env_ceramic", (0.72, 0.46, 0.33), rough=0.38)
     S.micro_texture(m_ceramic, 140, 0.14, 0.00003, 0.30, 0.44)
     m_coffee = S.pbr("env_coffee", (0.050, 0.030, 0.018), rough=0.08)
@@ -1055,116 +1387,6 @@ def main():
     cyl("env_dock_led", (dock_x + 0.036, dock_y - 0.0222, dock_z + 0.010),
         0.0012, 0.001, m_led)
 
-    # ---- cables (mat shot only; hidden for the wireless desk story)
-    # TRRS: chunky plugs dress the jack holes — collar, barrel, boot —
-    # then a thick jacket spans the halves in one stiff wide U.
-    # the jack's DESIGN y comes from placements.json — the posed bbox
-    # y cannot be un-posed by dividing by SCALE (round-11 catch #2:
-    # splay mixes x into y, so the derived hole still landed ~6 mm
-    # toward the MCU)
-    _pl = json.load(open(os.path.join(S.ASSETS, "placements.json")))
-    _jy = {p["ref"]: p["y"] for half in ("Left", "Right")
-           for p in _pl[half] if p["ref"].startswith("J_")}
-    jl = [o for o in parts["L"]["board"] if o.name.startswith("J_L1")]
-    jr = [o for o in parts["R"]["board"] if o.name.startswith("J_R1")]
-    # round 24: the chunky nano_usb shell was removed from the product
-    # scene (it read as a grey brick in the MCU window). Anchor the
-    # cable at the module PCB instead; z is clamped to the rim below.
-    usb = [o for o in parts["L"].get("nano", [])
-           if o.name.startswith("nano_pcb")]
-    if not usb:
-        usb = list(parts["L"].get("nano", []))
-    (lb0, lb1) = S.bbox_mm(parts["L"]["tub"])
-    (rb0, rb1) = S.bbox_mm(parts["R"]["tub"])
-    (j0, j1) = S.bbox_mm(jl)
-    (k0, k1) = S.bbox_mm(jr)
-    (u0, u1) = S.bbox_mm(usb)
-    # round-10 review: "audio jacks still aren't correctly placed...
-    # the cable is kinda floating outside the port". Estimates from the
-    # jack bbox were never going to nail it. The EXACT posed hole
-    # comes from the tub's own matrix_world: design frame -> glb local
-    # is (x, -z, y) (import_glb's Y-up note) and the tub mesh data is
-    # in glb units = design mm, so the hole = inner wall face at the
-    # jack's y, zc 1.5: local (x_wall, -1.5, y_jack). The plug is then
-    # built ALONG the posed wall direction, starting 2 mm INSIDE the
-    # wall so the collar visibly enters the hole instead of hovering.
-    def posed_hole(tub_objs, jack_y, sgn):
-        tub = next(o for o in tub_objs if o.type == "MESH")
-        # inner wall face: the L half's wall is its +x face, the R
-        # half's its -x face (the first cut at * sgn was a mirror bug
-        # that flung the right plug 0.6 m into space)
-        lx = (max(c[0] for c in tub.bound_box) if sgn > 0
-              else min(c[0] for c in tub.bound_box))
-        v = mathutils.Vector((lx, -1.5, jack_y))
-        return tub.matrix_world @ v
-
-    def wall_dir(tub_objs, sgn):
-        tub = next(o for o in tub_objs if o.type == "MESH")
-        d = tub.matrix_world.to_3x3() @ mathutils.Vector((sgn, 0.0, 0.0))
-        return d.normalized()
-
-    hole_l = posed_hole(parts["L"]["tub"], _jy["J_L1"], 1.0)
-    hole_r = posed_hole(parts["R"]["tub"], _jy["J_R1"], -1.0)
-    dir_l = wall_dir(parts["L"]["tub"], 1.0)
-    dir_r = wall_dir(parts["R"]["tub"], -1.0)
-    # round 19: fully inserted — the gold collar AND the metal barrel
-    # sit INSIDE the Ø6 wall bore (invisible from the seam); only the
-    # rubber boot + jacket are visible outside the case
-    PLUG_TIP = 0.0065
-    for tag, hole, d in (("l", hole_l, dir_l), ("r", hole_r, dir_r)):
-        for name, r, t0, t1, m in (
-                ("collar", 0.0019, -0.0140, -0.0075, m_gold),
-                ("barrel", 0.0024, -0.0075, 0.0000, m_connector)):
-            tc = (t0 + t1) / 2
-            cyl(f"env_trrs_{name}_{tag}",
-                tuple(hole + d * tc), r, t1 - t0, m,
-                track_to=tuple(hole + d * (tc + 1.0)), cable=True)
-        # round 16: the boot's cable-side mouth is WIDER than the
-        # jacket so it swallows the cable — the old 2.1 mouth was
-        # narrower than the 2.4 jacket and left a visible gap/step
-        boot = cone(f"env_trrs_boot_{tag}",
-                    tuple(hole + d * 0.0045), 0.0027, 0.0027, 0.009,
-                    m_rubber, track_to=tuple(hole + d * 10.0))
-        CABLES.append(boot)
-    tip_l = tuple(hole_l + dir_l * PLUG_TIP)
-    tip_r = tuple(hole_r + dir_r * PLUG_TIP)
-    mid_y = (tip_l[1] + tip_r[1]) / 2
-    mid_x = (tip_l[0] + tip_r[0]) / 2
-    # The jacket is r=2.3 mm. Too low and the sheath sinks into the
-    # weave (round 24d); too high and the run FLOATS (round 24e).
-    # 3.8 mm at the control point leaves ~1.5 mm of air, and the
-    # spline's own overshoot brings the belly down until it reads as
-    # resting on the fabric.
-    sag_z = mat_top + 0.0038
-    sag = (mid_x, mid_y, sag_z)
-    cable("env_trrs_cable", [tip_l, sag, tip_r], 0.0023, m_cable,
-          keyboard=True)
-
-    # USB-C: nano (left half, back rim) -> dock, right-angle at the dock
-    usb_exit_y = lb1[1] + 0.004
-    usb_exit = (u0[0] + (u1[0] - u0[0]) * 0.5, usb_exit_y,
-                min((u0[2] + u1[2]) / 2, mat_top + 0.0135))
-    box("env_usbc_plug", (usb_exit[0], lb1[1] + 0.0028, usb_exit[2]),
-        (0.012, 0.011, 0.0062), m_connector, bevel=0.0015, cable=True)
-    cyl("env_usbc_boot", (usb_exit[0], lb1[1] + 0.0085, usb_exit[2]),
-        0.0021, 0.006, m_rubber, rot=(math.radians(90), 0.0, 0.0),
-        cable=True)
-    # round 13: the cable arcs RIGHT of the monitor foot (the old
-    # diagonal path phase-checked straight through it)
-    dock_port = (dock_x - 0.006, dock_y - 0.026, dock_z + 0.010)
-    box("env_usbc_dock_plug", (dock_x - 0.006, dock_y - 0.027, dock_z + 0.010),
-        (0.013, 0.010, 0.0060), m_connector, bevel=0.0015, cable=True)
-    # round 24e: the second control point sat at mat_top + 5 mm and the
-    # third at desk_z + 4 mm -- i.e. 2.6 mm INSIDE the mat, so the run
-    # sank through the weave on its way to the dock ("cable still clips
-    # mat"). Every control point now clears the mat surface by at least
-    # the 2 mm jacket radius, plus visible air.
-    cable("env_usbc_cable", [
-        usb_exit,
-        (usb_exit[0] + 0.042, usb_exit_y + 0.032, mat_top + 0.0085),
-        (dock_x - 0.058, dock_y - 0.036, mat_top + 0.0055),
-        dock_port,
-    ], 0.0022, m_cable, keyboard=True)
     # round 17: the full visible power/data chain — the desk shot
     # answers "where is power coming from?": a wall outlet behind the
     # desk, the mini's adapter cable arcing up to it, a short mini->
@@ -1263,20 +1485,6 @@ def main():
     # ---- cameras (calibrated round 7; unchanged)
     desk_cam = S.add_cam("env_desk", (cx + 0.10, cy - 1.45, 0.74),
                          (cx + 0.02, cy + 0.12, 0.05), lens=28)
-    # round 16: dead-centre and pulled back — round 15 still clipped
-    # the left half and pushed the right half to centre. The camera
-    # sits on the assembly's centreline so both halves are symmetric,
-    # far enough that the full board fits with margin.
-    # round 17: slightly higher still — show more of the keyboard
-    look = (cx, cy + 0.005, 0.010)
-    mat_cam = S.add_cam("env_mat", (cx, cy - 0.70, 0.50),
-                        look, lens=45)
-    mat_cam.data.dof.use_dof = True
-    mat_cam.data.dof.focus_distance = (
-        mathutils.Vector(mat_cam.location) -
-        mathutils.Vector(sag)).length
-    mat_cam.data.dof.aperture_fstop = 8.0   # round 10: "still excessive"
-
     # gaming: low 3/4 in a dark room, the tower's RGB fans glowing
     # behind the halves (wireless gaming story)
     gaming_cam = S.add_cam("env_gaming", (cx + 0.06, cy - 1.32, 0.60),
@@ -1296,11 +1504,7 @@ def main():
     dev_cam = S.add_cam("env_dev", (cx + 0.06, cy - 0.34, 0.86),
                         (cx, cy - 0.02, 0.005), lens=30)
 
-    # ---- framecheck subjects: what must stay IN frame. The desk,
-    # wall, baseboard and floor are backdrop and intentionally overflow
-    # the frame edges; so do the far ends of the halves in the closeup.
-    # desk (round 8): WIRELESS — the cables are hidden, so they are not
-    # subjects either. mat: cables + dock + the caps around the seam.
+    # The desk, wall, baseboard and floor can overflow the camera frame.
     # room surfaces extend to the frame edges by design — backdrop,
     # not subjects (the agent builders prefix dsk_/mat_/room_/chair_)
     _surf_prefixes = ("dsk_", "mat_", "room_", "wall_", "floor_",
@@ -1311,28 +1515,14 @@ def main():
                       + [o for o in PROPS
                          if o.name not in backdrop and o not in CABLES]
                       + mat_objs)
-    # seam-adjacent columns only: the third column still RENDERS, it
-    # just isn't a framing constraint (a closeup lets the outer edge
-    # of the board run past the frame by design)
-    near_caps = [o for h in parts for o in parts[h]["caps"]
-                 if abs(o.matrix_world[0][3] - cx) < 0.130]
-    # the mat is the SURFACE under this closeup, not a subject — it
-    # may crop the frame edges (round-19 catch: keeping the body in
-    # the subjects clipped every frame check)
-    mat_subjects = (CABLES + near_caps
-                    + [o for o in PROPS
-                       if o.name.startswith("env_dock")])
     def set_visible(objs, visible):
         for o in objs:
             o.hide_render = not visible
 
     tower_names = {o.name for o in tower_objs}
     dev_mug_names = {o.name for o in dev_mug}
-    # the tower + dev mug are hidden in desk/mat, so they are not
-    # framing constraints there either
-    for _sl in (desk_subjects, mat_subjects):
-        _sl[:] = [o for o in _sl if o.name not in tower_names
-                  and o.name not in dev_mug_names]
+    desk_subjects = [o for o in desk_subjects
+                     if o.name not in tower_names and o.name not in dev_mug_names]
     # the tower (465 mm) and the monitor (567 mm on its stand) are
     # BACKGROUND elements in the gaming mood — dark room, monitor off,
     # the tower's RGB fans glowing; both loom cropped behind the
@@ -1349,7 +1539,6 @@ def main():
     laptop_subjects = ([o for o in all_objs] + mat_objs + lap_objs
                        + ph_objs + pen_objs + usb_objs)
     cams = {"desk": (desk_cam, desk_subjects),
-            "mat": (mat_cam, mat_subjects),
             "gaming": (gaming_cam, gaming_subjects),
             "dev": (dev_cam, dev_subjects),
             "laptop": (laptop_cam, laptop_subjects)}
@@ -1362,12 +1551,7 @@ def main():
     for name, (cam, subj) in cams.items():
         if name not in shots:
             continue
-        # per-shot visibility: the keyboard is WIRELESS in every env
-        # shot except the mat closeup (its story IS the cables); the
-        # tower + RGB glow live only in gaming; the between-halves
-        # mug only in the dev top-down (hiding the side mug there)
-        for o in CABLES:
-            o.hide_render = (name != "mat")
+        # The tower and its RGB lighting belong to the gaming view.
         set_visible(tower_objs, name == "gaming")
         # the laptop set carries NO monitor, mini, dock, mouse or mug:
         # one computer, and the keyboard turned to a different angle

@@ -503,6 +503,31 @@ FOLD_ROOT = 0.0008     # the facets' roots are buried this deep
 FOLD_H = math.sqrt(1.5) * FOLD_F - FOLD_ROOT     # ~18.8 mm
 
 
+def build_closeup_mat(loc, width, depth, fabric, stitch):
+    """A flat sewn mat with thread arcs inset from its rolled edge."""
+    radius, inset = 0.012, 0.0025
+    body = _rrect_prism("mat_body", loc, 0.0, (0, 0, MAT_T / 2),
+                        width, depth, MAT_T, radius, fabric,
+                        top=0.0008, corner_seg=10, rim_seg=4)
+    thread = bpy.data.curves.new("mat_binding_thread", "CURVE")
+    thread.dimensions = "3D"
+    thread.bevel_depth = 0.00017
+    thread.bevel_resolution = 4
+    for x, y, angle in _rrect_outline(width / 2 - inset, depth / 2 - inset,
+                                       radius - inset, 0.0026):
+        strand = thread.splines.new("BEZIER")
+        strand.bezier_points.add(2)
+        for point, along, rise in zip(strand.bezier_points,
+                                     (-0.001, 0, 0.001), (-0.00012, 0.00016, -0.00012)):
+            point.co = (loc[0] + x + math.cos(angle) * along,
+                        loc[1] + y + math.sin(angle) * along, loc[2] + MAT_T + rise)
+            point.handle_left_type = point.handle_right_type = "AUTO"
+    seam = bpy.data.objects.new(thread.name, thread)
+    bpy.context.collection.objects.link(seam)
+    S.assign([seam], stitch)
+    return body, seam
+
+
 def build_desk_mat(loc, mats, rot_z=0.0):
     """The fabric desk mat: a real sheet with a folded corner.
 

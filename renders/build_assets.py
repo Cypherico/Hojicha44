@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the render asset pack for Hojicha44 v0.5.0.
+"""Build the render asset pack for Hojicha44.
 
 Runs in case/.venv (cadquery + ezdxf + trimesh + numpy). Read-only on all
 manufacturing artifacts; every output lands under generated/renders/assets/
@@ -23,15 +23,17 @@ Outputs:
   assets/PROVENANCE.json               tool versions + source hashes
 """
 import json
+import math
 import os
 import re
 import subprocess
 import sys
 import hashlib
-from shutil import which as _which
+from shutil import copy2, which as _which
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-OUT = os.path.join(REPO, "generated", "renders", "assets")
+OUT = os.environ.get("H44_RENDER_ASSETS",
+                     os.path.join(REPO, "generated", "renders", "assets"))
 KICAD_CLI = (os.environ.get("KICAD_CLI")
              or _which("kicad-cli")
              or "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli")
@@ -415,89 +417,187 @@ def screw_glb(glb_path):
 
 # ------------------------------------------------------ choc + artisan
 
-def choc_glb(glb_path):
-    """Kailh Choc v1 (PG1350) switch, centered on the shaft axis at z=0 = PCB top.
-    Accurate mechanical features:
-      - Lower housing (13.8x13.8x2.0) with 15.0mm retention clips on N/S
-      - Center locator post (Ø3.4mm, z=-2.5..0) and side locator pins (Ø1.9mm, z=-1.8..0)
-      - Upper housing (z 2.0..4.4) with 1.2mm top chamfer, latch ears, and LED cutout
-      - Signature Choc stem (z 2.4..5.6) with twin rectangular keycap mounting sockets (1.2x3.0mm)
-    """
+def add_cad_mesh(scene, name, part):
+    """Add a named CadQuery workplane result to a millimetre-scale scene."""
     import cadquery as cq
     import trimesh
 
-    # 1. Base frame with retention clips (z 0..2.0)
-    base = cq.Workplane("XY").box(13.8, 13.8, 2.0, centered=(True, True, False))
-    clip_n = cq.Workplane("XY").workplane(offset=1.0).center(0, 7.15).box(8.0, 0.7, 1.0, centered=(True, True, False))
-    clip_s = cq.Workplane("XY").workplane(offset=1.0).center(0, -7.15).box(8.0, 0.7, 1.0, centered=(True, True, False))
-    base = base.union(clip_n).union(clip_s)
+    solids = part.vals()
+    shape = solids[0] if len(solids) == 1 else cq.Compound.makeCompound(solids)
+    vertices, faces = shape.tessellate(0.035, 0.18)
+    mesh = trimesh.Trimesh(vertices=[v.toTuple() for v in vertices], faces=faces)
+    scene.add_geometry(mesh, node_name=name, geom_name=name)
 
-    # 2. Locator pins (z < 0)
-    center_post = cq.Workplane("XY").circle(1.7).extrude(-2.5)
-    pin1 = cq.Workplane("XY").center(0, 5.5).circle(0.95).extrude(-1.8)
-    pin2 = cq.Workplane("XY").center(0, -5.5).circle(0.95).extrude(-1.8)
-    base = base.union(center_post).union(pin1).union(pin2)
 
-    # 3. Upper housing (z 2.0..4.4)
-    cover = (cq.Workplane("XY").workplane(offset=2.0)
-             .box(13.4, 13.4, 2.4, centered=(True, True, False))
-             .edges(">Z").chamfer(1.2))
-    ear_e = cq.Workplane("XY").workplane(offset=1.8).center(6.85, 0).box(0.5, 3.2, 2.0, centered=(True, True, False))
-    ear_w = cq.Workplane("XY").workplane(offset=1.8).center(-6.85, 0).box(0.5, 3.2, 2.0, centered=(True, True, False))
-    cover = cover.union(ear_e).union(ear_w)
-    # Stem aperture through top
-    cover = cover.cut(cq.Workplane("XY").workplane(offset=1.8).box(6.2, 6.2, 3.0, centered=(True, True, False)))
-    # LED window on South face
-    cover = cover.cut(cq.Workplane("XY").workplane(offset=1.8).center(0, -5.5).box(4.2, 2.5, 1.6, centered=(True, True, False)))
+def choc_glb(glb_path):
+    """PG1350 render model. Origin is the switch centre at the PCB top."""
+    import cadquery as cq
+    import trimesh
 
-    switch_housing = base.union(cover)
+    def box(width, depth, height, x=0, y=0, z=0):
+        return cq.Workplane("XY").box(width, depth, height).translate((x, y, z))
 
-    # 4. Choc stem with signature twin mounting sockets (z 2.4..5.6)
-    stem = cq.Workplane("XY").workplane(offset=2.4).box(5.8, 5.8, 3.2, centered=(True, True, False))
-    slot1 = cq.Workplane("XY").workplane(offset=3.8).center(-1.5, 0).box(1.2, 3.0, 2.0, centered=(True, True, False))
-    slot2 = cq.Workplane("XY").workplane(offset=3.8).center(1.5, 0).box(1.2, 3.0, 2.0, centered=(True, True, False))
-    stem = stem.cut(slot1).cut(slot2)
+    def round_box(width, depth, height, radius, z):
+        return box(width, depth, height, z=z).edges("|Z").fillet(radius)
 
-    def tessellate(shape, deflection):
-        verts, faces = [], []
-        from OCP.TopExp import TopExp_Explorer
-        from OCP.TopAbs import TopAbs_FACE
-        from OCP.TopoDS import TopoDS
-        from OCP.BRep import BRep_Tool
-        from OCP.TopLoc import TopLoc_Location
-        from OCP.BRepMesh import BRepMesh_IncrementalMesh
-        sh = shape.val().wrapped
-        BRepMesh_IncrementalMesh(sh, deflection, False, 0.3, True)
-        exp = TopExp_Explorer(sh, TopAbs_FACE)
-        while exp.More():
-            face = TopoDS.Face_s(exp.Current())
-            loc = TopLoc_Location()
-            tris = BRep_Tool.Triangulation_s(face, loc)
-            if tris is not None:
-                trsf = loc.Transformation()
-                base_idx = len(verts)
-                for i in range(1, tris.NbNodes() + 1):
-                    p = tris.Node(i).Transformed(trsf)
-                    verts.append((p.X(), p.Y(), p.Z()))
-                for i in range(1, tris.NbTriangles() + 1):
-                    a, b, c = tris.Triangle(i).Get()
-                    faces.append((base_idx + a - 1, base_idx + b - 1,
-                                  base_idx + c - 1))
-            exp.Next()
-        m = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
-        m.merge_vertices()
-        return m
+    def post(x, y, radius, depth):
+        return cq.Workplane("XY").center(x, y).circle(radius).extrude(-depth)
 
-    scene = trimesh.Scene({
-        "choc_housing": tessellate(switch_housing, 0.03),
-        "choc_stem": tessellate(stem, 0.02)})
+    # Two mouldings form a stepped shell with a visible parting line.
+    base = round_box(13.8, 13.8, 2.20, 0.42, 1.10)
+    base = base.edges("<Z").chamfer(0.18)
+    base = base.union(post(0, 0, 1.7, 2.5))
+    for x in (-5.5, 5.5):
+        base = base.union(post(x, 0, 0.91, 1.8))
+        side = math.copysign(1, x)
+        clip = box(1.02, 4.0, 1.15, x=side * 6.78, z=1.25)
+        base = base.union(clip.edges("|Y").chamfer(0.16))
+
+    # The 14.8 mm flange seats on the plate. The cap legs engage a broad
+    # twin-slot slider inside a recessed opening in the upper moulding.
+    flange = round_box(14.8, 14.8, 0.68, 0.65, 2.54)
+    lid = round_box(13.70, 13.70, 1.52, 0.72, 3.56)
+    lid = lid.edges(">Z").chamfer(0.43)
+    lid = flange.union(lid)
+    lid = lid.cut(round_box(9.2, 5.3, 3.5, 0.62, 3.4))
+    lid = lid.cut(box(3.9, 3.0, 1.50, y=6.1, z=3.76))  # LED opening
+    for x in (-6.5, 6.5):
+        lid = lid.cut(box(0.96, 2.4, 1.1, x=x, z=3.2))  # moulded latch recess
+
+    stem = round_box(8.68, 4.85, 3.05, 0.50, 3.54)
+    stem = stem.edges(">Z").chamfer(0.18)
+    for x in (-2.85, 2.85):
+        stem = stem.cut(box(1.31, 3.09, 4.2, x=x, z=3.72))
+    pins = box(0.80, 0.46, 3.22, y=5.9, z=-1.53).edges("<Z").chamfer(0.12)
+    pins = pins.add(
+        box(0.80, 0.46, 3.22, x=5.0, y=3.8, z=-1.53)
+        .edges("<Z").chamfer(0.12))
+
+    scene = trimesh.Scene()
+    for name, part in (("base", base), ("housing", lid),
+                       ("stem", stem), ("contacts", pins)):
+        add_cad_mesh(scene, f"choc_{name}", part)
     scene.export(glb_path)
-    for name, mesh in scene.geometry.items():
-        bb = mesh.bounds
-        print(f"  choc glb[{name}]: {glb_path} ({len(mesh.faces)} tris, "
-              f"{len(mesh.vertices)} verts, bbox "
-              f"{bb[1][0] - bb[0][0]:.2f} x {bb[1][1] - bb[0][1]:.2f} x "
-              f"{bb[1][2] - bb[0][2]:.2f} mm)")
+
+
+def nano_glb(glb_path):
+    """Photograph-based nice!nano v2 render model, centred over its sockets.
+
+    Reference: https://nicekeyboards.com/docs/nice-nano/
+    """
+    import cadquery as cq
+    import numpy as np
+    import trimesh
+
+    def block(w, d, h, x=0, y=0, z=0):
+        return cq.Workplane("XY").box(w, d, h).translate((x, y, z))
+
+    pins = [(sign * 7.62, (i - 5.5) * 2.54)
+            for sign in (-1, 1) for i in range(12)]
+    pins += [(-6.55, 15.10), (6.55, 15.10)]
+    body = block(17.8, 33.0, 1.6, z=3.2).edges("|Z").fillet(0.55)
+    body = body.faces(">Z").workplane(centerOption="CenterOfBoundBox").pushPoints(pins).hole(1.16)
+    body = body.cut(block(8.9, 4.7, 2.1, y=15.1, z=3.2))
+    plated_holes = (cq.Workplane("XY").workplane(offset=2.38).pushPoints(pins)
+                    .circle(0.91).circle(0.54).extrude(1.64, combine=False))
+
+    # Round-ended mid-mount USB-C shell and a recessed contact tongue.
+    shell = block(8.85, 5.30, 3.15, y=14.4, z=3.2).edges("|Y").fillet(0.71)
+    cavity = block(7.95, 4.3, 2.34, y=15.3, z=3.2).edges("|Y").fillet(0.61)
+    shell = shell.cut(cavity)
+    tongue = block(6.5, 3.5, 0.67, y=14.9, z=3.2).edges("|Y").fillet(0.19)
+    shell_contacts = cq.Workplane("XY")
+    for i in range(12):
+        shell_contacts = shell_contacts.add(
+            block(0.29, 1.65, 0.035, x=(i - 5.5) * 0.50, y=15.35, z=3.55).val())
+    pads = plated_holes.add(shell_contacts.vals())
+
+    # Photo-matched component types and proportions. Keep the mask clean.
+    packages = block(6.9, 6.9, 0.75, y=-1.8, z=4.40).edges(">Z").chamfer(0.11)
+    packages = packages.add(block(3.05, 3.05, 0.64, x=-2.45, y=8.05, z=4.34).val())
+    packages = packages.add(block(2.1, 2.35, 0.56, x=3.7, y=7.25, z=4.30).val())
+    crystal = block(3.20, 2.48, 0.55, x=3.85, y=3.13, z=4.30).edges("|Z").fillet(0.25)
+    crystal = crystal.add(block(1.60, 1.18, 0.42, x=-3.7, y=-8.25, z=4.23).val())
+    ceramic = block(4.4, 1.55, 0.80, x=0.85, y=-14.15, z=4.42)
+    smd_ends = cq.Workplane("XY")
+    for x, y in ((-5.0, 9.3), (3.7, 10.5), (5.3, 5.5), (4.8, -2.2),
+                 (5.3, -5.8), (3.0, -8.6), (-2.35, -9.9), (-0.3, -7.4),
+                 (-4.9, -4.7), (-5.1, 2.9), (-1.7, 4.2), (0.95, 6.35),
+                 (-5.25, 11.65), (5.25, 11.65), (3.9, -11.0)):
+        ceramic = ceramic.add(block(0.85, 0.49, 0.31, x=x, y=y, z=4.17).val())
+        for dx in (-0.485, 0.485):
+            smd_ends = smd_ends.add(block(0.24, 0.53, 0.33, x=x+dx, y=y, z=4.17).val())
+    # Pin-one dimple and the little programming pad row at the antenna end.
+    packages = packages.cut(block(0.48, 0.48, 0.11, x=-2.75, y=0.98, z=4.77))
+    for x in (-4.85, -2.84, -0.83):
+        pads = pads.add(block(1.02, 1.12, 0.028, x=x, y=-11.9, z=4.015).val())
+    socket = block(2.45, 29.7, 2.40, x=-7.62, z=1.20).edges("|Z").fillet(0.18)
+    socket = socket.add(block(2.45, 29.7, 2.40, x=7.62, z=1.20).edges("|Z").fillet(0.18).val())
+
+    # Render layout following the component-side reference. Top-layer
+    # routes run from lands to parts or disappear at vias; the antenna
+    # end beyond the test pads has no signal fan-out.
+    gpio = (
+        ((-7.62, 3.81), (-6.10, 3.81), (-5.47, 3.18), (-5.47, 1.79), (-4.63, 0.95), (-3.20, 0.95)),
+        ((-7.62, 1.27), (-6.28, 1.27), (-5.55, 0.54), (-4.81, 0.54), (-4.35, 0.08), (-3.20, 0.08)),
+        ((-7.62, -1.27), (-5.92, -1.27), (-5.42, -0.77), (-3.20, -0.77)),
+        ((-7.62, -3.81), (-6.77, -3.81), (-6.29, -3.33), (-5.41, -3.33), (-4.25, -2.17), (-3.20, -2.17)),
+        ((-7.62, -6.35), (-6.56, -6.35), (-5.97, -5.76), (-5.97, -5.26), (-5.41, -4.70)),
+        ((-4.41, -4.70), (-4.10, -4.70), (-3.85, -4.45), (-3.85, -3.43), (-3.20, -2.78)),
+        ((-7.62, -8.89), (-6.36, -8.89), (-5.80, -8.33), (-5.80, -7.47), (-5.10, -6.77)),
+        ((-7.62, -11.43), (-6.49, -11.43), (-6.02, -11.90), (-4.85, -11.90)),
+        ((7.62, -1.27), (6.10, -1.27), (5.30, -0.47), (3.20, -0.47)),
+        ((7.62, -3.81), (6.28, -3.81), (5.61, -3.14), (4.93, -3.14), (4.57, -2.78), (3.20, -2.78)),
+        ((7.62, -6.35), (6.28, -6.35), (5.78, -5.85)),
+        ((4.82, -5.80), (4.24, -5.80), (3.82, -5.38), (3.82, -4.14), (3.20, -3.52)),
+        ((7.62, -8.89), (5.10, -8.89), (4.59, -9.40), (4.59, -9.94)),
+        ((7.62, -11.43), (6.62, -11.43), (6.26, -11.07), (4.38, -11.00)),
+        ((3.42, -11.00), (2.00, -11.00), (1.10, -11.90), (-0.83, -11.90)),
+    )
+    for dx in (-0.21, 0.21):
+        gpio += (tuple((x + dx, y) for x, y in (
+            (0.70, 12.25), (0.70, 10.51), (1.58, 9.63), (1.58, 5.28),
+            (0.46, 4.16), (0.46, 1.14))),)
+    power = (
+        ((6.55, 15.10), (6.55, 11.12), (5.93, 10.50), (4.18, 10.50)),
+        ((3.22, 10.50), (2.61, 10.50), (2.21, 10.10)),
+        ((-6.55, 15.10), (-6.55, 12.86), (-5.97, 12.28), (-5.97, 11.88), (-5.73, 11.65)),
+        ((7.62, 8.89), (5.62, 8.89), (4.62, 7.89), (4.62, 7.25)),
+        ((2.75, 7.25), (2.51, 7.25), (2.27, 7.01)),
+        ((-5.48, 9.30), (-5.93, 8.85), (-5.93, 8.54), (-5.32, 7.93), (-3.72, 7.93)),
+        ((-3.95, -8.30), (-3.95, -6.88), (-2.37, -5.30), (-2.37, -4.96)),
+        ((-0.30, -5.05), (-0.30, -5.69), (-0.79, -6.18), (-0.79, -7.40)),
+    )
+    trace_meshes = []
+    for routes, width in ((gpio, 0.24), (power, 0.32)):
+        for route in routes:
+            points = np.asarray(route)
+            segments = np.diff(points, axis=0)
+            normals = segments[:, [1, 0]] * (-1, 1)
+            normals /= np.linalg.norm(normals, axis=1)[:, None]
+            # A shared miter at each bend keeps the strip continuous.
+            miters = (normals[:-1] + normals[1:]) / (
+                1 + (normals[:-1] * normals[1:]).sum(axis=1)[:, None])
+            offsets = np.vstack((normals[0], miters, normals[-1])) * (width / 2)
+            vertices = np.column_stack((np.stack((points + offsets, points - offsets), axis=1)
+                                        .reshape(-1, 2), np.full(2 * len(points), 4.009)))
+            faces = [(i, i + 1, i + 2) for i in range(0, len(vertices) - 2, 2)]
+            faces += [(i + 1, i + 3, i + 2) for i in range(0, len(vertices) - 2, 2)]
+            trace_meshes.append(trimesh.Trimesh(vertices=vertices, faces=faces, process=False))
+    via_centres = ((-5.10, -6.77), (4.59, -9.94), (2.21, 10.10), (2.27, 7.01),
+                   (-0.31, 7.44), (5.90, 1.61), (-4.37, 5.23))
+    vias = (cq.Workplane("XY").workplane(offset=4.009).pushPoints(via_centres)
+            .circle(0.245).circle(0.102).extrude(0.019, combine=False))
+
+    scene = trimesh.Scene()
+    for name, part in (("mask", body), ("gold", pads), ("shell", shell),
+                       ("tongue", tongue), ("packages", packages),
+                       ("crystal", crystal), ("ceramic", ceramic),
+                       ("smd_ends", smd_ends), ("socket", socket), ("vias", vias)):
+        add_cad_mesh(scene, "nano_" + name, part)
+    scene.add_geometry(trimesh.util.concatenate(trace_meshes),
+                       node_name="nano_traces", geom_name="nano_traces")
+    scene.export(glb_path)
 
 
 def artisan_glb(glb_path):
@@ -654,14 +754,25 @@ def main():
                   f"y {bb[0][1]:.1f}..{bb[1][1]:.1f} z {bb[0][2]:.1f}..{bb[1][2]:.1f}")
 
     print("== 5. keycaps (KLP Lame, pinned download) -> glb")
+    cached_parts = os.environ.get("H44_KEYCAP_MESHES")
+    if cached_parts:
+        provenance_path = os.path.join(os.path.dirname(cached_parts), "PROVENANCE.json")
+        with open(provenance_path) as f:
+            pinned_commit = json.load(f)["keycaps"]["pinned_commit"]
+    else:
+        with open(os.path.join(KEYCAP_DIR, "PINNED_SOURCE.txt")) as f:
+            pinned_commit = f.read().strip()
     for v in ("Saddle", "Saddle_Tilted", "Saddle_Homing", "Normal",
               "Normal_Homing", "Normal_Tilted",
               "Thumb"):
+        dst = os.path.join(OUT, "parts", f"klp_{v.lower()}.glb")
+        if cached_parts:
+            copy2(os.path.join(cached_parts, os.path.basename(dst)), dst)
+            continue
         src = os.path.join(KEYCAP_DIR, f"klp_{v}.step")
         if not os.path.exists(src):
             sys.exit(f"missing keycap source {src} — run the fetch step")
-        step_to_named_glb(src, os.path.join(OUT, "parts", f"klp_{v.lower()}.glb"),
-                          tess_tol=0.012, weld=True)
+        step_to_named_glb(src, dst, tess_tol=0.012, weld=True)
 
     print("== 6. knob + screw (procedural)")
     knob_glb(os.path.join(OUT, "parts", "knob.glb"))
@@ -669,6 +780,7 @@ def main():
 
     print("== 6b. choc switch + artisan cap (procedural)")
     choc_glb(os.path.join(OUT, "parts", "choc.glb"))
+    nano_glb(os.path.join(OUT, "parts", "nano.glb"))
     artisan_glb(os.path.join(OUT, "parts", "artisan.glb"))
 
     print("== 7. placements (design frame) + plate cutout centers (raw DXF)")
@@ -676,14 +788,15 @@ def main():
     cutouts_json(os.path.join(OUT, "cutouts.json"))
 
     print("== 8. provenance")
-    import platform
     prov = {
-        "source_release": "generated/release/v0.5.0 (boards @8eef566357b8)",
+        "boards": {
+            half: sha256(os.path.join(REPO, "pcb", "kicad", f"Hojicha44-{half}.kicad_pcb"))
+            for half in ("Left", "Right")
+        },
         "keycaps": {
             "project": "braindefender/KLP-Lame-Keycaps",
             "license": "CC-BY-SA-4.0 (attribution required)",
-            "pinned_commit": open(os.path.join(
-                KEYCAP_DIR, "PINNED_SOURCE.txt")).read().strip(),
+            "pinned_commit": pinned_commit,
             "files": [f"klp_{v}.step" for v in ("Saddle", "Saddle_Tilted",
                       "Saddle_Homing", "Normal", "Normal_Homing",
                       "Normal_Tilted", "Thumb")],

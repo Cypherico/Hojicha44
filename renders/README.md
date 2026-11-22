@@ -1,8 +1,35 @@
 # Hojicha44 renders (Phase 10)
 
-Product renders built from the **committed engineering artifacts only** —
-no hand-modeled stand-ins for anything that exists in the repo. What you
-see is what the release contains.
+## Bright studio set, v0.5.2
+
+The [bright set](../generated/renders/v0.5.2/bright/) includes the hero,
+exploded, top, and two orbit views. The exploded view uses the front
+copper routes from both KiCad boards, the vendored EC11E and PJ-320A STEP
+models, and parametric Choc v1 switch meshes. Both controllers share the
+same nice!nano render model, with vias and component-side traces based on
+the [nice!nano product reference](https://nicekeyboards.com/nice-nano/).
+The traces are an illustrative layout on the module. The carrier PCBs in
+the exploded view use their KiCad routing data.
+The assembled studio views use one molded Blender foot per half. The
+exploded encoder and jack lift along the board normal above their pads.
+
+Build a fresh asset pack and render the five views from the repo root.
+Fetch the pinned KLP keycap sources with `bash renders/fetch_keycaps.sh`
+first, or point `H44_KEYCAP_MESHES` at the `parts/` directory of an
+existing asset pack with keycap provenance. The asset builder uses the
+case STL files from `case/out` by default. Generate them in a scratch
+directory if they are missing.
+
+```sh
+export CASE_OUT="$PWD/out/render-v051/case"
+export H44_RENDER_ASSETS="$PWD/out/render-v051/assets"
+case/.venv/bin/python case/gen_case.py
+case/.venv/bin/python case/gen_cover.py
+case/.venv/bin/python renders/build_assets.py
+blender --background --python-exit-code 1 --python renders/scene.py -- \
+    --setups bright --colourway bright --shots hero,exploded,orbit,top \
+    --stack-colors --device cpu --res 4800x3000 --samples 16 --out generated/renders/v0.5.2
+```
 
 ## Pipeline
 
@@ -34,13 +61,8 @@ blender --background --python renders/scene_env.py -- \
     --samples 128 --res 2400x1500 --shots desk,mat
 ```
 
-The same script accepts `--setups dark,bright` and the full shot set
-`--shots hero,exploded,top,macro,orbit` (plus `macro_encoder` /
-`macro_keys` under `macro`): hero + exploded are the product views, top
-is the orthographic layout proof, the macros frame the posed knob and
-the cap cluster beside the seam, and orbit is a 12-frame turntable at
-0.55 m (the single-half 0.20 m radius was a pre-pose holdover — the
-split assembly needs the distance).
+The studio script also accepts `--setups dark,bright`. Top is an
+orthographic view, and orbit renders the two retained stills at 60° and 240°.
 
 **Pre-flight framing check** (`--framecheck`, round-5): before any long
 render run, project every object's world bbox through each camera into
@@ -58,12 +80,8 @@ coordinate (the tented halves moved it — the camera stared at an empty
 spot), and the 0.10 m macro distance clipped the knob's far corner in
 the 27×40 mm frame.
 
-**Exploded diagram palette** (`--stack-colors`, round-6): the exploded
-shot is rendered as its OWN invocation with one matte colour per layer
-(slate tub / emerald board / amber gaskets / teal plate / graphite
-switches / violet cover / cream caps / charcoal nano / brass knob) so
-the stack reads like a technical diagram — and because it is a separate
-process the product shots keep their real materials:
+**Exploded diagram palette** (`--stack-colors`) applies coordinated
+finishes to the stack during the exploded shot:
 
     blender --background --python renders/scene.py -- \
         --samples 96 --res 2400x1500 --setups bright \
@@ -83,21 +101,14 @@ environment, then renders two shots into `env/`:
   pen, ceramic mug with coffee, desk lamp (shade, struts, base + a
   REAL spot light), aluminium dock, procedural walnut desk, plastered
   wall + baseboard. 28 mm from the user's chair.
-- **mat** — the low closeup across the mat: the TRRS cable DRESSED
-  between the halves (round-7 review: "limp, almost like a thread" —
-  now a Ø4.8 jacket with a stiff wide U, gold collar + metal barrel +
-  rubber strain boot at each jack, exits tangent), the USB-C running
-  back to the dock with its own connector boot, 45 mm at f/2.6 with
-  the focus pulled onto the cable sag.
-
-Environment pose: the split widens by an extra 200 mm (44 mm still
-read limp — a real cable needs room) and the halves sit ON the 3 mm
-mat, lifted by its thickness. The TRRS endpoints come from the posed
-`J_L1`/`J_R1` jack objects and the case-wall bboxes — never from
-pre-pose constants (the round-5 macro lesson, applied).
+- **mat** — a separate close-up on honed limestone. The mat uses an alternating
+  weave and curved stitch geometry, and the braided link seats into the
+  jacks through molded right-angle plugs. Use the current v0.5.2 case meshes
+  for the open plug bays. Render this view alone with
+  `--shots mat --res 2560x1600 --samples 64 --out generated/renders/v0.5.2`.
 
 Procedural materials (round 8: "desk mat should have fabric texture,
-walls should have more texture"): the mat is a woven fabric — crossed
+walls should have more texture"): in the wide desk scene, the mat is a woven fabric — crossed
 thread-scale wave bands form the weave bump, fuzz noise softens it, a
 wash noise varies the colour, roughness rides the weave — with ~220
 individual stitch boxes; the wall is mottled plaster (1 m blotch

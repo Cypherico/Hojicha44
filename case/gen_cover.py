@@ -5,9 +5,8 @@ The user review called the v3.5 rim ring "extraordinarily thick" and
 asked for a top case that follows the components: a 2.5mm top PLATE on
 the lip that
 
-  * opens a single key field around the 22 keycaps (their 17.48x16.48
-    KLP footprints, dilated CAP_CLEAR, merge at the 19mm pitch into one
-    clean opening),
+  * opens the key field using straight-sided column cutouts for the
+    matrix and rotated cutouts for the thumb keys,
   * covers the MCU/encoder wiring strip between the key field and the
     inner skin, with windows for the nio module, the EC11 and the
     pwrsw body,
@@ -87,6 +86,25 @@ def key_side(tag, win):
     return (win[0] - 0.4) if tag == "Left" else (win[2] + 0.4)
 
 
+def key_openings(holes, cap_height):
+    """Merge overlapping keys in each straight column before rounding corners."""
+    columns = {}
+    for x, y, angle in holes:
+        if abs(angle) > 1e-6:
+            yield x, y, angle, cap_height
+        else:
+            columns.setdefault(x, []).append(y)
+    for x, ys in columns.items():
+        ys.sort()
+        start = previous = ys[0]
+        for y in ys[1:]:
+            if y - previous > cap_height:
+                yield x, (start + previous) / 2, 0, previous - start + cap_height
+                start = y
+            previous = y
+        yield x, (start + previous) / 2, 0, previous - start + cap_height
+
+
 def build_cover(tag):
     P = params
     dxf = os.path.join(G.PLATE_DIR, f"Hojicha44-{tag}-plate.dxf")
@@ -114,16 +132,16 @@ def build_cover(tag):
     z0, z1 = P.TOP_LIP_Z, P.TOP_LIP_Z + P.COVER_T
     solid = G.prism(skin, z0, z1)
 
-    # ---- key field: union of the 22 dilated cap footprints -------------
+    # ---- key field ----------------------------------------------------
     kw = P.CAP_FOOT_W + 2 * P.CAP_CLEAR
     kh = P.CAP_FOOT_H + 2 * P.CAP_CLEAR
     cutter = None
-    for (cx, cy, ang) in holes:
-        s = rrect(kw, kh, P.CAP_ROUND, cx, cy, ang, z0 - 1.0, z1 + 1.0)
+    for cx, cy, ang, height in key_openings(holes, kh):
+        s = rrect(kw, height, P.CAP_ROUND, cx, cy, ang, z0 - 1.0, z1 + 1.0)
         cutter = s if cutter is None else cutter.fuse(s)
     # ---- component windows (MCU / encoder / pwrsw body; mirrored) ------
-    for bounds, radius in ((P.MCU_WIN, 2.0), (P.ENC_WIN, 2.0),
-                           (P.PWRSW_WIN, 0.5), (P.TRRS_BODY_WIN, 0.5), (P.JST_WIN, 0.6)):
+    for bounds, radius in ((P.MCU_WIN, 0.75), (P.ENC_WIN, 2.0),
+                           (P.PWRSW_WIN, 0.5), (P.TRRS_BODY_WIN, 0.5), (P.JST_WIN, 0.5)):
         x0, y0, x1, y1 = win2(tag, bounds)
         s = rrect(x1 - x0, y1 - y0, radius, (x0 + x1) / 2, (y0 + y1) / 2,
                   0.0, z0 - 1.0, z1 + 1.0)

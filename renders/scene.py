@@ -21,7 +21,7 @@ STACK (z=0 is the PCB top; thin-top round):
   PCB substrate           -1.60..0        (STEP top 1.60 shifted down)
   bottom gaskets          -1.55..1.00     (3.0 poron compressed to 2.55)
   plate                    1.00..2.20
-  switch body              0.30..3.30, cap stem tip 1.50
+  switch housing           0.00..4.32, slider crown 5.07
   top gaskets              2.20..3.20     (1.5 poron compressed to 1.00)
   KLP Normal_Tilted top    11.14          (~5.9 mm proud of the cover;
                                            thumbs wear the same family)
@@ -35,10 +35,8 @@ COLOURWAY (round 4: "make it less bland"): warm-bone satin PBT caps,
 mid-grey matte PLA case, near-black waxy POM plate, machined-metal knob
 and encoder, gold traces on the nice!nano.
 
-POSE (round 4): for the product shots the halves are parented to an
-empty on each outer bottom edge, then pushed 7 mm apart, splayed 4 deg
-in plan and tented 5 deg — the classic Sofle/Corne wing presentation.
-Pure render transform; the case files build the assembled layout.
+POSE: each half is splayed 5°, tented 6°, and moved outward 5 mm.
+The bright studio views support each half with a single molded foot.
 """
 import bpy
 import sys
@@ -49,7 +47,8 @@ import re
 import argparse
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ASSETS = os.path.join(REPO, "generated", "renders", "assets")
+ASSETS = os.environ.get("H44_RENDER_ASSETS",
+                        os.path.join(REPO, "generated", "renders", "assets"))
 OUTROOT = os.path.join(REPO, "generated", "renders", "v0.5.1")
 
 SCALE = 0.001            # design-frame mm -> Blender meters
@@ -57,20 +56,11 @@ PCB_TOP_IN_STEP = 1.60   # substrate top inside the kicad-cli STEP
 PLATE_Z = 1.00           # plate underside above the PCB top (GAP)
 CAP_STEM_Z = 1.5         # cap stem tip above the PCB top (inside switch)
 
-# Exploded view: vertical disassembly sequence (each layer distinct)
-# - Knob pulled off encoder (+82mm)
-# - Top cover lifted (+66mm)
-# - Keycaps popped off switches (+44mm)
-# - Switch plate + Kailh Choc switches lifted (+24mm)
-# - Rotary encoder lifted off PCB (+12mm, hovering above its solder pads)
-# - PCB reference plane at 0.0mm (revealing real copper traces, pads & diodes)
-# - Poron bottom case foam dropped (-17.5mm)
-# - Bottom tub dropped (-40.0mm)
-EXPLODE = {"knob": 82.0, "cover": 66.0, "caps": 44.0,
-           "gaskets": 24.0, "gaskets_b": -17.5,
-           "swbodies": 24.0, "plate": 24.0,
-           "encoder": 12.0,
-           "foam": -17.5, "tub": -40.0}
+# Offsets along each half's assembly axis, in millimetres.
+EXPLODE = {"knob": 117.0, "caps": 102.0, "cover": 77.0,
+           "swbodies": 53.0, "gaskets": 42.0, "plate": 42.0,
+           "encoder": 14.0, "jack": 12.0,
+           "foam": -25.0, "gaskets_b": -25.0, "tub": -50.0}
 # nice!nano courtyard in the FOOTPRINT's local (file) frame, from the
 # embedded Socket_Strips_2x12_P2.54mm_NiceNano footprint (KiCad 10)
 NANO_COURT = (-17.07, -29.94, 2.85, 2.60)   # x0, y0, x1, y1
@@ -82,7 +72,7 @@ def parse_args():
     p.add_argument("--samples", type=int, default=96)
     p.add_argument("--res", default="2400x1500")
     p.add_argument("--setups", default="dark,bright")
-    p.add_argument("--shots", default="hero,exploded,macro,orbit")
+    p.add_argument("--shots", default="hero,exploded,orbit,top")
     p.add_argument("--out", default=OUTROOT)
     p.add_argument("--device", default="metal", choices=["metal", "cpu"])
     p.add_argument("--pp", action="store_true",
@@ -92,14 +82,12 @@ def parse_args():
     p.add_argument("--colourway", default="bright",
                    choices=["bright", "dark", "play", "artisan"],
                    help="product colourway (renders/SHOTLIST.md): dark = "
-                        "stealth set on marble; play = multicolour caps; "
+                        "charcoal set on honed stone; play = multicolour caps; "
                         "artisan = bright + one sculpted accent cap")
     p.add_argument("--framecheck", action="store_true",
                    help="report NDC extents per camera, render nothing")
     p.add_argument("--stack-colors", action="store_true",
-                   help="diagram palette per layer (for the exploded shot; "
-                        "run it as its own invocation so the colours "
-                        "cannot leak into the product shots)")
+                   help="apply the diagram palette to the exploded shot")
     p.add_argument("--palette", action="store_true",
                    help="garish debug colors to verify assignments")
     p.add_argument("--hide-cover", action="store_true")
@@ -308,19 +296,12 @@ def smooth(objs, angle_deg=35.0):
         bpy.ops.object.shade_auto_smooth(angle=math.radians(angle_deg))
 
 
-def move_z(objs, dz):
-    """Lift a group once: top-level objects only. "Top-level" = no
-    parent, or parented to a pose_ empty (round-6 audit catch: after
-    the presentation pose parented every half object to pose_L/pose_R,
-    the old parentless-only test matched nothing and the explode
-    silently rendered an assembled board). GlTF-nested nodes keep
-    moving exactly once, with their root."""
-    for o in objs:
-        if o.parent is None or (o.parent is not None and
-                                o.parent.name.startswith("pose_")):
-            o.location.z += dz
-    bpy.context.view_layer.update()   # keep matrix_world truthful for the
-    # next caller's bbox/measure (see bbox_mm)
+def move_exploded_layer(objs, dz):
+    """Lift each root along its half's assembly axis."""
+    for obj in objs:
+        if obj.parent is None or obj.parent.name.startswith("pose_"):
+            obj.location.z += dz
+    bpy.context.view_layer.update()
 
 
 def add_cube(name, loc, size, mat, rot_z=0.0):
@@ -353,8 +334,8 @@ def setup_world_and_lights(setup, cx, cy):
     else:
         bg_cam.inputs[0].default_value = (0.004, 0.004, 0.005, 1.0)
         bg_cam.inputs[1].default_value = 1.0
-        bg_amb.inputs[0].default_value = (0.05, 0.07, 0.12, 1.0)
-        bg_amb.inputs[1].default_value = 0.05
+        bg_amb.inputs[0].default_value = (0.22, 0.24, 0.27, 1.0)
+        bg_amb.inputs[1].default_value = 0.22
     nt.links.new(lp.outputs["Is Camera Ray"], mix.inputs["Fac"])
     nt.links.new(bg_amb.outputs[0], mix.inputs[1])
     nt.links.new(bg_cam.outputs[0], mix.inputs[2])
@@ -365,9 +346,10 @@ def setup_world_and_lights(setup, cx, cy):
             bpy.data.objects.remove(o, do_unlink=True)
     import mathutils
 
-    def area(name, energy, size, loc, target, color=(1, 1, 1)):
+    def area(name, energy, size, loc, target, color=(1, 1, 1), shape="SQUARE"):
         li = bpy.data.lights.new(name, "AREA")
         li.energy = energy
+        li.shape = shape
         li.size = size
         li.color = color
         o = bpy.data.objects.new(name, li)
@@ -383,79 +365,70 @@ def setup_world_and_lights(setup, cx, cy):
         area("rim", 2, 0.5, (cx + 0.02, cy + 0.34, 0.30), (cx, cy, 0.0))
         area("rim2", 0.6, 0.5, (cx - 0.36, cy + 0.18, 0.24), (cx, cy, 0.0))
     else:
-        # dark/stealth rig (round-10 review: "gentle lighting, more
-        # extreme accent lighting, angled, not so high; dark,
-        # atmospheric" — the earlier rig read as window glare on the
-        # marble): two LOW grazing accents sweeping across the board
-        # at table height + a tight cool rim. Nothing overhead.
-        # round-11 review: "don't have such huge light sources, lower
-        # smaller light sources" — 120-100 mm accents at ~60 mm height,
-        # grazing sweeps; the 350 mm panels read as window glare
-        # round 17: 70/60 mm accents — the 120 mm panels still read
-        # as "a large rectangle of light" in the marble's coat
-        # round 19: SIDE mood lighting — the accents moved OFF the
-        # camera axis (front-left/front-right) to the flanks, aimed
-        # ACROSS the board, so their reflections in the marble leave
-        # the camera's view instead of glaring at it; the rim sweeps
-        # high and behind. Flanks low, edges grazing.
-        # round 22: the west accent was reading too weak on the board
-        area("acc_west", 1.15, 0.09, (cx - 0.52, cy + 0.10, 0.062),
-             (cx + 0.06, cy - 0.04, 0.015), (1.0, 0.84, 0.58))
-        area("acc_east", 0.55, 0.08, (cx + 0.58, cy + 0.16, 0.055),
-             (cx - 0.10, cy - 0.02, 0.015), (0.50, 0.66, 1.0))
-        area("rim_cool", 0.45, 0.10, (cx + 0.22, cy + 0.46, 0.30),
-             (cx, cy, 0.0), (0.42, 0.58, 1.0))
+        # Broad neutral key reveals the dishes; lower fill separates the case
+        # from the stone, with a restrained warm reflection on the brass.
+        area("dark_key", 2.85, 0.48, (cx - 0.28, cy - 0.20, 0.38),
+             (cx, cy, 0.0), (1.0, 0.96, 0.91), shape="DISK")
+        area("dark_fill", 1.35, 0.38, (cx + 0.35, cy - 0.10, 0.21),
+             (cx, cy, 0.0), (0.81, 0.87, 1.0), shape="DISK")
+        area("dark_rim", 1.9, 0.30, (cx + 0.08, cy + 0.30, 0.34),
+             (cx, cy, 0.0), (1.0, 0.89, 0.73), shape="DISK")
+
+
+def projected_bounds(cam, objects, res):
+    """Return the screen-space bounds of the visible mesh vertices."""
+    import numpy as np
+
+    bpy.context.view_layer.update()
+    depsgraph = bpy.context.evaluated_depsgraph_get()
+    width, height = res
+    projection = cam.evaluated_get(depsgraph).calc_matrix_camera(
+        depsgraph, x=width, y=height)
+    view = projection @ cam.matrix_world.inverted()
+    lo, hi = np.full(2, np.inf), np.full(2, -np.inf)
+    for source in objects:
+        if source.type != "MESH" or source.hide_render:
+            continue
+        obj = source.evaluated_get(depsgraph)
+        vertices = obj.data.vertices
+        if not vertices:
+            continue
+        xyz = np.empty(len(vertices) * 3, dtype=np.float32)
+        vertices.foreach_get("co", xyz)
+        transform = np.asarray(view @ obj.matrix_world, dtype=np.float32)
+        clip = xyz.reshape(-1, 3) @ transform.T[:3] + transform[:, 3]
+        if (clip[:, 3] <= 0).any():
+            raise ValueError(f"{cam.name}: {obj.name} crosses the camera plane")
+        ndc = clip[:, :2] / clip[:, 3:4]
+        lo = np.minimum(lo, ndc.min(axis=0))
+        hi = np.maximum(hi, ndc.max(axis=0))
+    return lo, hi
 
 
 def frame_report(cam, objs, label, res, tol=1.0):
-    """Pre-flight framing check: project every object's world-bbox
-    corner through the camera into normalised device coords (Blender
-    5.x dropped scene.world_to_camera_info, so this is the lens/sensor
-    maths done by hand). |ndc| > 1 == outside the frame at the render
-    aspect; report the covered extent so a clip is visible as a number
-    before hours of sampling are spent. Returns True when everything
-    fits."""
-    import mathutils
-    bpy.context.view_layer.update()   # add_cam never evaluated matrix_world
-    mw = cam.matrix_world
-    right = mathutils.Vector((mw[0][0], mw[1][0], mw[2][0]))
-    up = mathutils.Vector((mw[0][1], mw[1][1], mw[2][1]))
-    back = mathutils.Vector((mw[0][2], mw[1][2], mw[2][2]))
-    loc = cam.location
-    w, h = res
-    aspect = w / h
-    persp = cam.data.type == "PERSP"
-    sw = cam.data.sensor_width      # sensor fit AUTO, aspect > 1: horizontal
-    pts = []
-    for o in objs:
-        if o.type != "MESH":
-            continue
-        for c in o.bound_box:
-            v = (o.matrix_world @ mathutils.Vector(c)) - loc
-            px, py, pz = v.dot(right), v.dot(up), v.dot(back)
-            if persp:
-                depth = -pz
-                if depth <= 1e-6:
-                    print(f"[frame] {label}: point BEHIND camera - FAIL",
-                          flush=True)
-                    return False
-                nx = px * cam.data.lens / (depth * sw / 2)
-                ny = py * cam.data.lens * 2 * aspect / (depth * sw)
-            else:
-                nx = px / (cam.data.ortho_scale / 2)
-                ny = py * aspect / (cam.data.ortho_scale / 2)
-            pts.append((nx, ny))
-    if not pts:
-        print(f"[frame] {label}: no subject points", flush=True)
+    try:
+        lo, hi = projected_bounds(cam, objs, res)
+    except ValueError as exc:
+        print(f"[frame] {label}: {exc} - FAIL", flush=True)
         return False
-    xs = [q[0] for q in pts]
-    ys = [q[1] for q in pts]
-    ok = (min(xs) >= -tol and max(xs) <= tol
-          and min(ys) >= -tol and max(ys) <= tol)
-    print(f"[frame] {label}: x [{min(xs):+.3f},{max(xs):+.3f}] "
-          f"y [{min(ys):+.3f},{max(ys):+.3f}] "
+    ok = bool((-tol <= lo).all() and (hi <= tol).all()
+              and (lo <= hi).all())
+    print(f"[frame] {label}: x [{lo[0]:+.3f},{hi[0]:+.3f}] "
+          f"y [{lo[1]:+.3f},{hi[1]:+.3f}] "
           f"{'PASS' if ok else 'CLIPPED'}", flush=True)
     return ok
+
+
+def center_subject(cam, objects, res):
+    """Balance the projected silhouette while preserving the camera angle."""
+    width, height = res
+    lo, hi = projected_bounds(cam, objects, res)
+    dx, dy = (lo + hi) / 2
+    cam.data.shift_x += float(dx / 2)
+    cam.data.shift_y += float(dy * height / (2 * width))
+    lo, hi = projected_bounds(cam, objects, res)
+    print(f"[center] {cam.name}: x {lo[0]:+.3f}..{hi[0]:+.3f}, "
+          f"y {lo[1]:+.3f}..{hi[1]:+.3f}", flush=True)
 
 
 def add_cam(name, loc, look_at, lens=50):
@@ -474,6 +447,7 @@ def render_to(cam, path, res, samples, device="metal", pp=False):
     sc = bpy.context.scene
     sc.camera = cam
     sc.render.engine = "CYCLES"
+    sc.render.use_persistent_data = True
     if pp:
         # render_pp: Cycles bounce/clamp realism + the photographic
         # compositor (5.2 quirks handled inside the module)
@@ -520,24 +494,97 @@ def init_scene():
     sc.view_settings.gamma = 1.0
 
 
+def materialize_ports(encoder, jack, half, metal_body, shaft, plastic, terminals):
+    from mathutils import Vector
+
+    if REPO not in sys.path:
+        sys.path.append(REPO)
+    from case.params import PORTS, TRRS_JACK_AXIS_Z
+
+    assign([encoder], metal_body)
+    encoder.data.materials.append(shaft)
+    encoder.data.materials.append(plastic)
+    xform = encoder.matrix_world
+    inverse = xform.inverted()
+    for v in encoder.data.vertices:
+        pos = xform @ v.co
+        if pos.z > 13.5 * SCALE:
+            pos.z = 13.5 * SCALE
+            v.co = inverse @ pos
+    encoder.data.update()
+    for face in encoder.data.polygons:
+        pos = xform @ face.center
+        normal = xform.to_3x3() @ face.normal
+        if pos.z >= 8.9 * SCALE or pos.z < 0:
+            face.material_index = 1
+        elif pos.z < 5.7 * SCALE and abs(normal.z) > 0.0004:
+            face.material_index = 2
+
+    # Register the STEP bore to the case datum, and use the PCB pads
+    # for terminals because the STEP model's terminal spacing differs.
+    mouth_sign = 1 if half == "Left" else -1
+    x, y = PORTS[half]["trrs"]
+    mouth = Vector((x, y, TRRS_JACK_AXIS_Z)) * SCALE
+    outward = Vector((mouth_sign, 0, 0))
+    xform = jack.matrix_world
+    front = max((xform @ v.co).dot(outward) for v in jack.data.vertices)
+    jack.location += outward * (mouth.dot(outward) - front)
+    bpy.context.view_layer.update()
+    xform = jack.matrix_world
+    inverse = xform.inverted()
+    for v in jack.data.vertices:
+        pos = xform @ v.co
+        if pos.z < 0:
+            pos.z = 0
+            v.co = inverse @ pos
+    jack.data.update()
+
+    # A ray down the real bore must travel into the housing before hitting
+    # anything. This catches a closed back face facing the seam.
+    ray_start = mouth + outward * (0.3 * SCALE)
+    local_outward = (inverse.to_3x3() @ outward).normalized()
+    hit, point, _, _ = jack.ray_cast(inverse @ ray_start, -local_outward)
+    if not hit or (xform @ point - ray_start).length < 3 * SCALE:
+        raise RuntimeError(f"{jack.name} bore does not face the case opening")
+    jack["bore_center"] = tuple(inverse @ mouth)
+    jack["bore_outward"] = tuple(local_outward)
+
+    assign([jack], plastic)
+    jack.data.materials.append(terminals)
+    for face in jack.data.polygons:
+        pos = xform @ face.center
+        radius = math.hypot(pos.y - mouth.y, pos.z - mouth.z)
+        if (pos - mouth).dot(outward) > -0.9 * SCALE and radius < 2.2 * SCALE:
+            face.material_index = 1
+
+    from pathlib import Path
+    generators = str(Path(REPO) / "pcb" / "generators")
+    if generators not in sys.path:
+        sys.path.insert(0, generators)
+    from check_board import committed_pads
+
+    board = Path(REPO) / "pcb" / "kicad" / f"Hojicha44-{half}.kicad_pcb"
+    pins = [add_cube(f"{ref}_{pin}_terminal", (x * SCALE, -y * SCALE, -1.2 * SCALE),
+                     (0.72, 0.42, 2.65), terminals)
+            for ref, pin, x, y, *_ in committed_pads(board)
+            if ref == jack.name and pin in ("T", "R1", "R2", "S")]
+    if len(pins) != 4:
+        raise RuntimeError(f"{jack.name} expected four plated terminal pads")
+    return pins
+
+
 def build_keyboard(args):
     """Assemble both halves at their posed positions: boards, plates,
     cases, caps, gaskets, nano proxies, truncated encoders, knobs and
     the presentation-pose empties. Returns (parts, all_objs); every
     object is parented to pose_L/pose_R. Shared by the studio scene and
     the desk-environment scene (scene_env.py)."""
-    # one choc source import: the mesh data is shared by all 46 switch
-    # instances (linked, not duplicated); the source object itself is
-    # hidden. Falls back to nothing if the asset is missing (a loud
-    # abort is better than foam-pad rectangles).
+    # Share the four source meshes across all 44 switch positions.
     choc_glb_path = os.path.join(ASSETS, "parts", "choc.glb")
     if not os.path.exists(choc_glb_path):
         sys.exit("[scene] ABORT missing assets/parts/choc.glb — "
-                 "run: case/.venv/bin/python /tmp/build_newparts.py")
+                 "run: case/.venv/bin/python renders/build_assets.py")
     _, choc_roots, _ = import_glb(choc_glb_path, "choc_src")
-    # round 19: the choc is a TWO-MESH export (housing + stem) — each
-    # switch instance is both meshes, so the exploded can tint the
-    # housing cream and the stem charcoal (the real two-tone)
     choc_sources = [(r.name, r.data, r.rotation_euler.copy(),
                      r.scale.copy())
                     for r in choc_roots if r.type == "MESH"]
@@ -563,14 +610,13 @@ def build_keyboard(args):
     try:
         import materials_detail as MD
         m_cap = MD.cap_pbt_v2("cap_pbt")
-        m_sw = MD.case_sintered_v2("switch_body")
         m_case = MD.case_sintered_v2("case_pla")
         m_plate = MD.plate_pom_v2("plate_pom")
         m_knob = MD.alu_anodized_v2("knob_alu")
         m_enc_body = MD.alu_anodized_v2("enc_gunmetal")
         m_enc_shaft = MD.steel_shaft_v2("enc_steel")
         m_poron = MD.poron_v2("poron_pad")
-        for m in (m_cap, m_sw, m_case, m_plate, m_knob, m_enc_body,
+        for m in (m_cap, m_case, m_plate, m_knob, m_enc_body,
                   m_enc_shaft, m_poron):
             m["micro_texture"] = True
         print("[scene] materials: DETAIL pass active (materials_detail)",
@@ -579,7 +625,6 @@ def build_keyboard(args):
         print(f"  (materials_detail unavailable, base set: {e})",
               flush=True)
         m_cap = pbr("cap_pbt", (0.55, 0.525, 0.475), rough=0.42)
-        m_sw = pbr("switch_body", (0.026, 0.026, 0.030), rough=0.38)
         m_poron = pbr("poron_pad", (0.40, 0.38, 0.36), rough=0.93)
         micro_texture(m_poron, 90, 0.5, 0.001, 0.88, 0.97, detail=3.0)
         m_case = pbr("case_pla", (0.30, 0.30, 0.315), rough=0.62)
@@ -590,32 +635,28 @@ def build_keyboard(args):
                          rough=0.30, metal=0.9)
         m_enc_shaft = pbr("enc_steel", (0.66, 0.67, 0.70), rough=0.20,
                           metal=1.0)
-    # round 24: 0.42 roughness mirrored the big bright key as a uniform
-    # grey sheet; a matte 0.62 mask keeps the board black and lets the
-    # copper do the talking
-    m_nano = pbr("nano_pcb", (0.004, 0.004, 0.005), rough=0.62)   # black mask
-    m_chip = pbr("nano_chip", (0.020, 0.020, 0.023), rough=0.30)
-    m_usb = pbr("usb_shell", (0.62, 0.63, 0.65), rough=0.28, metal=1.0)
-    m_sock = pbr("nano_socket", (0.028, 0.028, 0.030), rough=0.45)
-    # round 20: the audit found these two flat (no height/bump) —
-    # ENIG pads get a faint plating tooth + roughness swing, silk a
-    # woven screen-print tooth
-    m_gold = pbr("nano_castel", (0.96, 0.72, 0.26), rough=0.19, metal=1.0)
-    micro_texture(m_gold, 420, 0.10, 0.00003, 0.24, 0.36, detail=4.0)
-    m_silk = pbr("nano_silk", (0.80, 0.80, 0.77), rough=0.55)
-    micro_texture(m_silk, 260, 0.22, 0.00004, 0.48, 0.62, detail=4.0)
-    # colourway hierarchy (review 2026-10-24): warm-bone caps (lightest)
-    # > mid-grey case > near-black waxy POM plate (darkest); the DETAIL
-    # pass above builds this same ladder with real surface signals
-    # texture pass: PBT caps a FINE satin grain, the PLA case a clearly
-    # coarser grain, the POM plate almost none (waxy gloss), the knob and
-    # encoder read as machined metal
+    switch_materials = {
+        "base": pbr("choc_base", (0.45, 0.43, 0.37), rough=0.43),
+        "housing": pbr("choc_housing", (0.70, 0.66, 0.55), rough=0.36),
+        "stem": pbr("choc_stem", (0.08, 0.11, 0.13), rough=0.34),
+        "contacts": pbr("choc_contacts", (0.61, 0.41, 0.22), rough=0.27, metal=0.9),
+    }
+    nano_materials = {
+        "mask": pbr("nano_mask", (0.012, 0.014, 0.016), rough=0.53),
+        "gold": pbr("nano_enig", (0.63, 0.43, 0.14), rough=0.29, metal=0.92),
+        "traces": pbr("nano_mask_over_copper", (0.115, 0.082, 0.047), rough=0.58),
+        "vias": pbr("nano_via_plating", (0.36, 0.24, 0.10), rough=0.42, metal=0.67),
+        "shell": pbr("nano_usb_shell", (0.49, 0.51, 0.53), rough=0.29, metal=0.93),
+        "tongue": pbr("nano_usb_tongue", (0.062, 0.060, 0.056), rough=0.43),
+        "packages": pbr("nano_ic", (0.035, 0.034, 0.035), rough=0.48),
+        "crystal": pbr("nano_crystal", (0.45, 0.47, 0.48), rough=0.35, metal=0.78),
+        "ceramic": pbr("nano_mlcc", (0.35, 0.29, 0.20), rough=0.51),
+        "smd_ends": pbr("nano_solder", (0.47, 0.48, 0.50), rough=0.34, metal=0.82),
+        "socket": pbr("nano_socket", (0.027, 0.028, 0.030), rough=0.49),
+    }
+    micro_texture(nano_materials["mask"], 160, 0.15, 0.00002, 0.48, 0.59)
+    micro_texture(nano_materials["packages"], 140, 0.18, 0.00003, 0.42, 0.55)
     micro_texture(m_cap, 42, 0.28, 0.00022, 0.36, 0.48, detail=5.0)
-    micro_texture(m_sw, 40, 0.20, 0.00004, 0.34, 0.42)
-    micro_texture(m_nano, 60, 0.18, 0.00003, 0.56, 0.70)
-    micro_texture(m_chip, 120, 0.10, 0.00002, 0.28, 0.34)
-    micro_texture(m_usb, 200, 0.10, 0.00002, 0.24, 0.32)
-    micro_texture(m_sock, 50, 0.15, 0.00003, 0.42, 0.50)
     micro_texture(m_case, 85, 0.40, 0.00055, 0.52, 0.68, detail=5.0)
     micro_texture(m_plate, 240, 0.10, 0.00002, 0.11, 0.17)
     micro_texture(m_knob, 300, 0.06, 0.000015, 0.22, 0.30)
@@ -731,21 +772,16 @@ def build_keyboard(args):
         # ---- switch housings visible between plate and cap skirt
         for p in sw:
             c = holes[p["ref"]]
-            # round 9/19: REAL choc switches (housing + stem meshes,
-            # base frame, corner clip posts, stepped housing, LED
-            # window) instead of the 13.6x13.6x3.0 box the round-8
-            # review read as "foam switch pads". Linked instances per
-            # switch position, both meshes.
             for src_name, src_data, rot, scl in choc_sources:
-                tag = "housing" if "housing" in src_name else "stem"
+                tag = src_name.removeprefix("choc_")
                 o = bpy.data.objects.new(
                     f"swbody_{h}_{p['ref']}_{tag}", src_data)
                 o.rotation_euler = rot
                 o.scale = scl
                 o.location = (c["x"] * SCALE, c["y"] * SCALE, 0.0)
-                o.rotation_euler.z += math.radians(c["angle"])
+                o.rotation_euler.z += math.radians(p["rot"])
                 bpy.context.collection.objects.link(o)
-                assign([o], m_sw)
+                assign([o], switch_materials[tag])
                 parts[h].setdefault("swbodies", []).append(o)
 
         # ---- poron gaskets on every tab, compressed to the real
@@ -873,220 +909,41 @@ def build_keyboard(args):
                              f"outside MCU window ({w['x']},{w['y']})")
                 print(f"[scene] {half}: nano bbox x {nx0:.2f}..{nx1:.2f} "
                       f"y {ny0:.2f}..{ny1:.2f} inside MCU window", flush=True)
-            body_y = 33.0            # nice!nano v2 body (module PCB)
-            body_x = 17.8
-            # round 24: the module used to sit proud of the cover
-            # (pb top 6.1 vs cover 5.2) and caught the full key light --
-            # in the bright set it washed to a flat grey slab. 2.4 puts
-            # the mask 1.2mm inside the window well, shaded by the rim.
-            z_pcb0 = 2.4             # Mill-Max 315+3320 stack (spec BOM)
-            z_pcb1 = z_pcb0 + 1.6
-            g = parts[h].setdefault("nano", [])
-            g.append(add_cube(f"nano_pcb_{h}",
-                              (ncx * SCALE, ncy * SCALE,
-                               ((z_pcb0 + z_pcb1) / 2) * SCALE),
-                              (body_x, body_y, 1.6), m_nano))
-            # gold castellated pads: 12 per long edge at 2.54mm pitch
-            # (the 2x12 socket pin field), not one continuous strip
-            for sgn in (-1, 1):
-                for i in range(12):
-                    g.append(add_cube(
-                        f"nano_pad_{h}_{sgn}_{i}",
-                        ((ncx + sgn * (body_x / 2 - 0.45)) * SCALE,
-                         (ncy + (i - 5.5) * 2.54) * SCALE,
-                         ((z_pcb0 + z_pcb1) / 2) * SCALE),
-                        (0.80, 1.45, 1.75), m_gold))
-            # copper runs: from each pad inward with a deterministic
-            # length + jog, plus scattered vias — the board reads as
-            # wired, not printed
-            # round 22: traces widened 0.25 -> 0.35 — the nano read as
-            # "just grey" at window size; thicker gold reads wired
-            # round 24b: 0.55 mm read as blunt gold BARS in the hero
-            # ("too thick / obnoxiously blunt"). 0.30 mm is a real
-            # 1/2-oz trace at this scale; it stays visible because the
-            # gold is bright and the mask behind it is near-black.
-            tr = 0.30
-            for sgn in (-1, 1):
-                for i in range(12):
-                    y_off = (i - 5.5) * 2.54
-                    L = 2.0 + ((i * 37 + (sgn > 0) * 13) % 53) / 10.0
-                    g.append(add_cube(
-                        f"nano_tr_{h}_{sgn}_{i}",
-                        ((ncx + sgn * (body_x / 2 - 0.9 - L / 2)) * SCALE,
-                         (ncy + y_off) * SCALE, (z_pcb1 + 0.02) * SCALE),
-                        (L, tr, 0.04), m_gold))
-                    if i % 3 == 1:
-                        jl = 1.5 + (i % 4) * 0.9
-                        g.append(add_cube(
-                            f"nano_tj_{h}_{sgn}_{i}",
-                            ((ncx + sgn * (body_x / 2 - 0.9 - L)) * SCALE,
-                             (ncy + y_off + sgn * jl / 2) * SCALE,
-                             (z_pcb1 + 0.02) * SCALE),
-                            (tr, jl, 0.04), m_gold))
-            for k in range(10):
-                vx = ((k * 71) % 130) / 10.0 - 6.5
-                vy = ((k * 53) % 240) / 10.0 - 12.0
-                g.append(add_cube(
-                    f"nano_via_{h}_{k}",
-                    ((ncx + vx) * SCALE, (ncy + vy) * SCALE,
-                     (z_pcb1 + 0.015) * SCALE),
-                    (0.46, 0.46, 0.03), m_gold))  # r24b: finer via
-            # silkscreen text (Blender font, lies flat on the mask)
-            for tname, tbody, ty, tsize in (
-                    ("nice!nano v2", "nice!nano v2", -10.6, 2.6),
-                    ("hojicha44", "hojicha44", -5.4, 1.5)):
-                crv = bpy.data.curves.new(f"nano_txt_{h}_{tname}",
-                                          type="FONT")
-                crv.body = tbody
-                crv.size = tsize * SCALE
-                crv.extrude = 0.02 * SCALE
-                crv.align_x = "CENTER"
-                tob = bpy.data.objects.new(f"nano_txt_{h}_{ty}", crv)
-                tob.location = (ncx * SCALE, (ncy + ty) * SCALE,
-                                (z_pcb1 + 0.05) * SCALE)
-                tob.rotation_euler = (0, 0, 0)
-                bpy.context.collection.objects.link(tob)
-                assign([tob], m_silk)
-                g.append(tob)
-            # round 24: USB-C shell REMOVED. It stood 3mm proud of the
-            # module and read as a grey brick in the MCU window.
-            # nRF52840 + antenna keepout sit on top of the module
-            g.append(add_cube(f"nano_mcu_{h}",
-                              (ncx * SCALE, (ncy + 2.0) * SCALE,
-                               (z_pcb1 + 0.45) * SCALE),
-                              (5.5, 5.5, 0.9), m_chip))
-            g.append(add_cube(f"nano_ant_{h}",
-                              (ncx * SCALE, (ncy - 14.0) * SCALE,
-                               (z_pcb1 + 0.25) * SCALE),
-                              (3.0, 2.0, 0.5), m_chip))
-            # crystal (silver) + a passives field around the QFN
-            g.append(add_cube(f"nano_xtal_{h}",
-                              ((ncx - 4.8) * SCALE, (ncy + 7.5) * SCALE,
-                               (z_pcb1 + 0.45) * SCALE),
-                              (3.2, 2.5, 0.9), m_usb))
-            for k in range(8):
-                px = ((k * 47) % 90) / 10.0 - 4.5
-                py = 2.0 + ((k * 31) % 60) / 10.0 - 1.5
-                g.append(add_cube(
-                    f"nano_pas_{h}_{k}",
-                    ((ncx + px) * SCALE, (ncy + py) * SCALE,
-                     (z_pcb1 + 0.11) * SCALE),
-                    (0.6, 0.3, 0.22), m_chip))
-            # reset pushbutton (top-east corner) + status LED (top-west)
-            g.append(add_cube(f"nano_rst_{h}",
-                              ((ncx + 6.5) * SCALE, (ncy + 13.4) * SCALE,
-                               (z_pcb1 + 0.7) * SCALE),
-                              (2.4, 2.6, 1.4), m_sock))
-            g.append(add_cube(f"nano_led_{h}",
-                              ((ncx - 5.6) * SCALE, (ncy + 13.4) * SCALE,
-                               (z_pcb1 + 0.25) * SCALE),
-                              (1.6, 1.0, 0.5), m_gold))
-            # two low-profile socket strips under the module (the 315
-            # bodies; the 3320 pins rise into the module)
-            for sgn in (-1, 1):
-                g.append(add_cube(f"nano_sock_{h}_{sgn}",
-                                  ((ncx + sgn * 7.62) * SCALE, ncy * SCALE,
-                                   1.3 * SCALE),
-                                  (2.6, 29.0, 2.6), m_sock))
+            _, nano_roots, nano_meshes = import_glb(
+                os.path.join(ASSETS, "parts", "nano.glb"), f"nano_{h}")
+            for obj in nano_roots:
+                obj.location.x += ncx * SCALE
+                obj.location.y += ncy * SCALE
+            for obj in nano_meshes:
+                part = obj.name.split(".")[0].removeprefix("nano_")
+                assign([obj], nano_materials[part])
+            parts[h]["nano"] = nano_meshes
 
-        # ---- EC11: short-shaft EC11-class variant (BOM primary) under a
-        # low fluted knob. The board GLB carries the vendored 20mm-class
-        # ALPS STEP as one mesh: (a) truncate the shaft at 13.5mm above
-        # the board — the low-profile class the Sofle Choc build guide
-        # documents ("prefer short shaft... 10mm D-shaped shaft") and the
-        # KLOTZ/MKUltra knob aesthetic (a 2-3mm stem above the bush);
-        # (b) split body/bush from shaft at the 11.3 step plane for a
-        # two-tone finish (gunmetal body, bright steel shaft). The knob
-        # then covers everything above the rim — no bare shaft shows.
-        parts[h]["encoder"] = []
-        enc_objs = [o for o in list(parts[h]["board"])
-                    if o.type == "MESH" and o.name.startswith("ENC_")]
-        if enc_objs:
-            import bmesh
-            ENC_SPLIT_Z, ENC_SHAFT_TOP_Z = 11.35, 13.5
-            for o in enc_objs:
-                # Remove from board group so PCB materials don't overwrite the encoder
-                if o in parts[h]["board"]:
-                    parts[h]["board"].remove(o)
-                parts[h]["encoder"].append(o)
+        enc = next((o for o in parts[h]["board"] if o.name == f"ENC_{h}1"), None)
+        jack = next((o for o in parts[h]["board"] if o.name == f"J_{h}1"), None)
+        if enc is None or jack is None:
+            raise RuntimeError(f"{half} asset needs both EC11E and PJ-320A STEP models")
+        parts[h]["board"].remove(enc)
+        parts[h]["board"].remove(jack)
+        parts[h]["encoder"] = [enc]
+        parts[h]["jack"] = [jack]
+        parts[h]["jack"].extend(
+            materialize_ports(enc, jack, half, m_enc_body, m_enc_shaft,
+                              nano_materials["socket"], nano_materials["shell"]))
 
-                # Round-4 debug: the board glb keeps its -90 deg X
-                # counter-rotation (and the 0.001 scale) ON THE OBJECT,
-                # so raw mesh-local z is NOT design z (it is design y!)
-                mw = o.matrix_world.copy()
-                bm = bmesh.new()
-                me_body = o.data.copy()
-                bm.from_mesh(me_body)
-                dz = {v: (mw @ v.co).z for v in bm.verts}
-                top = ENC_SHAFT_TOP_Z * SCALE
-                drop = [v for v in bm.verts if dz[v] > top]
-                n_trunc = len(drop)
-                if drop:
-                    bmesh.ops.delete(bm, geom=drop, context="VERTS")
-                    bmesh.ops.holes_fill(
-                        bm, edges=[e for e in bm.edges
-                                   if len(e.link_faces) == 1], sides=0)
-                split = ENC_SPLIT_Z * SCALE
-                bm_body, bm_shaft = bmesh.new(), bmesh.new()
-                vmap_body, vmap_shaft = {}, {}
-                for f in bm.faces:
-                    fz = [dz[v] for v in f.verts]
-                    if min(fz) >= split - 1e-9:
-                        tgt, vmap = bm_shaft, vmap_shaft
-                    else:
-                        tgt, vmap = bm_body, vmap_body
-                    vs = []
-                    for v in f.verts:
-                        nv = vmap.get(v)
-                        if nv is None:
-                            nv = vmap[v] = tgt.verts.new(v.co)
-                        vs.append(nv)
-                    try:
-                        tgt.faces.new(vs)
-                    except ValueError:
-                        pass
-                bm.free()
-                bm_body.to_mesh(me_body)
-                bm_body.free()
-                me_body.update()
-                o.data = me_body
-                assign([o], m_enc_body)
-                if len(vmap_shaft):
-                    me_shaft = bpy.data.meshes.new(o.name + "_shaft")
-                    bm_shaft.to_mesh(me_shaft)
-                    bm_shaft.free()
-                    so = bpy.data.objects.new(o.name + "_shaft", me_shaft)
-                    so.parent = o.parent
-                    so.matrix_basis = o.matrix_basis.copy()
-                    so.rotation_mode = o.rotation_mode
-                    bpy.context.collection.objects.link(so)
-                    bpy.context.view_layer.update()
-                    assign([so], m_enc_shaft)
-                    parts[h]["encoder"].append(so)
-                print(f"  [enc] {o.name}: truncated {n_trunc} verts "
-                      f"(top {ENC_SHAFT_TOP_Z}mm), shaft faces "
-                      f"{len(vmap_shaft)}", flush=True)
-
-            # ---- low fluted knob on the short shaft
-            bpy.context.view_layer.update()
-            for o in list(parts[h]["encoder"]):
-                if o.type == "MESH" and o.name.endswith("_shaft"):
-                    (kx0, ky0, _), (kx1, ky1, _) = bbox_mm([o])
-                    _, knob_roots, knob_objs = import_glb(
-                        os.path.join(ASSETS, "parts", "knob.glb"),
-                        f"knob_{h}")
-                    for ko in knob_roots:
-                        # skirt bottom = rim 5.2 + push travel 0.8 (EC11
-                        # push is 0.5 +/- 0.3) + 0.1: the skirt must
-                        # NEVER hit the cover when the knob is pressed
-                        ko.location = ((kx0 + kx1) / 2,
-                                       (ky0 + ky1) / 2,
-                                       6.1 * SCALE)
-                    assign(knob_objs, m_knob)
-                    parts[h].setdefault("knob", []).extend(knob_objs)
-            print(f"[scene] {half}: encoder truncated to {ENC_SHAFT_TOP_Z}mm "
-                  f"+ two-tone metal split + low fluted knob "
-                  f"(short-shaft EC11-class BOM variant)", flush=True)
+        # Locate the knob by the original shaft geometry, before shortening it.
+        shaft = [enc.matrix_world @ v.co for v in enc.data.vertices
+                 if (enc.matrix_world @ v.co).z > 0.0113]
+        kx = (min(v.x for v in shaft) + max(v.x for v in shaft)) / 2
+        ky = (min(v.y for v in shaft) + max(v.y for v in shaft)) / 2
+        _, knob_roots, knob_objs = import_glb(
+            os.path.join(ASSETS, "parts", "knob.glb"), f"knob_{h}")
+        for knob in knob_roots:
+            knob.location = (kx, ky, 6.1 * SCALE)
+        assign(knob_objs, m_knob)
+        parts[h]["knob"] = knob_objs
+        if "exploded" in args.shots.split(","):
+            parts[h]["pcb_art"] = pcb_route_material(half, parts[h]["board"])
 
     # ---- smooth curved parts (welded glbs make this effective)
     for h in parts:
@@ -1144,7 +1001,7 @@ def build_keyboard(args):
     # in the render (5 deg splay / 10 deg tent / 5 mm split). The
     # duplicate is gone; the values are now stated once at their true
     # render strength so future tweaks behave predictably.
-    SPLAY_DEG, TENT_DEG, SPLIT_MM = 5.0, 10.0, 5.0
+    SPLAY_DEG, TENT_DEG, SPLIT_MM = 5.0, 6.0, 5.0
     for h, sgn in (("L", -1.0), ("R", 1.0)):
         half_objs = [o for lst in parts[h].values()
                      for o in (lst if isinstance(lst, list) else [])]
@@ -1174,502 +1031,312 @@ def build_keyboard(args):
               f"{TENT_DEG} deg on the outer edge, split +{SPLIT_MM} mm",
               flush=True)
 
-    # ---- diagram palette for the exploded shot (user: "colour
-    # different layers more contrasting shades"). Run the exploded
-    # render as its own invocation with --stack-colors so the product
-    # shots keep their real materials.
-    # ---- diagram palette for the exploded shot (user: "colour
-    # different layers more contrasting shades"). Run the exploded
-    # render as its own invocation with --stack-colors so the product
-    # shots keep their real materials.
-    if args.stack_colors:
-        # round-8 review: "slight colour variations, not something this
-        # radical" (purple case / turquoise plate). Round 9 = a
-        # warm-neutral ladder with the PCB its real dark-green self.
-        stack_pal = {
-            "tub":     ((0.140, 0.135, 0.125), 0.55, 0.0),  # graphite
-            "foam":    ((0.520, 0.470, 0.380), 0.75, 0.0),  # pale sand
-            # round 24: the round-23 ladder put bone caps, a 0.62
-            # silver plate AND a 0.50 "warm grey" cover in the same
-            # value band, so the top half of the stack read as one
-            # white mass. Dark cover + gunmetal plate separate the
-            # bone caps without going back to the radical palette.
-            "gaskets": ((0.470, 0.425, 0.360), 0.84, 0.0),  # poron
-            "gaskets_b": ((0.470, 0.425, 0.360), 0.84, 0.0),  # poron
-            "plate":   ((0.300, 0.300, 0.320), 0.32, 0.9),  # gunmetal
-
-            "caps":    ((0.780, 0.750, 0.690), 0.45, 0.0),  # bone
-            "cover":   ((0.255, 0.245, 0.235), 0.50, 0.0),  # graphite
-            "knob":    ((0.720, 0.560, 0.260), 0.30, 1.0),  # brass
-            "nano":    ((0.120, 0.120, 0.130), 0.45, 0.0),  # charcoal
-        }
-        # board: a REAL-looking PCB (dark green + procedural gold trace
-        # web + vias) from env_materials when available, and the
-        # mounted parts keep component-true tints: gold jack, gunmetal
-        # encoder, charcoal MCU/power switch, gold pads
-
-        m_comp_gold = pbr("stack_comp_gold", (0.75, 0.58, 0.24),
-                          rough=0.28, metal=1.0)
-        m_comp_metal = pbr("stack_comp_metal", (0.22, 0.22, 0.24),
-                           rough=0.32, metal=0.9)
-        m_comp_dark = pbr("stack_comp_dark", (0.09, 0.09, 0.10), rough=0.40)
-        m_housing = pbr("stack_sw_housing", (0.72, 0.70, 0.66), rough=0.45)
-        m_stem = pbr("stack_sw_stem", (0.09, 0.09, 0.10), rough=0.40)
-        # round 19: choc switches are TWO-TONE — the cream PG1350
-        # housing vs the dark stem (one flat colour read as foam pads)
-        for h in parts:
-            for grp, (col, rough, metal) in stack_pal.items():
-                mat = pbr(f"stack_{grp}", col, rough=rough, metal=metal)
-                if grp == "foam":
-                    # round 19: "foam should look porous, not a sheet
-                    # of perfectly even paper" — open-cell acoustic
-                    # foam: fine high-frequency bump + deep roughness
-                    micro_texture(mat, 700, 0.75, 0.0002,
-                                  rough + 0.12, 0.92, detail=6.0)
-                assign(parts[h].get(grp, []), mat)
-            for o in parts[h].get("swbodies", []):
-                assign([o], m_stem if o.name.endswith("_stem")
-                       else m_housing)
-            materialize_pcb_diagram(parts[h].get("board", []), h)
-        # round 24e: the gaskets are small PORON PADS now, not a slab,
-        # so they are SHOWN (round-14's rule hid the old full-outline
-        # slab). They are a layer of the stack the reviewer asked for.
-        print(f"[scene] stack-colours on ({len(stack_pal)} layers + "
-              f"gerber PCB + poron pads shown)", flush=True)
-
     return parts, all_objs
 
 
-def proc_dark_marble(name):
-    """Dark marble v4 (round-17 review: "I don't see the more
-    3-dimensional swirls, the sense of depth, the more elaborate,
-    ornate, majestic marble feeling"). Three movements: (1) a BROAD
-    cloud field (metre-scale) lifts whole regions toward grey-gold —
-    the large ornate drift across the slab; (2) THICK contour veins
-    with dark halos (the round-14 depth trick, now at double width)
-    that wander via chained warps; (3) the cloud drives a gentle
-    broad bump while the veins read recessed — the surface undulates
-    like polished stone over structure, not paint. Coat 0.9."""
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
+def studio_grain(mat, frequency, relief, roughness):
+    """Use scene metres so grain has the same size on faces and sidewalls."""
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
-    tc = nt.nodes.new("ShaderNodeTexCoord")
-    # (1) broad cloud — the majestic drift
-    cloud = nt.nodes.new("ShaderNodeTexNoise")
-    cloud.inputs["Scale"].default_value = 2.6
-    cloud.inputs["Detail"].default_value = 2.0
-    cloud.inputs["Roughness"].default_value = 0.45
-    cloudr = nt.nodes.new("ShaderNodeValToRGB")
-    ce = cloudr.color_ramp.elements
-    ce[0].position, ce[0].color = 0.30, (0.018, 0.019, 0.022, 1.0)
-    ce[1].position, ce[1].color = 0.72, (0.070, 0.068, 0.078, 1.0)
-    # (2) veins: warped contour lines, thick spike + halo
-    warp1 = nt.nodes.new("ShaderNodeTexNoise")
-    warp1.inputs["Scale"].default_value = 22.0
-    warp1.inputs["Detail"].default_value = 4.0
-    wsc1 = nt.nodes.new("ShaderNodeVectorMath")
-    wsc1.operation = "SCALE"
-    wsc1.inputs["Scale"].default_value = 0.045     # round 18: curlier
-    mp1 = nt.nodes.new("ShaderNodeMapping")
-    mp1.inputs["Scale"].default_value = (1.0, 1.0, 1.0)
-    vec = nt.nodes.new("ShaderNodeVectorMath")
-    vec.operation = "ADD"
-    veins1 = nt.nodes.new("ShaderNodeTexNoise")
-    veins1.inputs["Scale"].default_value = 85.0    # round 18: curlier
-    veins1.inputs["Detail"].default_value = 6.0
-    veins1.inputs["Roughness"].default_value = 0.50
-    # round 18: "the transition from gold to black should be a hard,
-    # cold edge, not a soft gradient" — the halo stops are gone, the
-    # spike is tight two-sided (LINEAR ramp interpolation)
-    v1r = nt.nodes.new("ShaderNodeValToRGB")
-    e = v1r.color_ramp.elements
-    e[0].position, e[0].color = 0.5640, (0.020, 0.021, 0.025, 1.0)
-    e[1].position, e[1].color = 0.5655, (0.68, 0.55, 0.30, 1.0)
-    e2 = v1r.color_ramp.elements.new(0.5985)
-    e2.color = (0.68, 0.55, 0.30, 1.0)
-    e3 = v1r.color_ramp.elements.new(0.6000)
-    e3.color = (0.020, 0.021, 0.025, 1.0)
+    coords = nt.nodes.new("ShaderNodeNewGeometry").outputs["Position"]
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = frequency
+    noise.inputs["Detail"].default_value = 2
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.32
+    bump.inputs["Distance"].default_value = relief
+    rough = nt.nodes.new("ShaderNodeMapRange")
+    rough.inputs["To Min"].default_value, rough.inputs["To Max"].default_value = roughness
+    nt.links.new(coords, noise.inputs["Vector"])
+    nt.links.new(noise.outputs["Fac"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    nt.links.new(noise.outputs["Fac"], rough.inputs["Value"])
+    nt.links.new(rough.outputs["Result"], bsdf.inputs["Roughness"])
+    return noise.outputs["Fac"]
+
+
+def honed_stone():
+    """Quiet charcoal stone with diagonal mineral bands and a honed face."""
+    mat = pbr("honed_charcoal", (0.025, 0.026, 0.028), rough=0.72)
+    grain = studio_grain(mat, frequency=1150, relief=0.000045, roughness=(0.65, 0.80))
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    coords = nt.nodes.new("ShaderNodeNewGeometry").outputs["Position"]
+    mapping = nt.nodes.new("ShaderNodeMapping")
+    mapping.inputs["Rotation"].default_value[2] = math.radians(22)
+    mapping.inputs["Scale"].default_value = (4.2, 10.5, 8.0)
+    bands = nt.nodes.new("ShaderNodeTexNoise")
+    bands.inputs["Scale"].default_value = 1.0
+    bands.inputs["Detail"].default_value = 3.4
+    bands.inputs["Roughness"].default_value = 0.55
+    tone = nt.nodes.new("ShaderNodeValToRGB")
+    ramp = tone.color_ramp
+    ramp.interpolation = "EASE"
+    shades = ((0.24, (0.016, 0.018, 0.020)),
+              (0.43, (0.025, 0.027, 0.028)),
+              (0.57, (0.036, 0.037, 0.037)),
+              (0.68, (0.058, 0.054, 0.050)),
+              (0.79, (0.079, 0.074, 0.068)))
+    for i, (position, color) in enumerate(shades):
+        el = ramp.elements[i] if i < 2 else ramp.elements.new(position)
+        el.position, el.color = position, (*color, 1.0)
+    nt.links.new(coords, mapping.inputs["Vector"])
+    nt.links.new(mapping.outputs["Vector"], bands.inputs["Vector"])
+    nt.links.new(bands.outputs["Fac"], tone.inputs["Fac"])
+    mineral = nt.nodes.new("ShaderNodeMapRange")
+    mineral.inputs["From Min"].default_value = 0.25
+    mineral.inputs["From Max"].default_value = 0.75
+    mineral.inputs["To Min"].default_value = 0.72
+    mineral.inputs["To Max"].default_value = 1.27
     mix = nt.nodes.new("ShaderNodeMixRGB")
-    mix.blend_type = "ADD"
-    mix.inputs["Fac"].default_value = 1.0
-    # roughness + bumps: broad cloud undulation + recessed veins
-    rramp = nt.nodes.new("ShaderNodeValToRGB")
-    er = rramp.color_ramp.elements
-    er[0].position, er[0].color = 0.0, (0.035, 0.035, 0.035, 1.0)
-    er[1].position, er[1].color = 1.0, (0.14, 0.14, 0.14, 1.0)
-    # round 24: these two used to BOTH link straight to the BSDF, so
-    # the second link silently replaced the first and the veins had no
-    # relief at all (the slab read as a printed map). Chain them:
-    # veins carve, cloud undulates, one Normal reaches the shader.
-    # Distances are metres on the 4 m floor -- sub-millimetre relief,
-    # which is all a polished slab shows.
-    bump_v = nt.nodes.new("ShaderNodeBump")
-    bump_v.inputs["Strength"].default_value = -0.22
-    bump_v.inputs["Distance"].default_value = 0.0018
-    bump_c = nt.nodes.new("ShaderNodeBump")
-    bump_c.inputs["Strength"].default_value = 0.10
-    bump_c.inputs["Distance"].default_value = 0.006
-    L = nt.links.new
-    L(tc.outputs["Generated"], cloud.inputs["Vector"])
-    L(cloud.outputs["Fac"], cloudr.inputs["Fac"])
-    L(cloudr.outputs["Color"], mix.inputs["Color1"])
-    L(tc.outputs["Generated"], mp1.inputs["Vector"])
-    L(warp1.outputs["Color"], wsc1.inputs[0])
-    L(wsc1.outputs["Vector"], vec.inputs[0])
-    L(mp1.outputs["Vector"], vec.inputs[1])
-    L(vec.outputs["Vector"], veins1.inputs["Vector"])
-    L(veins1.outputs["Fac"], v1r.inputs["Fac"])
-    L(v1r.outputs["Color"], mix.inputs["Color2"])
-    L(mix.outputs["Color"], bsdf.inputs["Base Color"])
-    L(veins1.outputs["Fac"], rramp.inputs["Fac"])
-    L(rramp.outputs["Color"], bsdf.inputs["Roughness"])
-    L(veins1.outputs["Fac"], bump_v.inputs["Height"])
-    L(cloud.outputs["Fac"], bump_c.inputs["Height"])
-    L(bump_v.outputs["Normal"], bump_c.inputs["Normal"])
-    L(bump_c.outputs["Normal"], bsdf.inputs["Normal"])
-    # round 18: "your reflective big window / rectangle of light is
-    # still glaring at me in the reflection" — the 0.9 mirror-coat
-    # made every accent a hard rectangle; softer stone reflections
-    for key in ("Coat Weight", "Coat Roughness"):
-        if key in bsdf.inputs:
-            bsdf.inputs[key].default_value = (
-                0.50 if key == "Coat Weight" else 0.10)
+    mix.blend_type = "MULTIPLY"
+    mix.inputs[0].default_value = 1.0
+    nt.links.new(grain, mineral.inputs["Value"])
+    nt.links.new(tone.outputs["Color"], mix.inputs[1])
+    nt.links.new(mineral.outputs["Result"], mix.inputs[2])
+    nt.links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
     return mat
 
 
-PCB_TEX_DIR = os.path.join(ASSETS, "textures")
+def pcb_route_material(half, board):
+    """Map the actual front copper segments onto the STEP soldermask."""
+    from pathlib import Path
+    import numpy as np
 
+    pcb_dir = Path(REPO) / "pcb"
+    generators = str(pcb_dir / "generators")
+    if generators not in sys.path:
+        sys.path.insert(0, generators)
+    from check_board import committed_tracks
+    from frame import read_design
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-if _HERE not in sys.path:
-    sys.path.insert(0, _HERE)
+    source = pcb_dir / "kicad" / f"Hojicha44-{half}.kicad_pcb"
+    tracks = [t for t in committed_tracks(read_design(source)) if t[-1] == "F"]
+    if not tracks:
+        raise RuntimeError(f"No front copper segments in {source}")
 
+    mask_layers = [o for o in board if o.type == "MESH" and
+                   o.data.materials and o.data.materials[0].name.startswith("pcb_soldermask")]
+    top_mask = max(mask_layers, key=lambda o: bbox_mm([o])[1][2])
+    low, high = bbox_mm([top_mask])
+    left, bottom = low[0] / SCALE, low[1] / SCALE
+    width, height = (high[0] - low[0]) / SCALE, (high[1] - low[1]) / SCALE
+    nx, ny = math.ceil(width * 16), math.ceil(height * 16)
+    mask = np.zeros((ny, nx), dtype=np.float32)
+    sx, sy = nx / width, ny / height
+    aa = 1 / min(sx, sy)
+    for x0, y0, x1, y1, trace_width, _ in tracks:
+        radius = trace_width / 2
+        margin = radius + aa
+        xlo = max(0, math.floor((min(x0, x1) - margin - left) * sx))
+        xhi = min(nx, math.ceil((max(x0, x1) + margin - left) * sx))
+        ylo = max(0, math.floor((min(y0, y1) - margin - bottom) * sy))
+        yhi = min(ny, math.ceil((max(y0, y1) + margin - bottom) * sy))
+        x = left + (np.arange(xlo, xhi) + 0.5) / sx - x0
+        y = bottom + (np.arange(ylo, yhi)[:, None] + 0.5) / sy - y0
+        dx, dy = x1 - x0, y1 - y0
+        length_sq = dx * dx + dy * dy
+        t = np.clip((x * dx + y * dy) / length_sq, 0, 1) if length_sq else 0
+        d = np.hypot(x - t * dx, y - t * dy)
+        section = mask[ylo:yhi, xlo:xhi]
+        np.maximum(section, np.clip((radius - d) / aa + 0.5, 0, 1), out=section)
 
-def pcb_artwork(half, copper_obj):
-    """Gerber-style artwork for one half, cached under assets/textures.
+    image = bpy.data.images.new(f"{half} F.Cu routes", width=nx, height=ny, alpha=False)
+    image.colorspace_settings.name = "Non-Color"
+    rgba = np.ones((ny, nx, 4), dtype=np.float32)
+    rgba[:, :, :3] = mask[:, :, None]
+    image.pixels.foreach_set(rgba.ravel())
+    image.update()
 
-    The board mesh is a real KiCad export: separate copper, soldermask,
-    silkscreen and substrate solids. The artwork is drawn in BOARD
-    MILLIMETRES from placements.json (pcb_tex.py) and mapped with
-    OBJECT coordinates, so pads land under the switches regardless of
-    how the glTF importer normalised the mesh.
-    """
-    # mesh data is already in design millimetres (object scale 0.001
-    # turns it into metres), and the shader's Object coordinates are in
-    # the same units -- so no scaling here
-    bb = copper_obj.bound_box
-    xs = [c[0] for c in bb]
-    zs = [c[2] for c in bb]
-    bbox = (min(xs), min(zs), max(xs), max(zs))
-    tag = "pcb" if half == "L" else "pcbr"
-    a_path = os.path.join(PCB_TEX_DIR, f"{tag}_albedo.png")
-    m_path = os.path.join(PCB_TEX_DIR, f"{tag}_metal.png")
-    if not (os.path.exists(a_path) and os.path.exists(m_path)):
-        # Blender's python has no PIL: the artwork is drawn by the
-        # system interpreter (renders/pcb_tex.py --emit), driven by the
-        # board bbox measured here.
-        import subprocess
-        import shutil
-        os.makedirs(PCB_TEX_DIR, exist_ok=True)
-        bb_json = os.path.join(PCB_TEX_DIR, "pcb_bbox.json")
-        boxes = {}
-        if os.path.exists(bb_json):
-            try:
-                boxes = json.load(open(bb_json))
-            except Exception:
-                boxes = {}
-        boxes["Left" if half == "L" else "Right"] = [
-            [bbox[0], bbox[1]], [bbox[2], bbox[3]]]
-        json.dump(boxes, open(bb_json, "w"))
-        py = shutil.which("python3") or "/usr/bin/python3"
-        gen = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                           "pcb_tex.py")
-        try:
-            subprocess.run([py, gen, bb_json, PCB_TEX_DIR], check=True,
-                           timeout=180)
-        except Exception as e:
-            print(f"  [pcb] artwork generation failed: {e}", flush=True)
-    return a_path, m_path, bbox
+    # UVs use pre-pose design coordinates, including the board's millimetre
+    # scale and import rotation. They travel with the board during posing.
+    mesh = top_mask.data
+    uv = mesh.uv_layers.new(name="Routed copper")
+    for loop in mesh.loops:
+        pos = top_mask.matrix_world @ mesh.vertices[loop.vertex_index].co
+        uv.data[loop.index].uv = ((pos.x / SCALE - left) / width,
+                                  (pos.y / SCALE - bottom) / height)
 
-
-def materialize_pcb_diagram(objs, half):
-    """Exploded-diagram materials for the REAL board layers.
-
-    Round 24c (review: "actual traces, as you would find on pcb
-    gerber"). The board mesh is a real KiCad export: separate copper,
-    soldermask, silkscreen and FR4 solids. The diagram used to paint
-    every one of them with a single striped shader, so the PCB read as
-    a black card with gold stripes.
-
-    Now: which solid the camera actually sees is found with a
-    ray-cast, that surface is UV-mapped in board millimetres and given
-    the gerber artwork from pcb_tex.py (routed traces, pads, vias,
-    silkscreen), and everything else keeps a quiet layer material.
-    """
-    m_sub = pbr("pcb_substrate", (0.016, 0.026, 0.021), rough=0.48)
-    m_mask = pbr("pcb_mask_art", (0.030, 0.110, 0.060), rough=0.34)
-    m_cu = pbr("pcb_copper_gold", (0.80, 0.62, 0.24), rough=0.22, metal=1.0)
-    m_silk = pbr("pcb_silk_art", (0.82, 0.82, 0.78), rough=0.55)
-    m_comp = pbr("pcb_component", (0.030, 0.030, 0.034), rough=0.35)
-    m_diode = pbr("pcb_diode", (0.018, 0.018, 0.020), rough=0.25)
-    micro_texture(m_sub, 120, 0.25, 0.00006, 0.42, 0.50, detail=4.0)
-    micro_texture(m_cu, 320, 0.10, 0.00002, 0.18, 0.28)
-    micro_texture(m_silk, 300, 0.20, 0.00003, 0.50, 0.60)
-    micro_texture(m_comp, 100, 0.15, 0.00004, 0.32, 0.40)
-    micro_texture(m_diode, 200, 0.10, 0.00002, 0.22, 0.28)
-
-    meshes = [o for o in objs if o.type == "MESH"]
-    if not meshes:
-        return m_mask
-
-    # ---- which layer solid faces the camera? ray-cast the stack
-    import mathutils
-    mn = [1e9] * 3
-    mx = [-1e9] * 3
-    for q in meshes:
-        for c in q.bound_box:
-            w = q.matrix_world @ mathutils.Vector(c)
-            for i in range(3):
-                mn[i] = min(mn[i], w[i])
-                mx[i] = max(mx[i], w[i])
-    cx = (mn[0] + mx[0]) / 2.0
-    cy = (mn[1] + mx[1]) / 2.0
-    ztop = mx[2] + 0.05
-    # The mask/copper planes are stacked within ~0.1 mm of each other and
-    # Blender's ray_cast proved unreliable here (the .001 half carries
-    # dotted duplicate names, and the plate sits above the board), so
-    # pick the visible layer the way the eye does: the LARGEST flat pour
-    # is the soldermask, and that is what a board shows you.
-    # NOTE: mesh_area_span() measures WORLD z, which is meaningless once
-    # the halves are tented (a plane then "spans" 26 mm). Thickness has
-    # to come from the LOCAL bbox: the glTF keeps the board plane in
-    # local x/z, so a flat layer has ~0 local y.
-    def local_thick(o):
-        ys = [c[1] for c in o.bound_box]
-        return max(ys) - min(ys)
-
-    planes = []
-    for o in meshes:
-        area = sum(p.area for p in o.data.polygons)
-        if local_thick(o) < 0.2 and area > 5000:
-            planes.append((area, o))
-    if planes:
-        face_objs = {max(planes)[1].name}
-    else:
-        face_objs = {max(meshes, key=lambda o: mesh_area_span(o)[0]).name}
-
-    # ---- artwork + planar UVs in board millimetres
-    copper_objs = [o for o in meshes
-                   if o.material_slots and o.material_slots[0].material
-                   and o.material_slots[0].material.name == "pcb_copper"]
-    anchor = copper_objs[0] if copper_objs else meshes[0]
-    a_path, m_path, bbox = pcb_artwork(half, anchor)
-    x0, z0, x1, z1 = bbox
-    Wmm, Hmm = (x1 - x0), (z1 - z0)
-    have_art = os.path.exists(a_path) and os.path.exists(m_path)
-    if have_art:
-        for o in meshes:
-            if o.name not in face_objs:
-                continue
-            me = o.data
-            uvl = me.uv_layers.get("pcb_art")
-            if uvl is None or uvl.name != "pcb_art":
-                uvl = me.uv_layers.new(name="pcb_art")
-            for lp in me.loops:
-                v = me.vertices[lp.vertex_index].co
-                u = (v.x - x0) / Wmm
-                w = (v.z - z0) / Hmm
-                uvl.data[lp.index].uv = (u, 1.0 - w)
-    else:
-        print("  [pcb] no artwork on disk -- mask keeps its grain",
-              flush=True)
-        micro_texture(m_mask, 180, 0.20, 0.00004, 0.28, 0.38, detail=4.0)
-
-    if have_art:
-        nt = m_mask.node_tree
-        bsdf = nt.nodes["Principled BSDF"]
-        L = nt.links.new
-        uvn = nt.nodes.new("ShaderNodeUVMap")
-        uvn.uv_map = "pcb_art"
-        tex = nt.nodes.new("ShaderNodeTexImage")
-        tex.image = bpy.data.images.load(a_path, check_existing=True)
-        tex.interpolation = "Linear"
-        tex.extension = "EXTEND"
-        L(uvn.outputs["UV"], tex.inputs["Vector"])
-        L(tex.outputs["Color"], bsdf.inputs["Base Color"])
-        met = nt.nodes.new("ShaderNodeTexImage")
-        met.image = bpy.data.images.load(m_path, check_existing=True)
-        met.image.colorspace_settings.name = "Non-Color"
-        met.interpolation = "Linear"
-        met.extension = "EXTEND"
-        L(uvn.outputs["UV"], met.inputs["Vector"])
-        rmap = nt.nodes.new("ShaderNodeMapRange")
-        rmap.inputs["From Min"].default_value = 0.0
-        rmap.inputs["From Max"].default_value = 1.0
-        rmap.inputs["To Min"].default_value = 0.36
-        rmap.inputs["To Max"].default_value = 0.26
-        L(met.outputs["Color"], rmap.inputs["Value"])
-        L(rmap.outputs["Result"], bsdf.inputs["Roughness"])
-        bump = nt.nodes.new("ShaderNodeBump")
-        bump.inputs["Strength"].default_value = 0.35
-        bump.inputs["Distance"].default_value = 0.000018
-        L(met.outputs["Color"], bump.inputs["Height"])
-        L(bump.outputs["Normal"], bsdf.inputs["Normal"])
-        m_mask["micro_texture"] = True
-
-    # ---- assign: artwork surface, exposed pads, silk, quiet rest
-    for o in meshes:
-        name = o.name
-        if name.startswith("D_"):
-            mat = m_diode
-        elif name.startswith(("ENC_", "J_", "SW_")):
-            mat = m_comp
-        elif have_art and name in face_objs:
-            mat = m_mask
-        else:
-            area, span = mesh_area_span(o)
-            if area > 20000:
-                mat = m_sub
-            elif span < 0.2 and area < 5000:
-                mat = m_silk
-            else:
-                mat = m_cu if span >= 0.2 else m_sub
-        assign([o], mat)
-    print(f"  [pcb] artwork on {sorted(face_objs)} "
-          f"({'yes' if have_art else 'MISSING'})", flush=True)
-    return m_mask
-
-
-def proc_pcb_diagram(name):
-    """Diagram-scale PCB: dark-green soldermask under a gold trace web.
-
-    Round 24 bug: the graph linked the trace mix into Base Color and
-    then linked the SILK ramp into the same socket -- the second link
-    replaced the first, so every exploded render showed a black board
-    with white speckles. The chain below adds, in order: mask, traces,
-    vias, silk. Each layer also drives roughness and height, so the
-    copper reads as raised metal rather than paint."""
-    mat = bpy.data.materials.new(name)
-    mat.use_nodes = True
+    mat = pbr(f"pcb_routed_mask_{half}", (0.018, 0.072, 0.034), rough=0.52)
     nt = mat.node_tree
     bsdf = nt.nodes["Principled BSDF"]
-    bsdf.inputs["Base Color"].default_value = (0.022, 0.105, 0.060, 1.0)
-    bsdf.inputs["Roughness"].default_value = 0.42
-    tc = nt.nodes.new("ShaderNodeTexCoord")
-    gold = (0.86, 0.66, 0.26, 1.0)
-    silk = (0.54, 0.53, 0.49, 1.0)
-    dark = (0.0, 0.0, 0.0, 1.0)
-    L = nt.links.new
-
-    def trace_family(scale, tag, axis="X"):
-        """One direction of copper: a warped band field thresholded to
-        a narrow spike. The DIRECTION matters -- the round-24 graph
-        ran both families as BANDS/X, so "horizontal" traces were just
-        a second set of vertical stripes. Each family is now sampled
-        on the axis it runs across, at a ~4 mm board pitch."""
-        mp = nt.nodes.new("ShaderNodeMapping")
-        mp.inputs["Scale"].default_value = scale
-        wv = nt.nodes.new("ShaderNodeTexWave")
-        wv.wave_type, wv.bands_direction = "BANDS", axis
-        wv.inputs["Scale"].default_value = 1.0
-        wv.inputs["Detail"].default_value = 0.0
-        # keep the meander small: at 2.4 the warp smears a band into
-        # a gold PUDDLE where the field gradient flattens (round-24b
-        # test). Real traces are mostly straight; 0.7 wanders them just
-        # enough not to look like graph paper.
-        wv.inputs["Distortion"].default_value = 0.7
-        ramp = nt.nodes.new("ShaderNodeValToRGB")
-        e = ramp.color_ramp.elements
-        e[0].position, e[0].color = 0.0, dark
-        e[1].position, e[1].color = 0.455, dark
-        m = ramp.color_ramp.elements.new(0.460)
-        m.color = gold
-        m2 = ramp.color_ramp.elements.new(0.545)
-        m2.color = gold
-        m3 = ramp.color_ramp.elements.new(0.550)
-        m3.color = dark
-        L(tc.outputs["Generated"], mp.inputs["Vector"])
-        L(mp.outputs["Vector"], wv.inputs["Vector"])
-        L(wv.outputs["Fac"], ramp.inputs["Fac"])
-        return ramp
-
-    # board bbox ~130 x 45 mm: 28 vertical runs (4.6 mm pitch) and
-    # 12 horizontal runs (3.8 mm pitch) give a readable circuit web
-    # without turning into a barcode.
-    # Blender's Wave runs an internal ~5x frequency: these map
-    # values land ~12 vertical + ~8 horizontal runs on a half board.
-    t_h = trace_family((2.4, 0.8, 1.0), "v", axis="X")
-    t_v = trace_family((0.8, 1.9, 1.0), "h", axis="Y")
-
-    # vias: small drilled rings, sparse
-    nz = nt.nodes.new("ShaderNodeTexNoise")
-    nz.inputs["Scale"].default_value = 420.0
-    nz.inputs["Detail"].default_value = 2.0
-    vr = nt.nodes.new("ShaderNodeValToRGB")
-    ve = vr.color_ramp.elements
-    ve[0].position, ve[0].color = 0.760, dark
-    ve[1].position, ve[1].color = 0.775, (0.72, 0.57, 0.24, 1.0)
-    L(nz.outputs["Fac"], vr.inputs["Fac"])
-
-    # silkscreen: sparse printed marks, not a wash
-    sk = nt.nodes.new("ShaderNodeTexNoise")
-    sk.inputs["Scale"].default_value = 30.0
-    sk.inputs["Detail"].default_value = 2.0
-    sr = nt.nodes.new("ShaderNodeValToRGB")
-    se = sr.color_ramp.elements
-    se[0].position, se[0].color = 0.800, dark
-    se[1].position, se[1].color = 0.812, silk
-    L(sk.outputs["Fac"], sr.inputs["Fac"])
-
-    def add(c1, c2, label):
-        n = nt.nodes.new("ShaderNodeMixRGB")
-        n.blend_type = "ADD"
-        n.label = label
-        n.inputs["Fac"].default_value = 1.0
-        L(c1, n.inputs["Color1"])
-        L(c2, n.inputs["Color2"])
-        return n
-
-    copper = add(t_h.outputs["Color"], t_v.outputs["Color"], "copper_hv")
-    copper = add(copper.outputs["Color"], vr.outputs["Color"], "copper_vias")
-    # soldermask is a CONSTANT under the copper, not a separate link
-    green = nt.nodes.new("ShaderNodeRGB")
-    green.label = "soldermask"
-    green.outputs[0].default_value = (0.022, 0.105, 0.060, 1.0)
-    body = add(green.outputs[0], copper.outputs["Color"], "mask_plus_copper")
-    final = add(body.outputs["Color"], sr.outputs["Color"], "plus_silk")
-    L(final.outputs["Color"], bsdf.inputs["Base Color"])
-
-    # roughness: copper 0.24, mask 0.46, silk 0.70
-    bw = nt.nodes.new("ShaderNodeRGBToBW")
-    L(copper.outputs["Color"], bw.inputs[0])
-    rr = nt.nodes.new("ShaderNodeMapRange")
-    rr.inputs["From Min"].default_value = 0.0
-    rr.inputs["From Max"].default_value = 0.8
-    rr.inputs["To Min"].default_value = 0.46
-    rr.inputs["To Max"].default_value = 0.24
-    L(bw.outputs["Val"], rr.inputs["Value"])
-    rs = nt.nodes.new("ShaderNodeMapRange")   # silk is matte
-    rs.inputs["From Min"].default_value = 0.0
-    rs.inputs["From Max"].default_value = 0.8
-    rs.inputs["To Min"].default_value = 0.0
-    rs.inputs["To Max"].default_value = 0.30
-    L(sr.outputs["Color"], rs.inputs["Value"])
-    radd = nt.nodes.new("ShaderNodeMath")
-    radd.operation = "ADD"
-    L(rr.outputs["Result"], radd.inputs[0])
-    L(rs.outputs["Result"], radd.inputs[1])
-    L(radd.outputs["Value"], bsdf.inputs["Roughness"])
-
-    # 20 um of copper relief over the mask
+    bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    uv_node = nt.nodes.new("ShaderNodeUVMap")
+    uv_node.uv_map = uv.name
+    texture = nt.nodes.new("ShaderNodeTexImage")
+    texture.image = image
+    texture.extension = "CLIP"
+    tint = nt.nodes.new("ShaderNodeMixRGB")
+    tint.inputs[1].default_value = (0.017, 0.066, 0.031, 1)
+    tint.inputs[2].default_value = (0.08, 0.32, 0.145, 1)
     bump = nt.nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.32
-    bump.inputs["Distance"].default_value = 0.00002
-    L(bw.outputs["Val"], bump.inputs["Height"])
-    L(bump.outputs["Normal"], bsdf.inputs["Normal"])
-    bsdf.inputs["Metallic"].default_value = 0.0
-    mat["micro_texture"] = True
+    bump.inputs["Strength"].default_value = 0.26
+    bump.inputs["Distance"].default_value = 0.018 * SCALE
+    nt.links.new(uv_node.outputs["UV"], texture.inputs["Vector"])
+    nt.links.new(texture.outputs["Color"], tint.inputs[0])
+    nt.links.new(texture.outputs["Color"], bump.inputs["Height"])
+    nt.links.new(tint.outputs["Color"], bsdf.inputs["Base Color"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    print(f"[scene] {half}: mapped {len(tracks)} KiCad front copper segments", flush=True)
+    return top_mask, mat
+
+
+def porous_foam(name, colour):
+    """Fine open-cell texture with softly shaded recesses."""
+    mat = pbr(name, colour, rough=0.90)
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Specular IOR Level"].default_value = 0.20
+    coords = nt.nodes.new("ShaderNodeNewGeometry")
+    cell = nt.nodes.new("ShaderNodeTexVoronoi")
+    cell.inputs["Scale"].default_value = 1560
+    noise = nt.nodes.new("ShaderNodeTexNoise")
+    noise.inputs["Scale"].default_value = 4600
+    noise.inputs["Detail"].default_value = 2.0
+    distort = nt.nodes.new("ShaderNodeMath")
+    distort.operation = "MULTIPLY_ADD"
+    distort.inputs[1].default_value = 0.32
+    cells = nt.nodes.new("ShaderNodeValToRGB")
+    ramp = cells.color_ramp
+    ramp.elements.remove(ramp.elements[1])
+    ramp.elements[0].position = 0.30
+    ramp.interpolation = "B_SPLINE"
+    ramp.elements[0].color = (*[c * 0.46 for c in colour], 1)
+    for position, value in ((0.43, 0.73), (0.61, 1.02), (0.82, 0.95)):
+        ramp.elements.new(position).color = (*[c * value for c in colour], 1)
+    bump = nt.nodes.new("ShaderNodeBump")
+    bump.inputs["Strength"].default_value = 0.5
+    bump.inputs["Distance"].default_value = 0.13 * SCALE
+    cloud = nt.nodes.new("ShaderNodeTexNoise")
+    cloud.inputs["Scale"].default_value = 148
+    cloud.inputs["Detail"].default_value = 2.0
+    mottling = nt.nodes.new("ShaderNodeValToRGB")
+    mottling.color_ramp.elements[0].color = (0.76, 0.76, 0.76, 1)
+    mottling.color_ramp.elements[1].color = (1.16, 1.16, 1.16, 1)
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    mix.blend_type = "MULTIPLY"
+    mix.inputs[0].default_value = 1
+    nt.links.new(coords.outputs["Position"], cloud.inputs["Vector"])
+    nt.links.new(cloud.outputs["Fac"], mottling.inputs["Fac"])
+    nt.links.new(cells.outputs["Color"], mix.inputs[1])
+    nt.links.new(mottling.outputs["Color"], mix.inputs[2])
+    for tex in (cell, noise):
+        nt.links.new(coords.outputs["Position"], tex.inputs["Vector"])
+    nt.links.new(noise.outputs["Fac"], distort.inputs[0])
+    nt.links.new(cell.outputs["Distance"], distort.inputs[2])
+    nt.links.new(distort.outputs[0], cells.inputs["Fac"])
+    nt.links.new(mix.outputs["Color"], bsdf.inputs["Base Color"])
+    nt.links.new(cells.outputs["Color"], bump.inputs["Height"])
+    nt.links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    return mat
+
+
+def add_tenting_feet(parts, desk_z, colourway="bright"):
+    """Fit feet to the posed case undersides and a common studio floor."""
+    from mathutils import Vector
+
+    colour = (0.045, 0.047, 0.049) if colourway == "dark" else (0.43, 0.34, 0.27)
+    material = pbr("tenting_molded", colour, rough=0.57)
+    feet = []
+    for half, groups in parts.items():
+        tub = next(o for o in groups["tub"] if o.type == "MESH")
+        transform = tub.parent.matrix_world @ tub.matrix_parent_inverse
+        inverse = tub.matrix_world.inverted()
+        normal = transform.to_3x3() @ Vector((0, 0, 1))
+        x = 125.5 if half == "L" else 291.5 - 125.5
+        origin = transform @ Vector((x * SCALE, -32 * SCALE, -0.02))
+        hit, point, _, _ = tub.ray_cast(inverse @ origin, inverse.to_3x3() @ normal)
+        if not hit:
+            raise RuntimeError(f"Tenting mount {half} misses the case underside")
+        contact = tub.matrix_world @ point
+
+        # The rounded foot has one continuous profile, with a flat desk
+        # contact and a wider top shaped to the sloping case underside.
+        vertices = []
+        rings = ((3.6, 0, 0), (4.35, 0.65, 0), (4.4, 1.6, 0),
+                 (3.85, 5.0, 0), (4.5, -0.6, 1), (4.0, 0.25, 1))
+        sides = 48
+        for radius, rise, top in rings:
+            for i in range(sides):
+                angle = math.tau * i / sides
+                dx, dy = radius * SCALE * math.cos(angle), radius * SCALE * math.sin(angle)
+                roof = contact.z - (normal.x * dx + normal.y * dy) / normal.z
+                vertices.append((contact.x + dx, contact.y + dy,
+                                 (roof if top else desk_z) + rise * SCALE))
+        faces = [tuple(reversed(range(sides)))]
+        for j in range(len(rings) - 1):
+            for i in range(sides):
+                n = (i + 1) % sides
+                faces.append((j*sides+i, j*sides+n, (j+1)*sides+n, (j+1)*sides+i))
+        faces.append(tuple(range(len(vertices) - sides, len(vertices))))
+        mesh = bpy.data.meshes.new(f"tenting_foot_{half}")
+        mesh.from_pydata(vertices, [], faces)
+        mesh.update()
+        obj = bpy.data.objects.new(mesh.name, mesh)
+        bpy.context.collection.objects.link(obj)
+        assign([obj], material)
+        for polygon in mesh.polygons:
+            polygon.use_smooth = len(polygon.vertices) == 4
+        feet.append(obj)
+    return feet
+
+
+def artisan_resin():
+    """Deep teal cast resin with folded colour and suspended mica."""
+    mat = pbr("artisan_cast_resin", (0.038, 0.23, 0.26), rough=0.30)
+    nt = mat.node_tree
+    bsdf = nt.nodes["Principled BSDF"]
+    bsdf.inputs["Coat Weight"].default_value = 0.29
+    bsdf.inputs["Coat Roughness"].default_value = 0.23
+    bsdf.inputs["Subsurface Weight"].default_value = 0.07
+    bsdf.inputs["Subsurface Scale"].default_value = 0.001
+    coords = nt.nodes.new("ShaderNodeTexCoord").outputs["Generated"]
+    folds = nt.nodes.new("ShaderNodeTexNoise")
+    folds.inputs["Scale"].default_value = 3.3
+    folds.inputs["Detail"].default_value = 2.3
+    folds.inputs["Distortion"].default_value = 1.8
+    tone = nt.nodes.new("ShaderNodeValToRGB")
+    for i, (value, color) in enumerate(((0.24, (0.014, 0.062, 0.094)),
+                                        (0.56, (0.047, 0.27, 0.27)),
+                                        (0.83, (0.23, 0.56, 0.45)))):
+        stop = tone.color_ramp.elements[i] if i < 2 else tone.color_ramp.elements.new(value)
+        stop.position, stop.color = value, (*color, 1)
+    mica = nt.nodes.new("ShaderNodeTexVoronoi")
+    mica.inputs["Scale"].default_value = 52
+    specks = nt.nodes.new("ShaderNodeMapRange")
+    specks.inputs["From Min"].default_value = 0.065
+    specks.inputs["From Max"].default_value = 0.14
+    specks.inputs["To Min"].default_value = 0.76
+    specks.inputs["To Max"].default_value = 0
+    mix = nt.nodes.new("ShaderNodeMixRGB")
+    mix.inputs[2].default_value = (0.67, 0.43, 0.15, 1)
+    for output, target in ((coords, folds.inputs["Vector"]),
+                           (coords, mica.inputs["Vector"]),
+                           (folds.outputs["Fac"], tone.inputs["Fac"]),
+                           (mica.outputs["Distance"], specks.inputs["Value"]),
+                           (specks.outputs["Result"], mix.inputs[0]),
+                           (tone.outputs["Color"], mix.inputs[1]),
+                           (mix.outputs["Color"], bsdf.inputs["Base Color"])):
+        nt.links.new(output, target)
+    return mat
+
+
+def play_backdrop(center_x):
+    mat = pbr("play_apricot_lilac", (0.52, 0.31, 0.40), rough=0.81)
+    nt = mat.node_tree
+    position = nt.nodes.new("ShaderNodeNewGeometry")
+    axis = nt.nodes.new("ShaderNodeSeparateXYZ")
+    span = nt.nodes.new("ShaderNodeMapRange")
+    span.inputs["From Min"].default_value = center_x - 0.27
+    span.inputs["From Max"].default_value = center_x + 0.27
+    tone = nt.nodes.new("ShaderNodeValToRGB")
+    tone.color_ramp.elements[0].color = (0.74, 0.38, 0.25, 1)
+    tone.color_ramp.elements[1].color = (0.35, 0.31, 0.62, 1)
+    nt.links.new(position.outputs["Position"], axis.inputs["Vector"])
+    nt.links.new(axis.outputs["X"], span.inputs["Value"])
+    nt.links.new(span.outputs["Result"], tone.inputs["Fac"])
+    nt.links.new(tone.outputs["Color"], nt.nodes["Principled BSDF"].inputs["Base Color"])
     return mat
 
 
@@ -1680,25 +1347,24 @@ def apply_colourway(parts, colourway):
     if colourway == "bright":
         return
     if colourway == "dark":
-        # stealth: near-black case, dark-grey caps, near-black plate,
-        # brass knob — rendered on the marble floor (queue switches the
-        # floor material when colourway == dark)
-        m_cap = pbr("cw_cap", (0.155, 0.155, 0.162), rough=0.42)
-        micro_texture(m_cap, 42, 0.28, 0.00022, 0.36, 0.48, detail=5.0)
-        m_case = pbr("cw_case", (0.018, 0.018, 0.020), rough=0.38)
-        micro_texture(m_case, 85, 0.40, 0.00055, 0.32, 0.44, detail=5.0)
-        m_plate = pbr("cw_plate", (0.030, 0.031, 0.034), rough=0.14)
-        micro_texture(m_plate, 240, 0.10, 0.00002, 0.11, 0.17)
-        m_knob = pbr("cw_knob", (0.66, 0.52, 0.24), rough=0.30, metal=1.0)
-        m_sw = pbr("cw_sw", (0.015, 0.015, 0.017), rough=0.35)
-        for h in parts:
-            assign(parts[h].get("caps", []), m_cap)
-            assign(parts[h].get("tub", []), m_case)
-            assign(parts[h].get("cover", []), m_case)
-            assign(parts[h].get("plate", []), m_plate)
-            assign(parts[h].get("knob", []), m_knob)
-            assign(parts[h].get("swbodies", []), m_sw)
-        print("[scene] colourway: dark (stealth on marble)", flush=True)
+        cap = pbr("dark_pbt", (0.066, 0.070, 0.075), rough=0.56)
+        cap.node_tree.nodes["Principled BSDF"].inputs["Specular IOR Level"].default_value = 0.30
+        studio_grain(cap, frequency=5200, relief=0.000017, roughness=(0.49, 0.65))
+        case = pbr("dark_sintered_nylon", (0.029, 0.032, 0.035), rough=0.65)
+        studio_grain(case, frequency=2100, relief=0.000055, roughness=(0.61, 0.77))
+        plate = pbr("dark_pom", (0.022, 0.024, 0.026), rough=0.42)
+        switch = pbr("dark_switch_plastic", (0.022, 0.024, 0.026), rough=0.49)
+        knob = pbr("dark_satin_brass", (0.57, 0.39, 0.19), rough=0.36, metal=1.0)
+        studio_grain(knob, frequency=6400, relief=0.000008, roughness=(0.30, 0.44))
+        knob.node_tree.nodes["Principled BSDF"].inputs["Anisotropic"].default_value = 0.38
+        for groups in parts.values():
+            assign(groups.get("caps", []), cap)
+            assign(groups.get("tub", []) + groups.get("cover", []), case)
+            assign(groups.get("plate", []), plate)
+            assign(groups.get("knob", []), knob)
+            assign([obj for obj in groups.get("swbodies", [])
+                    if not obj.name.endswith("_contacts")], switch)
+        print("[scene] colourway: charcoal PBT, matte nylon and satin brass", flush=True)
         return
     if colourway == "play":
         # multicolour caps: curated 6-colour palette scattered on a
@@ -1714,6 +1380,11 @@ def apply_colourway(parts, colourway):
         micro_texture(m_case, 85, 0.40, 0.00055, 0.52, 0.68, detail=5.0)
         m_plate = pbr("cw_plate", (0.58, 0.58, 0.60), rough=0.30,
                       metal=0.7)
+        cap_materials = []
+        for index, colour in enumerate(palette):
+            cap = pbr(f"cw_play_{index}", colour, rough=0.50)
+            studio_grain(cap, frequency=3900, relief=0.000030, roughness=(0.46, 0.57))
+            cap_materials.append(cap)
         # round-11 review: "make the colour symmetrical (pink yellow
         # blue on the left, then blue yellow pink on the right)" — the
         # index is a function of |x - half centre| so each half mirrors
@@ -1730,7 +1401,7 @@ def apply_colourway(parts, colourway):
             for o in hcaps:
                 key = int(round(abs(o.matrix_world[0][3] - hx) * 60)
                           + round(o.matrix_world[1][3]) * 2) % len(palette)
-                assign([o], pbr(f"cw_play_{key}", palette[key], rough=0.40))
+                assign([o], cap_materials[key])
         print("[scene] colourway: play (mirror-symmetric caps)",
               flush=True)
         return
@@ -1751,13 +1422,7 @@ def apply_colourway(parts, colourway):
             for ao in art_roots:
                 ao.matrix_world = accent.matrix_world.copy()
             bpy.context.view_layer.update()
-            m_art = pbr("cw_artisan", (0.055, 0.30, 0.30), rough=0.22)
-            try:
-                bsdf = m_art.node_tree.nodes["Principled BSDF"]
-                if "Coat Weight" in bsdf.inputs:
-                    bsdf.inputs["Coat Weight"].default_value = 0.5
-            except Exception:
-                pass
+            m_art = artisan_resin()
             assign(art_objs, m_art)
             for ai, ao in enumerate(art_objs):
                 ao.name = f"artisan_accent_{ai}"
@@ -1776,253 +1441,136 @@ def main():
     init_scene()
     parts, all_objs = build_keyboard(args)
     apply_colourway(parts, args.colourway)
+    if args.colourway in ("play", "artisan"):
+        view = bpy.context.scene.view_settings
+        view.view_transform = "AgX"
+        view.look = "AgX - Medium High Contrast"
 
     # ---- render queue
+    shots = set(args.shots.split(","))
+    orbits = [i for i in (2, 8) if "orbit" in shots or f"orbit_{i:02d}" in shots]
     (bx0, by0, bz0), (bx1, by1, bz1) = bbox_mm(all_objs)
     cx, cy = (bx0 + bx1) / 2, (by0 + by1) / 2
     print(f"[scene] assembly centre ({cx*1000:.1f},{cy*1000:.1f}) mm",
           flush=True)
 
-    # ---- studio floor: grounds the product and gives the soft key lights
-    # a surface to draw a contact shadow on. Placed 0.2 mm under the tub
-    # bottom; the 4 m plane fills the camera frame (no horizon visible).
+    # Set the studio floor at the feet's common contact height.
+    feet = []
+    desk_z = bz0 - 0.0002
+    if (args.colourway in ("bright", "dark") and not args.hide_case and not args.no_floor
+            and (orbits or {"hero", "top"} & shots)):
+        desk_z = min(bbox_mm(g["tub"])[0][2] for g in parts.values())
+        feet = add_tenting_feet(parts, desk_z, args.colourway)
     if not args.no_floor:
-        bpy.ops.mesh.primitive_plane_add(
-            size=4.0, location=(cx, cy, bz0 - 0.0002))
+        bpy.ops.mesh.primitive_plane_add(size=20.0, location=(cx, cy, desk_z))
         floor = bpy.context.active_object
         floor.name = "studio_floor"
         if args.colourway == "dark":
-            # stealth set: DARK swirly marble with gold-white veins
-            m_floor = proc_dark_marble("marble_floor")
+            m_floor = honed_stone()
+        elif args.colourway == "play":
+            m_floor = play_backdrop(cx)
         else:
             m_floor = pbr("studio_floor", (0.40, 0.385, 0.365), rough=0.85)
             micro_texture(m_floor, 800, 0.60, 0.0008, 0.72, 0.90, detail=3.0)
         assign([floor], m_floor)
-        print(f"[scene] floor at z {bz0*1000 - 0.2:.2f} mm", flush=True)
+        print(f"[scene] floor at z {desk_z * 1000:.2f} mm", flush=True)
 
-    # ---- round 24: PLAY pose. The multicolour colourway is the fun
-    # shot: both halves lifted off the desk, rolled/tossed toward the
-    # camera, one higher than the other, on a seamless gradient (the
-    # floor is hidden), shot from a lower 3/4 with a few degrees of
-    # camera roll. Only the play invocation takes this branch.
-    #
-    # Rotating the existing pose empties would pivot each half about
-    # its OUTER BOTTOM EDGE (that is where they sit), which swings the
-    # body down and cancels the lift. So the toss is applied about each
-    # half's own centre, directly on the world matrices.
     PLAY = args.colourway == "play"
     if PLAY:
-        _fl = bpy.data.objects.get("studio_floor")
-        if _fl is not None:
-            _fl.hide_render = True
-        from mathutils import Matrix, Vector, Euler
-        # round 24: the first pass used 14/-11 deg pitch, which stood
-        # the halves on edge (a 145 mm-deep half rises 35 mm at 14 deg)
-        # and showed the right board almost side-on. A toss reads with
-        # a few degrees of pitch + roll and a clear height offset; the
-        # DYNAMISM comes from the separation and the camera roll, not
-        # from tipping the product past legibility.
-        for h, sgn, ang, dz in (
-                ("L", -1.0, (6.0, -4.0, 10.0), 0.050),
-                ("R", 1.0, (5.0, 3.0, -10.0), 0.100)):
-            # DE-DUPE: an object can appear in several part groups
-            # (tub in "tub" and "case", caps in "caps" and "loose"...),
-            # and the old list comprehension applied the toss once per
-            # appearance -- six nested copies of the same rotation put
-            # whole halves on edge. Transform each object exactly once.
-            half_objs = list({o.name: o for lst in parts[h].values()
-                              for o in (lst if isinstance(lst, list) else [])
-                              }.values())
-            h0, h1 = bbox_mm(half_objs)
-            c = Vector(((h0[0] + h1[0]) / 2,
-                        (h0[1] + h1[1]) / 2,
-                        (h0[2] + h1[2]) / 2))
-            R = Euler((math.radians(ang[0]), math.radians(ang[1]),
-                       math.radians(ang[2])), "XYZ").to_matrix().to_4x4()
-            T = Matrix.Translation(Vector((sgn * 0.012, 0.0, dz)))
-            M = T @ Matrix.Translation(c) @ R @ Matrix.Translation(-c)
-            for o in half_objs:
-                o.matrix_world = M @ o.matrix_world
-        bpy.context.view_layer.update()
-        _pb0, _pb1 = bbox_mm(all_objs)
-        _pcx = (_pb0[0] + _pb1[0]) / 2
-        _pcy = (_pb0[1] + _pb1[1]) / 2
-        _pcz = (_pb0[2] + _pb1[2]) / 2
-        print(f"[scene] play pose: halves airborne, rolled + tossed; "
-              f"bbox x {_pb0[0]:.3f}..{_pb1[0]:.3f} "
-              f"y {_pb0[1]:.3f}..{_pb1[1]:.3f} "
-              f"z {_pb0[2]:.3f}..{_pb1[2]:.3f}", flush=True)
+        from mathutils import Euler, Matrix, Vector
+
+        for h, offset, angles in (
+                ("L", (-0.005, -0.009, 0.045), (17, -19, 27)),
+                ("R", (-0.014, 0.008, 0.087), (7, 16, -22))):
+            lo, hi = bbox_mm(parts[h]["tub"] + parts[h]["cover"])
+            pivot = (Vector(lo) + Vector(hi)) / 2
+            turn = Euler(tuple(map(math.radians, angles)), "XYZ").to_matrix().to_4x4()
+            pose = bpy.data.objects[f"pose_{h}"]
+            pose.matrix_world = (Matrix.Translation(pivot + Vector(offset)) @ turn
+                                 @ Matrix.Translation(-pivot) @ pose.matrix_world)
+            bpy.context.view_layer.update()
+        lo, hi = bbox_mm(all_objs)
+        _pcx, _pcy, _pcz = ((a + b) / 2 for a, b in zip(lo, hi))
 
     setups = args.setups.split(",")
-    shots = args.shots.split(",")
     for setup in setups:
         setup_world_and_lights(setup, cx, cy)
         sdir = os.path.join(args.out, setup)
         os.makedirs(sdir, exist_ok=True)
-        if "hero" in shots:
-            if PLAY:
-                # lower, closer, a touch of roll — playful, not catalogue;
-                # framed on the airborne bbox, not the desk centre
-                cam = add_cam("hero", (_pcx - 0.240, _pcy - 0.500,
-                                       _pcz + 0.270),
-                              (_pcx, _pcy, _pcz), lens=46)
-                cam.rotation_euler.rotate_axis("Z", math.radians(3.5))
-            else:
-                cam = add_cam("hero", (cx - 0.30, cy - 0.52, 0.40),
-                              (cx, cy, 0.010), lens=50)
-            if args.framecheck:
-                frame_report(cam, all_objs, "hero", res)
-            else:
-                render_to(cam, os.path.join(sdir, "hero.png"), res,
-                          args.samples, args.device, pp=args.pp)
         if "exploded" in shots:
-            # ---- round 23: snapshot every material assignment the
-            # stack palette is about to override — the top shot renders
-            # AFTER the exploded in this same invocation, and the
-            # palette used to leak into it (the "grey nano in bright"
-            # was the tainted top)
-            _stack_groups = ("board", "plate", "tub", "cover", "caps",
-                             "swbodies", "nano", "foam", "knob",
-                             "gaskets", "gaskets_b")
-            _pre_stack = [
-                (o, list(o.data.materials), o.hide_render)
-                for h in parts
-                for grp in _stack_groups
-                for o in parts[h].get(grp, [])]
-            # ---- round 22: the stack palette is scoped to THIS shot
-            # only. It used to apply to the whole scene, so any
-            # invocation carrying --stack-colors tinted the hero/top
-            # with the exploded's palette (silver plate, graphite case,
-            # flat PCB board, gold jack = "odd plate, blank black
-            # microcontroller" in the bright hero).
-            if args.stack_colors:
-                # round-8 review: "slight colour variations, not something this
-                # radical" (purple case / turquoise plate). Round 9 = a
-                # warm-neutral ladder with the PCB its real dark-green self.
-                # round 24 (this is the copy that actually renders): the
-                # round-23 ladder put bone caps, a 0.62 silver plate and
-                # a 0.50 "warm grey" cover in the same value band, so
-                # the top half of the stack collapsed into one white
-                # mass. Dark cover + gunmetal plate separate the bone
-                # caps without going back to the radical palette.
-                stack_pal = {
-                    "tub":     ((0.140, 0.135, 0.125), 0.55, 0.0),  # graphite
-                    "foam":    ((0.520, 0.470, 0.380), 0.75, 0.0),  # pale sand
-                    "gaskets": ((0.470, 0.425, 0.360), 0.84, 0.0),  # poron
-                    "gaskets_b": ((0.470, 0.425, 0.360), 0.84, 0.0),  # poron
-                    "plate":   ((0.195, 0.195, 0.210), 0.38, 0.9),  # gunmetal
-
-                    "caps":    ((0.780, 0.750, 0.690), 0.45, 0.0),  # bone
-                    "cover":   ((0.098, 0.095, 0.092), 0.46, 0.0),  # graphite
-                    "knob":    ((0.720, 0.560, 0.260), 0.30, 1.0),  # brass
-                    "nano":    ((0.120, 0.120, 0.130), 0.45, 0.0),  # charcoal
-                }
-                # board: the REAL KiCad layers, each with its own
-                # diagram material (round 24c). The old code painted
-                # every layer with one striped shader, which is why the
-                # PCB read as a black card with gold stripes.
-                m_comp_gold = pbr("stack_comp_gold", (0.75, 0.58, 0.24),
-                                  rough=0.28, metal=1.0)
-                m_comp_metal = pbr("stack_comp_metal", (0.22, 0.22, 0.24),
-                                   rough=0.32, metal=0.9)
-                m_comp_dark = pbr("stack_comp_dark", (0.09, 0.09, 0.10), rough=0.40)
-                m_housing = pbr("stack_sw_housing", (0.72, 0.70, 0.66), rough=0.45)
-                m_stem = pbr("stack_sw_stem", (0.09, 0.09, 0.10), rough=0.40)
-                # round 19: choc switches are TWO-TONE — the cream PG1350
-                # housing vs the dark stem (one flat colour read as foam pads)
-                # round 24b: every layer of the diagram is a real
-                # surface, not a flat swatch. micro_texture() adds the
-                # noise height + roughness swing that the audit demands;
-                # the foam keeps its own open-cell graph below.
-                _stack_tex = {
-                    "tub":     (700, 0.22, 0.00010, 0.44, 0.60),
-                    "cover":   (700, 0.22, 0.00010, 0.40, 0.56),
-                    "plate":   (1300, 0.10, 0.00002, 0.30, 0.44),
-                    "gaskets": (480, 0.55, 0.00022, 0.62, 0.80),
-                    "gaskets_b": (480, 0.55, 0.00022, 0.62, 0.80),
-                    "caps":    (900, 0.20, 0.00005, 0.40, 0.52),
-                    "knob":    (320, 0.10, 0.00001, 0.26, 0.36),
-                    "nano":    (700, 0.18, 0.00006, 0.50, 0.64),
-                    "board":   (900, 0.00, 0.00000, 0.40, 0.40),
-                }
-                for h in parts:
-                    for grp, (col, rough, metal) in stack_pal.items():
-                        mat = pbr(f"stack_{grp}", col, rough=rough, metal=metal)
-                        tex = _stack_tex.get(grp)
-                        if tex and grp != "foam":
-                            micro_texture(mat, tex[0], tex[1], tex[2],
-                                          tex[3], tex[4], detail=3.5)
-                        if grp == "foam":
-                            # round 19: "foam should look porous, not a sheet
-                            # of perfectly even paper" — open-cell acoustic
-                            # foam: fine high-frequency bump + deep roughness
-                            micro_texture(mat, 700, 0.75, 0.0002,
-                                          rough + 0.12, 0.92, detail=6.0)
-                        assign(parts[h].get(grp, []), mat)
-                    for o in parts[h].get("swbodies", []):
-                        assign([o], m_stem if o.name.endswith("_stem")
-                               else m_housing)
-                    # layers by measured geometry: copper / mask+silk
-                    # planes / FR4, with the gerber artwork on the mask
-                    materialize_pcb_diagram(parts[h].get("board", []), h)
-                # round 24c: the gaskets are real PORON PADS on the
-                # cover tabs now (not a slab), so the diagram SHOWS
-                # them — they are a layer of the stack the reviewer
-                # asked to see. Round-14's "no foam above the PCB"
-                # rule applied to the old full-outline slab.
-                print(f"[scene] stack-colours on ({len(stack_pal)} layers + "
-                      f"gerber artwork; poron tab pads shown)",
-                      flush=True)
-            for grp, dz in EXPLODE.items():
-                for h in parts:
-                    move_z(parts[h].get(grp, []), dz * SCALE)
-            # ---- round 24: ALL TEXT + LEADERS REMOVED (review:
-            # "just remove text please"). The exploded now reads as a
-            # pure stack; the backdrop dims so the layers carry it.
-            _bgs = [n for n in bpy.context.scene.world.node_tree.nodes
-                    if n.type == "BACKGROUND"]
-            _saved_bg = [tuple(_bg.inputs[0].default_value)
-                         for _bg in _bgs]
-            for _bg in _bgs:
-                _c = _bg.inputs[0].default_value
-                _bg.inputs[0].default_value = (
-                    _c[0] * 0.16, _c[1] * 0.17, _c[2] * 0.20, 1.0)
+            stack_materials = {
+                "foam": porous_foam("open_cell_foam", (0.41, 0.34, 0.26)),
+                "gaskets": porous_foam("open_cell_gaskets", (0.31, 0.25, 0.18)),
+                "tub": pbr("stack_tub", (0.12, 0.12, 0.12), rough=0.53),
+                "cover": pbr("stack_cover", (0.15, 0.15, 0.15), rough=0.45),
+                "plate": pbr("stack_plate", (0.24, 0.25, 0.27), rough=0.42, metal=0.66),
+                "knob": pbr("stack_knob", (0.70, 0.52, 0.24), rough=0.30, metal=0.88),
+            }
+            stack_materials["gaskets_b"] = stack_materials["gaskets"]
+            changes = []
+            for groups in parts.values():
+                for group, mat in stack_materials.items():
+                    if not args.stack_colors and group not in ("foam", "gaskets", "gaskets_b"):
+                        continue
+                    for obj in groups.get(group, []):
+                        changes.append((obj, list(obj.data.materials)))
+                        assign([obj], mat)
+                top_mask, mat = groups["pcb_art"]
+                changes.append((top_mask, list(top_mask.data.materials)))
+                assign([top_mask], mat)
+            for obj in feet:
+                obj.hide_render = True
+            for group, dz in EXPLODE.items():
+                for groups in parts.values():
+                    move_exploded_layer(groups.get(group, []), dz * SCALE)
+            camera_bg = next(n for n in bpy.context.scene.world.node_tree.nodes
+                             if n.type == "BACKGROUND" and n.inputs[1].default_value == 1.0)
+            saved_bg = tuple(camera_bg.inputs[0].default_value)
+            camera_bg.inputs[0].default_value = (0.105, 0.119, 0.145, 1)
             floor_obj = bpy.data.objects.get("studio_floor")
-            if floor_obj is not None:
-                # the tub drops below the floor plane in the explode
+            floor_hidden = floor_obj.hide_render if floor_obj else False
+            if floor_obj:
                 floor_obj.hide_render = True
-            # round 24: the stack sat in ~58% of the frame width. A
-            # longer lens (not a closer one) fills the frame AND
-            # flattens the perspective, which is what an exploded
-            # diagram wants -- near and far plates must read at the
-            # same scale. x is nudged +12 mm so the asymmetric knob
-            # stack lands centred.
-            # round 24e: lifted from 0.475 to 0.575 -- the PORON pads
-            # sit on the plate's rim and a 30-degree view hid them
-            # behind the switch plate; this angle looks onto that rim.
-            cam = add_cam("exploded", (cx - 0.072, cy - 0.79, 0.575),
-                          (cx + 0.008, cy, 0.012), lens=74)
+            cam = add_cam("exploded", (cx - 0.23, cy - 0.89, 0.35),
+                          (cx + 0.002, cy, 0.050), lens=76)
+            if setup == args.colourway:
+                center_subject(cam, all_objs, res)
             if args.framecheck:
                 frame_report(cam, all_objs, "exploded", res)
             else:
                 render_to(cam, os.path.join(sdir, "exploded.png"),
                           res, args.samples, args.device, pp=args.pp)
-            # restore: backdrop + floor (must not leak into later shots)
-            for _bg, _c in zip(_bgs, _saved_bg):
-                _bg.inputs[0].default_value = _c
-            # round 23: restore the product materials + visibility the
-            # stack palette overrode, so any later shot in this
-            # invocation (top) renders untainted
-            for o, mats_, hid_ in _pre_stack:
-                o.data.materials.clear()
-                for m_ in mats_:
-                    o.data.materials.append(m_)
-                o.hide_render = hid_
-            if floor_obj is not None:
-                floor_obj.hide_render = False
-            for grp, dz in EXPLODE.items():
-                for h in parts:
-                    move_z(parts[h].get(grp, []), -dz * SCALE)
+            camera_bg.inputs[0].default_value = saved_bg
+            if floor_obj:
+                floor_obj.hide_render = floor_hidden
+            for obj, materials in changes:
+                obj.data.materials.clear()
+                for mat in materials:
+                    obj.data.materials.append(mat)
+            for obj in feet:
+                obj.hide_render = False
+            for group, dz in EXPLODE.items():
+                for groups in parts.values():
+                    move_exploded_layer(groups.get(group, []), -dz * SCALE)
+        if "hero" in shots:
+            if PLAY:
+                # lower, closer, a touch of roll — playful, not catalogue;
+                # framed on the airborne bbox, not the desk centre
+                cam = add_cam("hero", (_pcx - 0.19, _pcy - 0.53,
+                                       _pcz + 0.34),
+                              (_pcx, _pcy, _pcz), lens=48)
+                cam.rotation_euler.rotate_axis("Z", math.radians(9))
+                center_subject(cam, all_objs, res)
+            else:
+                cam = add_cam("hero", (cx - 0.27, cy - 0.53, 0.24),
+                              (cx, cy, 0.004), lens=51)
+            if setup == args.colourway:
+                center_subject(cam, all_objs + feet, res)
+            if args.framecheck:
+                frame_report(cam, all_objs + feet, "hero", res)
+            else:
+                render_to(cam, os.path.join(sdir, "hero.png"), res,
+                          args.samples, args.device, pp=args.pp)
         if "artisan" in shots:
             # round-10 review: "the artisan keycaps can go to a niche fun
             # set, of singular expressive shots, not within the bright/
@@ -2038,14 +1586,16 @@ def main():
                 (a0, a1) = bbox_mm(art_objs)
                 a = ((a0[0] + a1[0]) / 2, (a0[1] + a1[1]) / 2,
                      (a0[2] + a1[2]) / 2)
-                loc = (a[0] - 0.085, a[1] - 0.125, a[2] + 0.055)
-                look = (a[0] + 0.004, a[1] + 0.010, a[2] - 0.002)
+                loc = (a[0] - 0.090, a[1] - 0.076, a[2] + 0.064)
+                look = (a[0] + 0.004, a[1] + 0.005, a[2])
                 import mathutils
                 cam = add_cam("artisan", loc, look, lens=55)
                 cam.data.dof.use_dof = True
                 cam.data.dof.focus_distance = (
-                    mathutils.Vector(look) - mathutils.Vector(loc)).length
-                cam.data.dof.aperture_fstop = 10.0
+                    (mathutils.Vector(a) - cam.location).dot(
+                        cam.rotation_euler.to_matrix() @ mathutils.Vector((0, 0, -1)))
+                )
+                cam.data.dof.aperture_fstop = 13.0
                 near_art = art_objs + [
                     o for h in parts for o in parts[h].get("caps", [])
                     if (o.matrix_world[0][3] - a[0]) ** 2
@@ -2056,22 +1606,26 @@ def main():
                     render_to(cam, os.path.join(sdir, "artisan.png"),
                               res, args.samples, args.device,
                               pp=args.pp)
-        if "orbit" in shots:
-            # round-9: only the 02 (60 deg) and 08 (240 deg) perspectives
-            # survive the shot-list cut — radius 0.20 was a single-half
-            # holdover; 0.55m keeps the split assembly in frame
-            # (verified per-angle by --framecheck)
-            for i in (2, 8):
-                a = 2 * math.pi * i / 12
-                cam = add_cam(f"orbit{i}", (cx + 0.55 * math.cos(a),
-                                            cy - 0.55 * math.sin(a), 0.30),
-                              (cx, cy, 0.006), lens=50)
-                if args.framecheck:
-                    frame_report(cam, all_objs, f"orbit_{i:02d}", res)
-                else:
-                    render_to(cam, os.path.join(
-                        sdir, f"orbit_{i:02d}.png"),
-                        res, args.samples, args.device, pp=args.pp)
+        for i in orbits:
+            angle = 2 * math.pi * i / 12
+            label = f"orbit_{i:02d}"
+            cam = add_cam(label, (cx + 0.55 * math.cos(angle),
+                                  cy - 0.55 * math.sin(angle), 0.30),
+                          (cx, cy, 0.006), lens=50)
+            if setup == args.colourway:
+                center_subject(cam, all_objs + feet, res)
+            if args.framecheck:
+                frame_report(cam, all_objs + feet, label, res)
+            else:
+                # From the rear, the fill panel's cutoff crosses the floor
+                # in frame. The key and rim lights carry this angle.
+                fill = bpy.data.objects.get("fill") if i == 8 and setup == "bright" else None
+                if fill:
+                    fill.hide_render = True
+                render_to(cam, os.path.join(sdir, label + ".png"),
+                          res, args.samples, args.device, pp=args.pp)
+                if fill:
+                    fill.hide_render = False
         if "top" in shots:
             cam = add_cam("top", (cx, cy - 0.0001, 0.50), (cx, cy, 0.0),
                           lens=60)
@@ -2080,8 +1634,10 @@ def main():
             # bbox and moved cy, which pulled the north edge (jacks)
             # onto the frame line. 0.44 leaves 10 mm of air all round.
             cam.data.ortho_scale = 0.44
+            if setup == args.colourway:
+                center_subject(cam, all_objs + feet, res)
             if args.framecheck:
-                frame_report(cam, all_objs, "top", res)
+                frame_report(cam, all_objs + feet, "top", res)
             else:
                 render_to(cam, os.path.join(sdir, "top.png"), res,
                           args.samples, args.device, pp=args.pp)
