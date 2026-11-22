@@ -31,7 +31,7 @@ GRID = 0.25
 MARGIN = 0.15  # quantization slop: segments between free cell centres still
 # graze pad corners (r5 at 0.10 left 0.025mm grazes: ROW2/COL4 on F vs diode
 # pad2). Carve uses the same margin so THT pin escape stays open.
-ROUTER_VERSION = 14  # bump when routing behavior changes: stale generator
+ROUTER_VERSION = 15  # bump when routing behavior changes: stale generator
 # copper from older revisions is dropped (it would dangle/short); GUI-added
 # copper is preserved only within the same revision.
 W = {"s": 0.25, "p": 0.5}
@@ -721,12 +721,6 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
         chain("GND", order)
 
 
-    # Reserve the split links before the matrix routes enter the MCU bay.
-    for pin in ("T", "R1"):
-        ref = f"J_{tag}1"
-        net = next(p[6] for p in board.pads if p[7] == ref and p[9] == pin)
-        mcu = next(p for p in board.pads if p[7] == f"U_{tag}1" and p[6] == net)
-        connect(net, P(ref, pin), (mcu[0], mcu[1], {"F", "B"}))
 
     # ---- anode links: SW.2 -> D.2 (different layers: vias auto-placed)
     for idx in range(22):
@@ -793,6 +787,13 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
         taps.append((mcu[0][0], mcu[0][1], {"F", "B"}))
         for t in taps:
             tap(net, t)
+
+    # Route the debug link after the matrix taps have cleared the MCU bay.
+    for pin in ("T", "R1"):
+        ref = f"J_{tag}1"
+        net = next(p[6] for p in board.pads if p[7] == ref and p[9] == pin)
+        mcu = next(p for p in board.pads if p[7] == f"U_{tag}1" and p[6] == net)
+        connect(net, P(ref, pin), (mcu[0], mcu[1], {"F", "B"}))
 
     # ---- short stubs: encoder, TRRS, power (nearest far endpoint each)
     jobs = []

@@ -27,14 +27,14 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 | 22 | MBK Choc v1 keycaps (PBT) | one per switch; 44–50 for the split incl. spares — order rows in `pcb/BOM_ORDER.md` §D |
 | 22 | Kailh Choc v1 hotswap sockets | SMD bottom (pads part of footprint) |
 | 1 | nice!nano v2 module | socketed, USB end to board notch |
-| 2 | machine-pin SIP strips 2×12, 2.54mm pitch | socket rows 15.24mm apart; ASSEMBLED STACK HEIGHT (socket + pins, no module) must measure 4.5–5.0mm — caliper at first article; the 2.11mm-height Mill-Max 315 variant is banned BY HEIGHT (cannot clear the 3.0 cell); the 43-112-41-003000 3.0-class socket + matching pins are the order |
+| 2 | machine-pin 12-position SIP strips, 2.54mm pitch | rows 15.24mm apart. Measure **4.5–5.0mm** from carrier PCB top to the underside of the fully mated module. Qualify this spacing, contact engagement and the largest insulated pack. The Mill-Max 315-43-112-41-003000 socket housing is 1.80mm high. |
 | 1 | **Alps EC11E15244G1** rotary encoder with push | Reference part for PCB, firmware and clearance checks. Qualify any alternate on the first article. |
 | 1 | Knob matched to the qualified encoder shaft | Verify the bore, skirt clearance at full press, and sweep past the nearest cap. The low render knob was sized for a shorter shaft. |
-| 1 | XKB PJ-320A TRRS 3.5mm | bring-up/debug link only; 90° cable required |
-| 1 | TRRS cable, 4-pole CTIA, right-angle 3.5mm both ends, short | mouths face each other across a 22.40mm gap — straight plugs collide head-on; measure the boot, must clear the recessed mouths (0.99mm). No vendor link guessed; any CTIA right-angle cable meeting the fit check in §1 does |
+| 1 if retained | XKB PJ-320A TRRS 3.5mm | Debug option. Use the v0.5.2 board and plug bay. |
+| 1 per split if retained | Short, straight-through 4-pole TRRS cable, right-angle at both ends | Qualify the exposed shaft, required insertion depth, both boots and cable bend against the revised assembly. |
 | 1 | Kapton (polyimide) tape, ≥10mm wide | cell sandwich: pouch face + nano underside before the cell goes in |
 | 1 | JST S2B-PH-K-S + PHR-2 housing + 2× SPH-002T-P0.5S crimps | battery connector set, side-entry |
-| 1 | Würth WS-SLTV 450301014042 | slide SPDT, pad 1 (middle) = common, 300mA switching (fine at 100mA default; leave charge-boost open) |
+| 1 | Würth WS-SLTV 450301014042 | SPDT, pin 1 is common, 300mA switching rating. Trim the three soldered leads to a finished projection of at most 3.25mm below the PCB top. |
 | 1 | 301230 LiPo cell (see below) | with protection PCM + JST-PH 2.0mm pigtail |
 
 ## Case (rev-1 plate + gaskets, per half ×2)
@@ -42,17 +42,19 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 | Qty | Part | Notes |
 |---|---|---|
 | 1 | Switch plate, **1.2mm** | Through-cut OUTLINE and CUTOUT from the plate DXF. Machine RELIEF as 22 nominal **0.55mm** underside pockets. Use PORON as a punch template. Accept the coupon with **≥0.60mm** plate remaining and **≥0.15mm** seated clearance above a **1.40mm** diode. |
-| 8 of each thickness | PORON 4701-30 Very Soft, 7×4mm pads | **3.0mm** bottom and **1.5mm** top on each tab. |
+| 8 of each thickness | Very soft PORON, 7×4mm pads | Target **3.0mm** bottom and **1.5mm** top. Confirm exact grade, density, thickness, tolerances and backing with the supplier. Qualify compression on the assembled coupon. |
 | 8 | N52 disc magnet Ø4×2mm, axially magnetized | TUB pockets, Ø4.3×2.2mm, face up flush at the lip plane. |
 | 8 | N52 disc magnet Ø4×0.5mm, axially magnetized | COVER pockets, Ø4.3×0.7mm, face down flush at the lip plane. Verify pull force on the assembled first article. |
 
-## Cell — locked to orderable stock (was TBD)
+## Cell selection and qualification
 
 - Primary: kriscables 301230 110mAh + JST PH 2.0mm (€8.90–18.90 seen,
   re-check at checkout; SKU
   `Li-Po Battery 110mah-1`, tagged nice!nano — order 2 for a split).
   Verified on the listing: 3×12×30mm, 3.7V, 110mAh, PH 2.0mm, ~3cm leads.
-  Charge math on the same page: 100mA → ~1.1h, i.e. 0.9C — suitable.
+  The module's nominal 100mA is 0.91C for this capacity. Confirm the
+  charge limit and dimensions with the actual pack supplier, including
+  the PCM, seam, lead exit and insulation. [Product audit](../audit.md)
 - Alternates (same class, check stock): KEEBD 301230 110mAh (states PCM
   explicitly, PH 2.0mm options, $5.00) and Typeractive 110mAh 301230
   (PH 2.0mm, "fits snugly underneath a nice!nano", $3.00) — both were
@@ -95,13 +97,10 @@ vias + 0.5/1.0mm power vias (min drill 0.3 this tier, annular ≥0.15;
 ours = 0.30 drill in 0.65 pad → annular 0.175 — JLC-verified 2026-10; the
 old "0.15/0.25" line quoted the KiCad template, not the boards),
 150×115mm halves (2-layer max 670×600), 1.6mm/0.3 drill = 5.3:1 aspect
-(max 8:1). Order **tab-routed, not V-scored**: V-cut wants 0.3mm
-copper-to-edge and our measured minimum is 0.29. The outline is concave,
-so put this in the fab order comment verbatim: `CONCAVE OUTLINE —
-TAB-ROUTE ONLY, NO V-CUT / V-SCORE` — otherwise the outline is rejected
-or broken at depaneling.
+(max 8:1). Use tab routing for the concave profile. The reviewed v0.5.1
+minimum copper-to-edge distances are 0.5821mm on Left and 0.3301mm on
+Right. Recheck after the connector reroute. [PCB order guide](../pcb/BOM_ORDER.md)
 
-Stack budget (cell under module, per half): 4.5mm sockets − 3.0 cell −
-~0.5 PCM − ~0.2 tape ≈ 0.8mm spare (1.3 with 5.0mm rows). Mill-Max 2.11mm
-goes negative — banned, as specified. Confirm PCM/tape thickness and wire
-dressing on the first cell; JST lives beside the cell, never under it.
+Use the measured maximum insulated pack thickness and the minimum clear
+height under the fully seated module to establish the stack budget.
+Allow room for the component bodies, solder, pouch seam and wire exit.

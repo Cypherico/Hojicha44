@@ -534,13 +534,11 @@ def seg_hit(a, b, c, d):
 
 
 def union_rects(p, q):
-    """Boundary loops of the union of two axis-aligned rects (each given
-    as 4 corners). Overlapping-with-area pairs merge into one loop;
-    disjoint/touching pairs come back as two."""
-    x0 = max(min(p[0][0], p[2][0]), min(q[0][0], q[2][0]))
-    x1 = min(max(p[0][0], p[2][0]), max(q[0][0], q[2][0]))
-    y0 = max(min(p[0][1], p[2][1]), min(q[0][1], q[2][1]))
-    y1 = min(max(p[0][1], p[2][1]), max(q[0][1], q[2][1]))
+    """Boundary loops for overlapping orthogonal polygons."""
+    px, py = zip(*p)
+    qx, qy = zip(*q)
+    x0, x1 = max(min(px), min(qx)), min(max(px), max(qx))
+    y0, y1 = max(min(py), min(qy)), min(max(py), max(qy))
     if x1 - x0 <= 1e-9 or y1 - y0 <= 1e-9:
         return [p, q]  # disjoint or merely touching: keep both loops
 
@@ -679,7 +677,7 @@ def build_half(tag):
                           -7.62 + 9.15 + 1.5, 13.97 + 17.05 + 1.5,
                           mx, my, mrot)
     jb = layer_bbox(fp_source(*jst[1].split(':')), 'F.Fab')
-    jst_rect = xform_rect(jb[0] - 1.5, jb[1] - 1.5, jb[2] + 1.5, jb[3] + 1.5,
+    jst_rect = xform_rect(jb[0] - 1.5, -jb[3] - 1.5, jb[2] + 1.5, -jb[1] + 1.5,
                           jst[2], jst[3], jst[4])
     # W1: switch strip + MCU/cell + JST as separate loops (may overlap;
     # laser cuts the union; webs between them are not structural).
@@ -715,19 +713,21 @@ def build_half(tag):
     while edge_web(cx0, cy1, cx1, cy1) < 2.5 and cy1 > py1 + 1.0:
         cy1 -= 0.25
     w_core = rect_poly(cx0, cy0, cx1, cy1)
-    # TRRS body in footprint frame: x +-3, y -2..12.1 (STEP bbox + mouth)
+    # TRRS housing in the design footprint frame, reflected from native KiCad.
     tx, ty, trot = trrs[2], trrs[3], trrs[4]
-    tb = xform_rect(-3.0, -2.0, 3.0, 12.1, 0, 0, trot)
+    tb = xform_rect(-3.05, -12.2, 3.05, 2.0, 0, 0, trot)
     # channel opens to the split-gap edge: east (+x) on Left, west on Right
     xs = [p[0] for p in loop]
     edge_x = max(xs) + 1.0 if tag == 'Left' else min(xs) - 1.0
     tpad = 1.0
+    # Match the open 10.5 mm tool/boot bay at the seam.
+    bay_half_width = case_params.TRRS_BAY_W / 2
     if tag == 'Left':
-        w_trrs = rect_poly(tx + tb[0] - WIN_TRRS_WEST_MARGIN, ty + tb[1] - tpad,
-                           edge_x, ty + tb[3] + tpad)
+        w_trrs = rect_poly(tx + tb[0] - WIN_TRRS_WEST_MARGIN, ty - bay_half_width,
+                           edge_x, ty + bay_half_width)
     else:
-        w_trrs = rect_poly(edge_x, ty + tb[1] - tpad,
-                           tx + tb[2] + tpad, ty + tb[3] + tpad)
+        w_trrs = rect_poly(edge_x, ty - bay_half_width,
+                           tx + tb[2] + tpad, ty + bay_half_width)
     # USB-plug bay (post-audit H1): the plug is 12.35 wide over an 11.0
     # notch, so its shoulders cut residual plate strips beside the notch
     # walls that neither the switch strip (stops at its own courtyard) nor
@@ -786,6 +786,18 @@ def build_half(tag):
         mloop = mb[0]
         if math.hypot(mloop[-1][0] - mloop[0][0],
                       mloop[-1][1] - mloop[0][1]) < 1e-6:
+            mloop = mloop[:-1]
+        # Continue the plate opening along the keyed plug's horizontal
+        # removal path. The cover has a wider opening for tool access.
+        x0, y0, x1, y1 = case_params.JST_PLATE_WIN
+        if tag == 'Right':
+            axis = 2 * case_params.MIRROR_AX
+            x0, x1 = axis - x1, axis - x0
+        service = rect_poly(x0, y0, x1, y1)
+        windows = union_rects(mloop, service)
+        assert len(windows) == 1, f'{tag}: JST access must join the component window'
+        mloop = windows[0]
+        if mloop[0] == mloop[-1]:
             mloop = mloop[:-1]
         # crack audit: the big openings carry no square inside corners
         mloop = chamfer(mloop, WIN_FILLET)

@@ -34,24 +34,17 @@ Encoder push over the window zone stays soft by design.
 | Bottom gaskets | Same 7×4 pads (3.0mm, compressed to 2.55 at 15%) under each tab (pairs at one XY); tub floor steps to −4.65 under the PCB zone (sockets + clearance) — foam sets tab height, floor depth is separate (see `case/params.py`) |
 | Bottom case | BUILT — bottom tub v4.1 (`case/gen_case.py`, gates exit-0; shaped ports + recessed magnet stations; floor −4.65, slab 1.7, tub bottom −6.35 → **assembled case 11.55mm tall**, desk→cap-top 13.93); acoustic foam optional, non-structural |
 
-- **Bottom-case floor (case design):** floor under the PCB zone sits at
-  FLOOR_Z −4.65 (PCB-top frame), provisioned by the BELOW-PCB protrusions
-  (M1, review-corrected 2026-10-18; wording fixed 2026-10-21 — the
-  hotswap SOCKETS are SOLDERED BENEATH (their pads are on B.Cu, the
-  footprint body on B.Fab/B.SilkS) and dip ~1.25 below the board
-  bottom (≈ −2.85 abs), so the floor is provisioned by the deeper
-  protrusions below, never by the sockets):
-  encoder legs **−3.65** (measured off the vendored ROT_EC11E STEP,
-  which the footprint maps 1:1 into the PCB frame — rotate 0, no z
-  offset), TRRS THT pin tips **−3.0** (vendored PJ-320A STEP), Choc
-  socket bump **−1.25** (Kailh datasheet), slide-switch legs ≤**−3.5**
-  (WS-SLTV family bound — caliper on the first article), JST PH ~**−2.5**
-  (family bound). Deepest known = −3.65 (no trimming; leads left long)
-  → FLOOR_Z −4.65 keeps 1.0mm clearance, and the floor slab is
-  **FLOOR_T 1.7** (tub bottom −6.35; the earlier −5.6/2.0 slab cost
-  1.2mm of overall height the user wanted back). The tab-support shelf
-  at SHELF_Z −1.55 is a separate feature (foam sets tab height, floor
-  depth is separate — `case/params.py`).
+- **Bottom-case floor.** The floor top is z=−4.65 and the 1.70mm slab
+  ends at −6.35, measured from the nominal carrier PCB top. The bare
+  PCB has 3.05mm below it, the modeled Choc sockets 1.18mm, the modeled JST
+  tips 1.25mm and the encoder leads 1.00mm. A stock Würth 450301014042
+  projects 4.70–5.10mm and intersects the floor at all three pins.
+  For this tub, trim the soldered switch terminals and inspect the joints.
+  The finished lead and solder may project at most 3.25mm from the PCB
+  top. This leaves 1.40mm nominally and 1.00mm with 0.40mm downward travel. A full-length lead design
+  requires a deeper floor or local clearance preserving the floor web.
+  Test the seated PCB through its gasket travel before placing acoustic
+  foam in the open regions. [Würth drawing](https://www.we-online.com/components/products/datasheet/450301014042.pdf) · [Assembly measurements](../audit.md)
 
 - **Strength & materials (2026-10-24 review round; user: "strong enough
   in PETG, 100% infill okay, no exotic materials"):** measured minimum

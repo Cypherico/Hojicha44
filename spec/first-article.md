@@ -1,5 +1,9 @@
 # Hojicha44 — first-article checklist (hands + parts required)
 
+Use the v0.5.2 PCB, plate and case files together. Confirm connector
+seating, cable fit and switch lead clearance on the first pair. The
+[product audit](../audit.md) records the CAD checks and their limits.
+
 Do these in order, both halves where marked ×2. Nothing here can be proven
 in software — this is the release gate for the physical items. Prints:
 `out/fit/Hojicha44-{Left,Right}-fit.pdf` (Edge.Cuts + silk + fab + F.Cu
@@ -28,15 +32,19 @@ add supports only for a poor bridger.
 - [ ] **Build 5 half-pairs (10 halves)** for the pilot after the
   engineering sample passes. Allow spares for assembly and replacement:
   20 PCBs (10 halves + 10 spares), 20 plates, 12–15
-  cases (3–4 printed spares per design), 490 switches (14 packs of
-  35), 450–500 hotswap sockets, 500 diodes, 12–14 cells, 80 tub magnets
+  cases (3–4 printed spares per design). Ten assembled halves use
+  220 switches, 220 hotswap sockets and 220 diodes before spares.
+  The earlier 450–500 quantities would also populate most or all spare
+  boards. Allow 12–14 cells, 80 tub magnets
   and 80 cover magnets plus spares, 12 modules, 20 polyfuses.
-- [ ] **PRE-MJF caliper (review 2026-10-24):** the case floor keeps
-  1.0mm over the deepest below-PCB part, but the WS-SLTV (<=-3.5) and
-  JST PH (~-2.5) bounds are FAMILY estimates with zero verified data.
-  Caliper the ACTUAL slide-switch legs, JST legs and hotswap socket
-  bump before placing the MJF order — if anything exceeds -3.65, the
-  floor constants move first (`case/params.py` FLOOR_CLEAR/FLOOR_Z).
+- [ ] **Measure the finished underside before ordering the case.** The
+  floor is 4.65mm below the nominal PCB top. The Würth switch has
+  4.70–5.10mm stock leads below its seating surface. For this floor,
+  trim the three leads after soldering and inspect the joints. Measure
+  from the PCB top to the lowest lead or solder point. The 3.25mm
+  maximum leaves 1.40mm nominal clearance and 1.00mm with 0.40mm downward
+  motion. Keep the area directly below the switch free of foam. Check the
+  encoder, JST, sockets and actual gasket travel before adding foam.
 - [ ] Indicative unit cost **~USD 35–70 per half** (PCB ~USD 2/5 pcs
   + ENIG adder, PCBA ~USD 8 setup + per-joint, PA12 ~USD 2–4 per
   half, PG1350 ~USD 1.1 ea, LiPo USD 1.5–6, N52 USD 0.01–0.08).
@@ -44,7 +52,7 @@ add supports only for a poor bridger.
 **Order policy (rev 3, review 2026-10-24):** *engineering-sample*
 orders — the plate coupon below, the encoder coupon, one corrected PCB
 pair, and one printed tub/cover set — are required before §0. The current
-PCB files are on [fabrication hold](../pcb/MANUFACTURING.md). Sections
+PCB and case files are [v0.5.2 first-article candidates](../pcb/MANUFACTURING.md). Sections
 1–7 gate the **production batch** (the §0 quantities). The
 cheap sequence is: coupon + 1 PCB pair + 1 tub (~USD 60–100), then the
 10-half pilot. "Before ordering anything" in older revisions meant the
@@ -106,12 +114,11 @@ batch; it never forbade coupons.
   the housing hits the shoulders beside the notch, widen it to ~14mm. Plug
   axis rides high on 4.5mm sockets with a ~9mm-inboard shell, so verify the
   housing clears the plate top in the solid-board overlap zone (seating depth), not just the notch width.
-- [ ] **Case port bores.** In a printed slice of the current tub and cover,
-  seat the actual USB-C plug through the 14.0mm slot. Fully mate the
-  right-angle TRRS plug through the roofed Ø6.0mm bore with the boot
-  clear of the case. Check the length of the exposed barrel as well as
-  its diameter, and check that both plugs can seat with the halves at
-  the planned spacing.
+- [ ] **Case port bores.** Seat the actual USB-C plug through a 14.0mm
+  slot in a printed tub and cover slice. If the revised design retains
+  TRRS, use its corrected board placement and case for the mating test.
+  Measure shaft reach, boot clearance at both ends and cable bend at the
+  planned half spacing.
 - [ ] **Power-switch aperture.** With the real switch installed, check that the
   cover seats against the tub without contacting the switch body and
   that the actuator is reachable across its full travel on both halves.
@@ -131,15 +138,12 @@ batch; it never forbade coupons.
   (68.42,64.16) — the LEFT set is the SOURCE and Right is its exact
   mirror x->291.5-x). Cross-check one per half in
   the slicer against the STEP. Tests: dry-fit the cover with NO
-  magnets and NO plate — it sits level at the 3.20 lip plane; then drop
-  the plate in (pads live on its tabs) and reseat the cover: the cover
-  underside must now PRESS each tab pad — a visible cushion gap at any
-  tab zone is a reject (the foam compression mark check), and the
-  stack rides ~0.5mm lower than the no-plate seat (uncompressed top
-  pads 3.70 vs the 3.20 cover underside = the designed 33% preload,
-  TOP_PRELOAD);
-  then with magnets it must snap-seat without rocking; poron must not
-  stick to either case part. **Pull test (M4 gate): with the plate
+  magnets and plate. The empty cover should sit level at the 3.20mm lip.
+  Install the padded plate and PCB, reseat the cover and look for contact
+  marks on the top and bottom pad at every tab. Measure rest height and
+  movement under a keypress. With the magnets fitted, check for rocking,
+  sideways slip and corner peel. The foam should release from both case
+  surfaces when opened. **Pull test (M4 gate): with the plate
   installed, a straight lift must hold ≥1.5 kg before the cover lifts**
   with the specified 0.5mm cover magnets and the actual adhesive.
 - [ ] **Cover dry-fit.** Close the cover flush with the tub without
@@ -161,11 +165,14 @@ batch; it never forbade coupons.
   do not protrude above ~1.5mm, the window may return to 12.7 square —
   but only with that measurement in hand (see the coupon bullet above).
 - [ ] 301230 cell outline (12×30mm) fits between the socket rows on print.
-- [ ] TRRS gap on print/caliper: board-edge to board-edge **20.42mm** at
-  the jack height; plastic mouth-to-mouth **22.40mm** with each mouth
-  **0.99mm recessed** behind its edge (silk tops at 21.40mm, 0.49mm
-  recessed). Verify that both ends of the selected right-angle cable can
-  seat through the case bores at the intended spacing.
+- [ ] If TRRS is retained, compare the revised drilling at 1:1 with the
+  actual jack and verify each contact with an inserted plug. At the nominal
+  22.40mm face-to-face spacing, check both mating depths, boot fit in the
+  10.5mm open bays, and cable routing.
+- [ ] Plug and unplug the battery harness through the JST access window.
+  Check the wire exit and bend with the cover installed. Test continuity
+  and confirm pin 1 is pack positive on each half before connecting power.
+  During a firm keypress, the connector and wires must clear the walls.
 - [ ] Fab limits confirmed with the chosen fab BEFORE ordering: 2-layer
   1.6mm, 0.25mm track / 0.2mm clearance / 0.30mm-drill-in-0.65mm-pad
   signal vias (0.50-in-1.00 power) accepted — the old "0.8-0.4mm" line
@@ -192,20 +199,16 @@ batch; it never forbade coupons.
 
 ## 3. Assembly order (both halves)
 
-- [ ] Diode placement map: diodes carry NO silk references (the 4mm
-  inter-cutout gap fits no text) — the naming is deterministic:
-  **D_Lxx / D_Rxx sits +x of its same-numbered switch (D_Lxx ↔
-  SW_Lxx), 9.5mm in the local +x of the switch centre** (thumb-arc
-  exceptions ride the switch rotation: local deltas (9.50,0.08),
-  (9.24,−2.22), (8.43,−4.39), (7.12,−6.29) — i.e. still the switch's
-  +x side). Solder direction/polarity comes from the cathode tick and
-  the released net list (underline each D's col/row from its switch
-  before soldering). No free-floating "nearest diode" guesses.
-- [ ] Socket stack height caliper: BEFORE the cell goes under, measure
-  the MATED height of the ordered machine-pin socket + pin set
-  (ground pin tip to mating face) — accept 4.5–5.0mm only; reject any
-  set that reads <3.5 (2.11mm-class) or >5.0 (slides under the module
-  body). The stack budget assumes this number — record it in the notes.
+- [ ] Match each diode to its same-numbered switch. From the top, the
+  diode centre is 9.50mm along the switch's local +X on Left and −X on
+  Right. This offset rotates with the thumb switches. Match the diode
+  band to the cathode tick and confirm the cathode connects to its row.
+- [ ] Measure the installed socket stack before inserting the cell.
+  Caliper from carrier PCB top to module PCB underside with all pins
+  fully engaged. Accept a 4.5–5.0mm gap and check the usable space under
+  the module after accounting for solder, components and insulation.
+  Verify clearance for the actual cell and the USB plug, then record
+  the installed gap and the measured maximum pack thickness.
 - [ ] **Solder order (one list, no ambiguity — "sockets" means two
   different parts, so they are named):**
   1. slide switch (done in §2, FIRST — it is the charge disconnect)
@@ -213,24 +216,24 @@ batch; it never forbade coupons.
   3. **Choc hotswap sockets** (B.Cu, under each switch)
   4. **nice!nano machine-pin sockets** (the 2×12 headers — NOT the Choc
      sockets in step 3)
-  5. TRRS jack, JST, slide-switch wiring, EC11 encoder
-  6. modules last (nice!nano into its headers)
-  7. **cell sandwich** (Kapton over the pouch face AND the nano
-     underside, then the cell between the socket rows at the measured
-     4.5–5.0mm stack; no Kapton, no cell; JST leads beside the cell,
-     never under the stack)
-  8. **plate onto the switches** (the plate's switch holes take the
-     switch bodies, the gasket tabs hang over the rim)
-  9. **PCB into the tub** (feet/rim seats, no screws)
-  10. **poron pads** (bottom pads on the tabs, then the top pads)
-  11. **magnets** (tub face-UP, cover face-DOWN, polarity stack-tested —
-      faces meet at the lip plane)
-  12. **cover on** (the cover presses the top poron pads at 33%)
-- [ ] TRRS cable mated with **both halves OFF *and* USB unplugged from
-  both** (switch OFF alone is insufficient — USB still powers the
-  controller), then switch on. Sleeve-GND mates at an angle; live mating
-  glitches TX/RX and can brown-out the charger MOSFETs. Reverse on
-  teardown: switches OFF, cable out, then USB.
+  5. Solder the corrected JST and EC11, plus the corrected jack if fitted.
+     Trim the power-switch leads, inspect the joints and remove clippings.
+  6. Dry-fit the nice!nano and qualified pack with power disconnected.
+     Measure the socket gap and check the pouch, PCM and wire exit.
+  7. With USB disconnected and the switch OFF, insulate the pouch and
+     controller underside, secure the pack without compression and route
+     its leads beside the socket. Seat the module fully.
+  8. Attach the bottom and top PORON pads to each tab. Clip each Choc
+     switch into the plate with its pins aligned to the matching socket.
+  9. Mate the PCB to the switches while supporting the underside of
+     each hotswap socket. Verify all switches seat fully.
+  10. Lower the plate and PCB onto the eight gasket shelves.
+  11. Fit the polarity-tested magnets with faces flush and adhesive cured.
+  12. Seat the cover. Check all pad pairs contact, the cover stays flush
+      and the PCB clears the floor throughout a firm keypress.
+- [ ] If a corrected debug jack is fitted, switch both halves OFF and
+  disconnect both USB cables before inserting or removing a TRRS plug.
+  The battery switches leave USB power available.
 - [ ] Antenna end: 5mm copper-free respected, no case material within 3mm.
   Case shell near the antenna end must be plastic/wood — no metal, no
   carbon fibre (both detune/kill 2.4GHz).
@@ -240,18 +243,10 @@ batch; it never forbade coupons.
   RELIEF POCKET** over each diode (RELIEF layer in the DXF — machine
   it, do not cut through). The pocket floor is at 1.55mm, so there is
   **0.15–0.29mm** of clearance over the diode, not the solid plate.
-  Check on the real build: the pocket must be a POCKET (0.65mm of plate
-  must remain under it). Measure it DIRECTLY — depth-gauge the pocket
-  floor against the surrounding underside (accept 0.45–0.65mm deep),
-  or back-light the plate: a through-cut shows as a bright slot. Do
-  NOT use a feeler slid under the plate over a diode as the
-  discriminator: the INTENTIONAL 1.00mm PCB-to-plate gap lets a 0.5mm
-  feeler pass anywhere beside the diodes, so that test cannot tell a
-  pocket from a through-cut — a correct part "fails" and a ruined one
-  "passes" (review finding P0.3, fixed 2026-10-24). Keep the no-contact
-  requirement: anywhere the plate is solid (between the pockets) it
-  must NOT touch a diode — any contact/scrape means the relief is too
-  shallow.
+  Depth-gauge the pockets and measure the actual stock thickness and
+  seated gap. Accept at least 0.60mm remaining material and at least
+  0.15mm clearance over the assembled diode as in §1. Inspect both
+  pocket ends for contact or scrape marks.
 - [ ] Plate fit (rev-2 plate in `plate/`): 1:1 print over the real PCB —
   every 14×14 cutout frames its switch footprint, the 16.2×12.4 window frames
   the encoder body, W1/W2 windows clear switch/module/JST/TRRS bodies,
@@ -263,11 +258,10 @@ batch; it never forbade coupons.
 - [ ] **Poron pads.** Use eight 7×4mm pads per side of the plate, per
   half: 3.0mm stock below and 1.5mm stock above. Keep the pads on the
   tabs and away from adjacent cutouts.
-- [ ] **Gasket preload.** The nominal distance from the tab shelf to the
-  seated cover is 4.75mm: 2.55mm compressed bottom foam, 1.20mm plate,
-  and 1.00mm compressed top foam. Confirm the cover seats flush and
-  each pad contacts its mating face. Nominal compression is 15% below
-  and 33% above.
+- [ ] **Gasket preload.** The 4.75mm shelf-to-cover distance allows
+  3.55mm for the two pads beside the 1.20mm plate. For nominal 4.50mm
+  free foam this gives 0.95mm total compression. Measure the PCB's
+  actual rest height, clearance under load and contact at every tab.
 
 ### 3b. Service story (review 2026-10-24)
 
@@ -285,14 +279,17 @@ batch; it never forbade coupons.
 
 ## 4. Power-on
 
-- [ ] ×2 Charge with switch ON: orange LED lights; OFF does nothing
-  (switch is upstream of RAW — expected, label the case).
+- [ ] On both halves, measure charge current into a qualified, partially
+  discharged pack with USB connected and switch ON. Verify it falls to
+  zero with the switch OFF. Record current, pack voltage, termination
+  behavior and LED indication with the switch in each position.
 - [ ] ×2 TRRS continuity jack-to-jack over a straight cable: left
   TIP→right TIP, left RING1→right RING1, sleeve→sleeve (<1Ω each);
   RING2 open both ends (must never join batteries).
-- [ ] USB notch solder inspection: the socket pads sit 0.78mm from the
-  notch edge — tight for fab and solder tolerance. Loupe-check for mask
-  registration and solder bridging at the notch shoulders; record a photo.
+- [ ] Inspect solder and mask registration at the USB notch shoulders.
+  On v0.5.1 the nearest socket-pad copper is 1.844mm from the notch
+  profile on both halves. The nearest trace is 0.582mm on Left and
+  0.405mm on Right. Recheck on the revised boards.
 - [ ] ×2 Encoder: spin both directions + push click register; knob
   clears the cover rim and the nearest cap through full rotation +
   full push (skirt ≥0.9mm off the cover at max travel).
@@ -314,14 +311,9 @@ batch; it never forbade coupons.
   before using a full chip erase.
 - [ ] Verify D16 is usable as GPIO on each half and check both encoder
   pushes send Mute to the host over BLE.
-- [ ] The SPARE input (D10) has no keymap binding and no test pad, so
-  it cannot be "verified by toggling" — check it with a DMM: the spare
-  pin is MCU **D10 = P0.09** (module header pin 13, the pin labelled
-  D10 on the silkscreen). With the half unpowered, continuity from the
-  header pin to the D10 net pad; with it powered, the pin idles high
-  and a scope/DMM shows the level. A "toggling spare" test would need a
-  binding (or a test pad) that does not exist — do not read a pass here
-  as a dead pin (audit 2026-10-21).
+- [ ] D10/P0.09 is spare and the keyboard assigns it no pull or behavior.
+  If needed, check continuity at its unpowered header contact. Exercise
+  the populated D16 inputs with both encoder pushes after the stock UF2 flash.
 
 ## 5b. Firmware bench — keymap (M3.3; spec/keymap.md is the reference)
 
@@ -343,9 +335,9 @@ Matrix/base:
   firmware bench with the two halves paired.
 
 Home-row mods (all 8 home positions A S D F / ; L K J):
-- [ ] Deliberate hold (slow press, other hand key, release): the intended
-  modifier fires — test `Cmd+C`-style copy (`D`+`C` mac / `A`+`C` gacs —
-  doesn't matter which half does the C) and Shift combos on the tap keys.
+- [ ] For a cross-hand copy shortcut, hold right K and tap left C.
+  Expect Command+C on macOS variants and Control+C on Windows/Linux.
+  Repeat with Shift held on one hand while tapping letters on the other.
 - [ ] Fast roll (type "asa", "dfd", ";l", "jk j" quickly): letters only,
   no stray modifier bursts (require-prior-idle doing its job).
 - [ ] Same-hand chord: hold a home-row mod past ~0.3 s, then tap a
@@ -381,14 +373,12 @@ Layers and chord:
 These ship as-is in rev-1; recorded so nobody re-litigates them, and so
 rev-2 has a list.
 
-- Left VBAT runs a 232.10mm loop around the matrix (0.78mm notch-to-pad
-  gap blocks the direct route; measured 2026-10-22 from the routed
-  board — the old 184.82 figure is stale). Functional: ~23mV drop
-  @100mA. Rev-2: revisit with B.Cu pour.
+- The v0.5.1 left switched battery trace totals 174.02mm at 0.50mm wide
+  and the pack-positive trace adds 112.70mm. Measure the voltage drop
+  from pack to RAW under load and revisit this path in the PCB revision.
 - Ground is a 0.25mm daisy-chain, no pour. OK for prototype; rev-2 gets a
   B.Cu pour for EMC/robustness.
-- USB notch-to-socket-pad 0.78mm (see §4 inspection). Rev-2: buy clearance
-  if the outline allows.
+- Recheck notch-to-copper clearance after routing the revised components.
 - Diode height vs plate (§3) and antenna-enclosure rule (§3–§4 range test)
   validate on the first article; failures go to the case design, not a
   PCB re-spin, unless the range test indicts the layout.

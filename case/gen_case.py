@@ -372,6 +372,8 @@ def compute_ports(tag, rim_ring, rnorm, skin, P):
             # the raw rim line is y=58.0 there, so no resample phase
             o = anchor
             u = (0.0, 1.0)
+        elif name == "trrs":
+            o, u = anchor, (1.0 if tag == "Left" else -1.0, 0.0)
         else:
             o, u, v = slot_frame(rim_ring, rnorm, anchor)
         v = (-u[1], u[0])
@@ -380,7 +382,7 @@ def compute_ports(tag, rim_ring, rnorm, skin, P):
         elif name == "pwrsw":
             w = P.PWRSW_MOUTH_W
         else:
-            w = 2 * P.TRRS_MOUTH_R
+            w = P.TRRS_BAY_W
 
         def face_pts(a):
             return [(o[0] + u[0] * a + v[0] * b,
@@ -401,13 +403,10 @@ def compute_ports(tag, rim_ring, rnorm, skin, P):
         base = (o[0] - u[0] * (P.SLOT_IN + 1.0),
                 o[1] - u[1] * (P.SLOT_IN + 1.0))
         if name == "trrs":
-            from OCP.gp import gp_Dir, gp_Pnt
-            cut = cq.Solid.makeCylinder(
-                P.TRRS_MOUTH_R, travel,
-                gp_Pnt(base[0], base[1], P.TRRS_MOUTH_ZC),
-                gp_Dir(u[0], u[1], 0.0))
-            d = {"kind": "circle", "zc": P.TRRS_MOUTH_ZC,
-                 "r": P.TRRS_MOUTH_R}
+            z0 = P.TRRS_BAY_Z0
+            z1 = P.TOP_LIP_Z + P.SLOT_PAST_TOP
+            cut = fillet_slot(base, v, u, w, z0, z1, P.TRRS_BAY_R, travel)
+            d = {"kind": "fillet", "z0": z0, "z1": z1, "r": P.TRRS_BAY_R}
         else:
             # bottom-filleted slot with a flat top PAST the case top
             # plane (the mouth's top face becomes the solid's own top
@@ -1009,12 +1008,7 @@ def check_half(tag, solid, info):
                      f" plug bottom 2.8 ({2.8 - P.USB_MOUTH_Z0:+.1f} "
                      f"to z0)")
         elif name == "trrs":
-            shape = (f"side hole Ø{2 * P.TRRS_MOUTH_R:.1f} zc"
-                     f"{P.TRRS_MOUTH_ZC} vs straight plug barrel "
-                     f"Ø{P.TRRS_PLUG_DIA} "
-                     f"({(2 * P.TRRS_MOUTH_R - P.TRRS_PLUG_DIA) / 2:.2f}"
-                     f"/side); top {P.TRRS_MOUTH_ZC + P.TRRS_MOUTH_R:.1f} "
-                     f"keeps a roof under the 5.2 cover top")
+            shape = f"open plug bay {P.TRRS_BAY_W:.1f}w, sill z={P.TRRS_BAY_Z0:.2f}"
         else:
             shape = (f"slot {P.PWRSW_MOUTH_W:.1f}w z"
                      f"{P.PWRSW_MOUTH_Z0:+.1f}..lip vs lever sweep "

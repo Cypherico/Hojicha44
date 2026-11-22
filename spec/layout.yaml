@@ -31,12 +31,13 @@ thumbs:
   # even ~13.9deg steps give even ~22mm chords and
   # clock-tangent rotations (tangent error <=1.6deg), so every key sits ON
   # the curve facing along it. Edge clearance >=1.0mm on every cap pair at true 18x17 MBK caps
-  (1.5mm at the modelled 17.5x16.5 KLP footprint; 1.3 was the KLP number)
+  # (1.5mm at the modelled 17.5x16.5 KLP footprint)
   # (verified by polygon check, not center distance).
   left: [Esc, L1, Tab, Space]              # west->east == outer->inner
   right: [Enter, Backspace, L2, Delete]     # west->east == inner->outer
   notes:
-    - Rev 3 (home-row mods): all four modifiers live on the home row, so
+    - >-
+      In rev 3, all four modifiers live on the home row, so
       the thumbs are freed for the frequent keys.  Measured off the
       thumb-joint circle (R=91.2mm, even ~13.9deg steps): the two MIDDLE
       keys sit 7.25/6.66deg off the arc's neutral and the extremes 21deg,

@@ -17,6 +17,7 @@ import csv
 import glob
 import json
 import hashlib
+import math
 import os
 import re
 import shutil
@@ -90,6 +91,49 @@ def choc_drill_findings(half, drill):
     return findings
 
 
+def jack_drill_findings(half, drill):
+    """Check the XKB top-side pattern against actual fabricated slots and pegs."""
+    from check_board import case_ports
+
+    x, y = case_ports()[half]["trrs"]
+    facing = 1 if half == "Left" else -1
+    diameter = None
+    plating = None
+    tools, slots, pegs = {}, [], []
+    with open(drill) as file:
+        for line in map(str.strip, file):
+            if "AperFunction,NonPlated" in line:
+                plating = False
+            elif "AperFunction,Plated" in line:
+                plating = True
+            if match := re.fullmatch(r"(T\d+)C([\d.]+)", line):
+                tools[match[1]] = float(match[2]), plating
+            elif line in tools:
+                diameter, plating = tools[line]
+            elif diameter == 0.90 and plating and "G85" in line:
+                coords = re.findall(r"X([-\d.]+)Y([-\d.]+)", line)
+                if len(coords) == 2:
+                    slots.append(tuple(tuple(map(float, xy)) for xy in coords))
+            elif diameter == 1.20 and plating is False:
+                if match := re.fullmatch(r"X([-\d.]+)Y([-\d.]+)", line):
+                    pegs.append(tuple(map(float, match.groups())))
+
+    bad = []
+    for setback in (3.6, 10.6):
+        point = (x - facing * setback, y)
+        if not any(math.dist(point, p) <= 0.01 for p in pegs):
+            bad.append(f"PJ-320A 1.20 NPTH peg missing at {point}")
+    for setback, side in ((5.2, -1), (8.2, -1), (12.2, -1), (13.2, 1)):
+        point = (x - facing * setback, y + facing * side * 2.4)
+        if not any(
+            abs(a[1] - b[1]) <= 0.01 and abs(math.dist(a, b) - 0.90) <= 0.01
+            and math.dist(point, ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)) <= 0.01
+            for a, b in slots
+        ):
+            bad.append(f"PJ-320A 0.90 × 1.80 plated axial slot missing at {point}")
+    return bad
+
+
 def export_half(half, outdir):
     pcb = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
     sch = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_sch")
@@ -133,7 +177,7 @@ def export_half(half, outdir):
         w.writeheader()
         w.writerows(smt)
     drill = os.path.join(outdir, f"Hojicha44-{half}.drl")
-    findings = choc_drill_findings(half, drill)
+    findings = choc_drill_findings(half, drill) + jack_drill_findings(half, drill)
     if findings:
         sys.exit(f"release cut refused: {half} Choc drill geometry: "
                  + "; ".join(findings[:3]))
@@ -188,7 +232,7 @@ def export_half(half, outdir):
     import gen_schematic as _gs
     drc_rc = _gp.check_drc_report(
         os.path.join(outdir, f"Hojicha44-{half}-drc.rpt"), half[0],
-        native_choc=True)
+        native_choc=True, native_jst=True)
     erc_rc = _gs.check_erc_report(
         os.path.join(outdir, f"Hojicha44-{half}-erc.rpt"), half[0])
     if drc_rc or erc_rc:
@@ -261,9 +305,9 @@ def verify_release(reldir, with_manifest=True):
         if not os.path.isfile(drill):
             bad.append(f"{half}: drill file missing")
         elif with_manifest:
-            findings = choc_drill_findings(half, drill)
+            findings = choc_drill_findings(half, drill) + jack_drill_findings(half, drill)
             if findings:
-                bad.append(f"{half}: {len(findings)} Choc drill findings "
+                bad.append(f"{half}: {len(findings)} component drill findings "
                            f"(first: {findings[0]})")
         for f in files:
             p = os.path.join(d, f)
@@ -399,7 +443,7 @@ def cut_release(reldir, ver, bhead, tree_stamp):
         # hand-edited board could ride along under a clean commit stamp)
         f"board sha256: Left {board_hash['Left']}  Right {board_hash['Right']}",
         "ERC: 0 errors + 5 documented spare warnings/half (check_erc_report gate)",
-        "DRC: 0 non-waived (exact W1 set of 46/half asserted); "
+        "DRC: 0 non-waived (exact W1 set of 47/half asserted); "
         "unconnected NOT waived; PTH/NPTH-in-courtyard = error",
         "reports: ERC on the exported schematic; DRC on the design-frame "
         "reflection of the exported y-negated board (same physical "

@@ -323,8 +323,8 @@ def fp_source(lib, name):
         p = v if os.path.exists(v) else \
             os.path.join(STOCK_FP, lib + ".pretty", name + ".kicad_mod")
     source = open(p).read()
-    if (lib, name) == FP_SRC["SW"]:
-        # Routing uses the y-up design frame. Convert the switch's native
+    if (lib, name) in (FP_SRC["SW"], FP_SRC["TRRS"], FP_SRC["JST"]):
+        # Routing uses the y-up design frame. Convert asymmetric native
         # KiCad local coordinates before placing it. to_storage() converts
         # them back when writing the board, preserving physical handedness.
         return frame.mirror_geometry(source)
@@ -395,6 +395,10 @@ def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
                f'(property "Value" "{value}"', s, count=1)
 
     def padsub(blk, num):
+        if libref == "Hojicha44:TRRS-PJ-320A" and num:
+            # KiCad board pad angles are absolute. Turn the long axis
+            # of each contact slot with the jack body.
+            blk = re.sub(r'(\(at [-\d.]+ [-\d.]+)\)', rf'\1 {rot})', blk, count=1)
         if num and num in pin_nets and "(net " not in blk:
             code, name = pin_nets[num]
             if "(uuid " in blk:
@@ -1230,25 +1234,18 @@ def build_placements(tag, pts, pin_net):
                        ref_nets(pin_net, f"ENC_{tag}1")))
 
     tx, ty, _ = pts["trrs" if tag == "L" else "mirror_trrs"]
-    # stock mouth at local +Y (sleeve text y=11.4, silk top 12.6); face the
-    # split gap with the body 2mm inboard of the anchor so the mouth-end
-    # pads stay on copper AND the mouth silk clears the slanted inner edge
-    # (the edge leans 2.77mm over the jack height — mouth-at-anchor+8.5
-    # would hang T/S pads off the board).
-    if tag == "L":
-        placements.append(("TRRS", *FP_SRC["TRRS"], f"J_{tag}1",
-                           "PJ-320A TRRS", tx - 8.05, ty, 90,
-                           False, False, False,
-                           ref_nets(pin_net, f"J_{tag}1")))
-    else:
-        placements.append(("TRRS", *FP_SRC["TRRS"], f"J_{tag}1",
-                           "PJ-320A TRRS", tx + 8.05, ty, 270,
-                           False, False, False,
-                           ref_nets(pin_net, f"J_{tag}1")))
+    # The physical jack opens at native local y=-2. After conversion to
+    # the design frame it faces +X on Left and -X on Right.
+    facing = 1 if tag == "L" else -1
+    placements.append(("TRRS", *FP_SRC["TRRS"], f"J_{tag}1",
+                       "PJ-320A TRRS", tx + facing * 2.05, ty,
+                       90 if tag == "L" else 270,
+                       False, False, False,
+                       ref_nets(pin_net, f"J_{tag}1")))
 
     jx, jy, _ = pts["jst" if tag == "L" else "mirror_jst"]
     placements.append(("JST", *FP_SRC["JST"], f"J_{tag}2", "BATT_LIPO",
-                       jx, jy, 0, False, False, False,
+                       jx, jy - facing, 270 if tag == "L" else 90, False, True, True,
                        ref_nets(pin_net, f"J_{tag}2")))
 
     px, py, _ = pts["pwrsw" if tag == "L" else "mirror_pwrsw"]
@@ -1354,8 +1351,9 @@ def build_board(tag, pts):
         f'\t(gr_text "ANT KEEPOUT" (at {r2(ax)} {r2(ay - 7)} 0)'
         f' (layer "Cmts.User") (uuid "{U()}")'
         f' (effects (font (size 1 1) (thickness 0.15))))')
+    facing = 1 if tag == "L" else -1
     body.append(
-        f'\t(gr_text "+" (at {r2(jx - 3.5)} {r2(jy)} 0)'
+        f'\t(gr_text "+" (at {r2(jx - 2.6 * facing)} {r2(jy - facing)} 0)'
         f' (layer "F.SilkS") (uuid "{U()}")'
         f' (effects (font (size 1 1) (thickness 0.15))))')
 
@@ -1505,10 +1503,10 @@ def drc(tag):
         return 1
     assert os.path.exists(out) and os.path.getsize(out) > 0, \
         f"drc wrote no report for {tag}"
-    return check_drc_report(out, tag, native_choc=True)
+    return check_drc_report(out, tag, native_choc=True, native_jst=True)
 
 
-def w1_want(tag, *, native_choc=False):
+def w1_want(tag, *, native_choc=False, native_jst=False):
     """Exact library comparison exceptions for the design-frame DRC copy.
 
     The corrected board has all 22 Choc footprints reflected in that copy.
@@ -1522,10 +1520,11 @@ def w1_want(tag, *, native_choc=False):
            for i in switch_ids}
         | {("Socket_Strips_2x12_P2.54mm_NiceNano", f"U_{tag}1"),
            ("TRRS-PJ-320A", f"J_{tag}1")}
+        | ({(FP_SRC["JST"][1], f"J_{tag}2")} if native_jst else set())
     )
 
 
-def check_drc_report(path, tag=None, *, native_choc=False):
+def check_drc_report(path, tag=None, *, native_choc=False, native_jst=False):
     """0 if clean (modulo waivers), 1 otherwise. Prints non-waived items."""
     import collections
     if tag is None:
@@ -1560,7 +1559,7 @@ def check_drc_report(path, tag=None, *, native_choc=False):
                             for p in pads) and pads):
                 continue
         bad.append((typ, desc, body))
-    w1_expected = w1_want(tag, native_choc=native_choc)
+    w1_expected = w1_want(tag, native_choc=native_choc, native_jst=native_jst)
     if w1_got != w1_expected:
         print(f"  drc W1 mismatch {tag}: want {len(w1_expected)}, "
               f"got {len(w1_got)}")

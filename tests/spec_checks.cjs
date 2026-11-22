@@ -1,7 +1,6 @@
 /* Hojicha44 static repo checks — no KiCad needed (runs in CI).
  * Covers the doc/gate regressions that previously shipped silently:
  *  - spec/electronics.yaml parses + erc stanza states the exact gate
- *  - Ergogen TRRS comment matches measured 22.40/20.42/recessed geometry
  *  - gen_schematic.py NEED has no duplicate (lib, symbol) entries
  *  - gen_pcb.py W1 gate asserts the exact release mismatch set, verified
  *    against the TRACKED release DRC copies (generated/release/vX.Y.Z/)
@@ -59,25 +58,7 @@ try {
   fail("spec-parse", e.message);
 }
 
-// 2. Ergogen TRRS comment matches measured geometry
-{
-  const cfg = fs.readFileSync(
-    path.join(REPO, "layout", "ergogen", "config.yaml"),
-    "utf8"
-  );
-  if (/3\.46mm PROUD/.test(cfg) || /13\.50mm/.test(cfg)) {
-    fail("trrs-comment", "stale 3.46mm-PROUD / 13.50mm numbers still present");
-  } else if (
-    !/22\.40mm/.test(cfg) ||
-    !/20\.42mm/.test(cfg) ||
-    !/0\.99mm RECESSED/.test(cfg)
-  ) {
-    fail("trrs-comment", "must state 22.40/20.42/0.99mm recessed");
-  } else {
-    ok("trrs-comment");
-  }
-}
-
+// 2. TRRS placement is checked against released drills by make_release.py.
 // 3. NEED has no duplicate (lib, symbol) entries
 {
   const src = fs.readFileSync(
@@ -119,15 +100,16 @@ rc = 0
 manifest = open(os.path.join(reldir, "MANIFEST.txt")).read()
 router = re.search(r"^router: gen_route[.]py r([0-9]+)$", manifest, re.M)
 native_choc = router is not None and int(router[1]) >= 14
+native_jst = router is not None and int(router[1]) >= 15
 for tag, half in (("L", "Left"), ("R", "Right")):
     p = os.path.join(reldir, half, f"Hojicha44-{half}-drc.rpt")
     assert os.path.exists(p), f"missing {p}"
-    rc |= gen_pcb.check_drc_report(p, tag, native_choc=native_choc)
+    rc |= gen_pcb.check_drc_report(p, tag, native_choc=native_choc, native_jst=native_jst)
 # negative control: an extra mismatch must fail
 s = open(os.path.join(reldir, "Left", "Hojicha44-Left-drc.rpt")).read()
 s += "[lib_footprint_mismatch]: Footprint 'D_SOD-123' does not match copy in library 'Diode_SMD'\\n    Local override; warning\\n    @(0, 0): Footprint D_L99\\n"
 open("/tmp/hojicha-w1-neg.rpt", "w").write(s)
-neg = gen_pcb.check_drc_report("/tmp/hojicha-w1-neg.rpt", "L", native_choc=native_choc)
+neg = gen_pcb.check_drc_report("/tmp/hojicha-w1-neg.rpt", "L", native_choc=native_choc, native_jst=native_jst)
 assert neg == 1, "W1 gate must reject an extra mismatch"
 print("w1-gate: exact release exception set checked, extra mismatch rejected")
 sys.exit(rc)
@@ -289,7 +271,8 @@ try {
 // STL files are optional on disk, but any local STL must match its entry.
 try {
   const crypto = require("crypto");
-  const mpath = "generated/print/v0.5.0/MANIFEST.txt";
+  const { version } = yaml.load(fs.readFileSync(path.join(REPO, "spec/electronics.yaml"), "utf8"));
+  const mpath = `generated/print/v${version}/MANIFEST.txt`;
   const txt = fs.readFileSync(path.join(REPO, mpath), "utf8");
   const entries = new Map();
   const problems = [];

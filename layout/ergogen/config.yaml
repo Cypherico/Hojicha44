@@ -157,18 +157,9 @@ points:
       anchor:
         ref: matrix_inner_top
         shift: [11.3, 14]
-    # PJ-320A TRRS at the inner edge, south of the encoder, plug facing the
-    # split gap (east). `trrs` is the jack centre; the `_trrs` outline is 17mm
-    # wide. Measured on placed boards (KiCad CW-positive rot; J_L1 at
-    # (122.45,-22) rot 90, J_R1 at (169.05,-22) rot 270): plastic mouth faces
-    # (local y=12.1 = rear -2 + 14.1 body) at L 134.55 / R 156.95 = 22.40mm
-    # mouth-to-mouth; board edges at y=-22 are L 135.54 / R 155.96 = 20.42mm
-    # edge-to-edge; each plastic mouth sits 0.99mm RECESSED behind (inboard
-    # of) its edge — NOT protruding. Silk top (local y=12.6) sits 0.5mm proud
-    # of the plastic: 21.40mm silk-to-silk, still 0.49mm recessed.
-    # 90-degree right-angle cable REQUIRED (protrudes ~2-4mm, needs ~8mm of
-    # the 22.40mm gap); molded straight plugs need ~24mm and are marginal.
-    # See spec/electronics.yaml split_connector.plug_type for the full table.
+    # PJ-320A anchor used by the PCB placement generator. The v0.5.2
+    # jack opens on native local -Y. Its assembled mouth faces the split
+    # gap at x=134.55 / 156.95 (22.40 mm between the two mouths).
     trrs:
       key:
         tags:

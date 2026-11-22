@@ -26,7 +26,7 @@ from OCP.gp import gp_Pnt
 import params as P
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(REPO, "case", "out")
+OUT = os.environ.get("CASE_OUT", os.path.join(REPO, "case", "out"))
 TOL = 0.05
 
 

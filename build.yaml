@@ -10,3 +10,6 @@ include:
     shield: hojicha44_left
   - board: nice_nano_v2
     shield: hojicha44_right
+  # Clear persistent BLE settings on either controller during recovery.
+  - board: nice_nano_v2
+    shield: settings_reset

@@ -2,14 +2,12 @@
 
 Custom split columnar mechanical keyboard (44 keys + 2 encoders, nice!nano x2).
 Roadmap: `KEYBOARD_PROJECT_ROADMAP.md`.
-**PCB v0.5.1** corrects the Choc v1 contact drill pattern on both halves.
-The revised cover clears the power switch in CAD and needs a physical fit check.
-See [the order guide](pcb/MANUFACTURING.md).
-Board release evidence: `generated/release/v0.5.1`; order-time print
-geometry: `generated/print/v0.5.0/MANIFEST.txt` (STEP files verified in CI);
-renders: `generated/renders/v0.5.0`. Remaining before any batch: the
-first-article checklist (`spec/first-article.md`) — coupon-first, per its
-order policy. Layout geometry lives in
+**Fabrication candidate v0.5.2.** This revision corrects the PJ-320A
+footprint and port, clears the JST assembly, and specifies the finished
+power-switch lead length. The PCB and print files share a revision.
+Build one pair and complete the first-article checks before a batch.
+[PCB files](generated/release/v0.5.2) · [Print manifest](generated/print/v0.5.2/MANIFEST.txt) · [First article](spec/first-article.md) · [Product audit](audit.md).
+Layout geometry lives in
 `layout/ergogen/config.yaml` (frozen snapshot: `layout/- FINAL/keyboard_layout_v7`);
 each half has a placed+routed board file — see [Schematic](#schematic).
 
@@ -24,8 +22,8 @@ each half has a placed+routed board file — see [Schematic](#schematic).
 | `zmk/gpio-map.md` | yes | Machine-generated pin-map doc (cross-checked against the dtsi) |
 | `build.yaml` | yes | **CI firmware matrix** consumed by `.github/workflows/build.yml` (one ZMK build per shield, pinned ZMK v0.3) |
 | `pcb/` | yes | KiCad project + generators (`gen_schematic.py`, `gen_pcb.py`, `gen_route.py`) + the committed `.net` netlists CI parses (no KiCad in CI) + vendored stock |
-| `plate/`, `case/`, `layout/` | yes | Generators + tracked outputs (plate DXF/SVG/lands; case scripts; layout points). `case/.venv/` and `case/out/` are local-only |
-| `generated/` | yes, selective | **Derived artifacts worth versioning**: `release/v0.5.1` (the shipped gerbers/reports bundle), `renders/v0.5.0` (final PNGs), layout points, print manifest. The regenerable mesh tree `generated/renders/assets/` is ignored |
+| `plate/`, `case/`, `layout/` | yes | Generators, plate DXF/SVG/lands, layout points and four tracked tub/cover STEP solids in `case/out/`. The case virtual environment and derived STL meshes are local. |
+| `generated/` | yes, selective | **Derived artifacts worth versioning**: `release/v0.5.2` (Gerbers and reports), `renders/v0.5.0` (final PNGs), layout points, print manifest. The regenerable mesh tree `generated/renders/assets/` is ignored |
 | `tests/` | yes | `spec_checks.cjs` — the static gate suite (`npm test`) |
 | `renders/` | yes | Phase-10 render pipeline scripts (see `renders/README.md`) |
 | `node_modules/` | **no** | npm deps for the gate suite — recreated with `npm ci`; pinned by `package-lock.json` |
@@ -97,37 +95,14 @@ it is not on `PATH` by default. The generator finds it automatically.
 
 ## Build notes (things that will bite you at assembly)
 
-**TRRS cable — buy a 90° right-angle one.** The two jack mouths face each other across
-22.40mm of mouth-to-mouth clearance (plastic faces; 20.42mm board-edge to
-board-edge, each mouth 0.99mm recessed behind its edge — silk tops at
-21.40mm, still recessed). A molded *straight* plug protrudes ~12mm
-past the jack face, so the pair needs ~24mm and **is a tight fit at best**. A
-90° plug protrudes only ~2–4mm axially because the boot exits perpendicular, so
-the current gap is ample. 90° is the community standard for splits anyway (less
-port torque). Size the cable port-to-port **+2–5cm minimum** — both cables exit
-upward and arch over the gap.
+**BLE carries the split link.** The TRRS is a service connector. Check
+both ends of the chosen cable in the v0.5.2 plug bays. Switch off and
+unplug USB on both halves before mating or removing the debug cable.
 
-**Always power-cycle in this order:** plug/unplug the TRRS with **both halves
-switched OFF *and* USB unplugged from both**, then switch on. Switch OFF alone
-is insufficient — USB still powers the controller. Sleeve-GND mates at an angle
-during insertion, so connecting live can glitch TX/RX.
-
-**Don't treat TRRS as a daily link.** splitkb's own nice!nano FAQ is blunt:
-*"Do not use a cable between the halves… shorting connections when unplugging
-while the battery is still on… unbalanced charging when two batteries are
-connected."* This design already isolates ring 2, which blocks the charging half;
-the shorting half is only mitigated by the power-off ordering above. TRRS here is
-a bring-up/debug fallback — move to 4-pin JST if you want it in normal use.
-
-**Battery: the 301230 goes directly under the module. This is correct.** The
-cell's south 5mm sits over the antenna keepout circle, which looks alarming on
-the preview but is exactly what Lily58, Corne, Sofle, the whole splitkb Aurora
-series, and nicekeyboards' own docs do — none apply a cell keepout. The r=5
-copper keepout is on *our* PCB and is honoured independently; the cell is a
-different layer. A PCB trace antenna has a null perpendicular to its plane, so a
-cell 3mm below the antenna end is in the null, not shadowing the main lobe.
-If BLE range ever disappoints, the documented upgrades are a 301228 (90mAh) or a
-306080 between PCB and bottom plate with 9mm standoffs.
+The intended battery location is under the socketed module. Measure the
+fully seated stack, pack, insulation and wire exit before assembly.
+Check rated charge current, polarity and BLE range with the installed
+pack. See the [product audit](audit.md).
 
 ## Regenerate
 

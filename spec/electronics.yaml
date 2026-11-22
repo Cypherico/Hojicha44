@@ -1,7 +1,7 @@
 # Electronics specification (source of truth for schematic/PCB).
 # Statuses: fixed | provisional | candidate | measured | undecided.
 
-version: 0.5.1
+version: 0.5.2
 status: provisional
     # schematic rev 0.3 regenerated (must-fix review applied), PCB placed+routed
   # with DRC clean modulo waiver W1 (exact 28 asserted) + W2 predicate armed
@@ -35,8 +35,8 @@ architecture:
 power:
   usb: USB-C on each half, onboard the nice!nano (no PCB part)
       # status: fixed
-    # host-wired operation = plug USB into either half's module; PCB phase
-    # must keep both module USB-C ports exposed at the board edge.
+    # The left module provides USB HID. Both USB-C ports provide charging
+    # and access to their respective bootloaders.
   battery: 301230 LiPo, 3.7V nominal, ~110mAh, JST-PH 2.0mm
       # PROTECTION DECISION (2026-10-21, from spec/research-open-items-2026-10-21.md):
       # keep a PCM'd cell (overcharge 4.28V / over-discharge 2.40V /
@@ -67,8 +67,8 @@ power:
     # exactly this reason. 304050 600mAh stays a future under-PCB option
     # (needs soldered wires: JST-SYP plug).
     # Locked source (full list: spec/bom.md): kriscables 301230 110mAh +
-    # JST PH 2.0mm, 3x12x30, 3.7V — listing documents 100mA to full in ~1.1h
-    # (0.9C, suitable). Alternates KEEBD / Typeractive 301230 (check stock).
+    # JST PH 2.0mm, nominal 3x12x30, 3.7V. Obtain the pack-specific charge
+    # limit and size tolerance before using the module's nominal 100mA charger.
     # Reject unprotected pouches on arrival. First-article DMM: RAW-B+ short,
     # GND-B- short, RAW-VCC open, charge-ON orange LED.
   battery_connector: JST-PH 2.0mm, pin1 = pack+ (red), pin2 = pack- (black)
@@ -87,7 +87,7 @@ power:
   # still wanted, but the topology is officially blessed, not a guess.
   charger: nice!nano onboard (100mA default; 500mA charge-boost jumper stays OPEN)
       # status: fixed
-    # 110mAh charges in ~1.1h at 100mA.
+    # 100mA on a 110mAh pack is about 0.91C. Full charge includes a CV taper.
     # CHARGE GATE: the power switch sits between pack+ and MCU RAW, so the
     # cell only charges while the switch is ON. Charging with the switch OFF
     # does nothing. Document on the case: "charge only when ON".
@@ -100,6 +100,8 @@ power:
       # peaks (~20mA) with margin; edge-accessible actuator for the case slot.
       # First-article check left: which slider end joins 1-2 vs 1-3 (ON
       # position) — either way it behaves as on/off, just swapped.
+      # Stock leads extend 4.70–5.10mm from the seating face. The current
+      # tub requires lead trimming as specified in spec/first-article.md.
   sense: none external — ZMK reads VDDH internally  # status: fixed
 
 matrix_per_half:
@@ -171,25 +173,10 @@ split_connector:
       # (splitkb documents MCU damage from this); ZMK wired split needs
       # only TX/RX/GND. 4-pole jack kept for cable compatibility.
     sleeve: GND
-  plug_type: 90-degree right-angle TRRS cable REQUIRED  # status: fixed
-    # Clearance, measured from placed boards (KiCad CW-positive rot;
-    # J_L1 at (122.45,-22) rot 90, J_R1 at (169.05,-22) rot 270):
-    # plastic mouth faces (local y=12.1 = rear -2 + 14.1 body) at L 134.55 /
-    # R 156.95 = 22.40mm mouth-to-mouth; board edges at y=-22 are L 135.54 /
-    # R 155.96 = 20.42mm edge-to-edge; each plastic mouth sits 0.99mm
-    # RECESSED behind (inboard of) its edge — NOT protruding. Silk top
-    # (local y=12.6) sits 0.5mm proud of the plastic: 21.40mm silk-to-silk,
-    # still 0.49mm recessed. Supersedes the stale 13.50mm-proud claim.
-    #   required mouth-to-mouth = (plug_length - insertion_depth) x 2
-    # PJ-320A body is 14.1 x 5 x 6mm, terminals on 3.0/4.0mm pitch, so the
-    # barrel cavity is ~10mm deep (NOT the 6mm first assumed).
-    #   bare metal plug ~15mm  -> protrudes ~5mm  -> pair needs ~10mm  FITS
-    #   molded straight ~22mm -> protrudes ~12mm -> pair needs ~24mm  MARGINAL
-    #   90-degree plug        -> protrudes ~2-4mm -> pair needs ~8mm  FITS EASILY
-    # A molded straight plug is a tight fit for this gap. 90-degree is
-    # the community standard for splits anyway (it also cuts port torque), so
-    # this costs nothing. Both cables exit upward and arch over the gap —
-    # size the cable port-to-port + 2-5cm minimum, never shorter.
+  plug_type: Right-angle 3.5mm TRRS service cable
+    # v0.5.2 retains the debug link and uses an open 10.5 mm boot bay.
+    # Jack mouths are 22.40 mm apart in the nominal assembly. Qualify
+    # actual plug insertion, hood shape, orientation and bend on both halves.
   hotplug: plug TRRS before switching either half ON, with USB unplugged from both
       # status: fixed
     # Sleeve-GND mates at an angle on insertion; powering both halves first

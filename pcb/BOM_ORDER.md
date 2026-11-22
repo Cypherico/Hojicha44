@@ -1,6 +1,6 @@
-# Part order list (v0.5.0) — with live-verified SKUs
+# Part order list (v0.5.2) — with live-verified SKUs
 
-> The PCB and case orders are on hold. See [the fabrication hold](MANUFACTURING.md).
+> Use v0.5.2 for the first article and qualify the assembly before a batch. [Order guide](MANUFACTURING.md)
 
 Prices/stock verified 2026-10-19 against vendor pages — they WILL drift;
 re-check at cart time. PCB fab choices are NOT here: see
@@ -17,7 +17,7 @@ re-check at cart time. PCB fab choices are NOT here: see
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
 | ☐ | 2 | **nice!nano v2** | €21.44 ea | Typeractive $25 is sold out (restock notify); KEEBD $25 stock spotty |
-| ☐ | 2 | **Mill-Max low-profile socket set** (sockets **315-43-112-41-003000** + 3320-series pins) | €6.60/set | matches `spec/bom.md` 4.5–5.0mm stack → 12mm cell clearance; NOT the banned 2.11mm 315 variant; Typeractive set $6.50 is the same class |
+| ☐ | 2 | **Machine-pin socket and pin sets**, two 12-position rows per module | per supplier | Qualify one fully mated set at **4.5–5.0mm carrier top to module underside**, with the pack and USB plug in place. The Mill-Max 315-43-112-41-003000 strip has 1.80mm insulation height. Compare the Samtec BBL-112-T-E option and verify the resulting stack before buying a batch. |
 
 ## C. Distribution pass (DigiKey / TME / LCSC)
 
@@ -35,44 +35,37 @@ re-check at cart time. PCB fab choices are NOT here: see
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
-| ☐ | 2 | kriscables **301230 110mAh LiPo**, PCM + JST-PH pigtail | €8.90–18.90 ea (two listings seen; re-check at checkout) | spec-locked size (30×12×3 — 302030 does NOT fit); meter pigtail polarity vs JST pin 1 BEFORE first plug-in |
+| ☐ | 2 | kriscables **301230 110mAh LiPo**, PCM + JST-PH pigtail | €8.90–18.90 ea (two listings seen; re-check at checkout) | Qualify actual maximum pack dimensions and charge rating. Meter pigtail polarity against the carrier before first plug-in. |
 | ☐ | 2 | **Polyfuse (PPTC), 0.5–1A hold, ≥16V** (axial/radial) | ~$1–2 | series with pack+ (1/half; the 10-half pilot buys 20) — wired, NOT on the PCB; research §2b/2d |
 | ☐ | 5 | Kailh **PG1350 Choc v1** switches (Typeractive, $5.50/10) | $27.50 | 44 needed; pick feel family; any PG1350 fits the hotswap socket |
 | ☐ | 44 | **Kailh Choc v1 hotswap SOCKETS** (socketed, bottom side) | ~$1–2 ea | **not in the released bom.csv** — the release BOM only lists parts with an MPN, and a footprint-only socket has none, so this line is the ONLY place the 44 sockets get ordered. Sockets solder on B.Cu under each switch; the diode sits beside its switch, not under it. Verify the variant matches the vendored `SW_Hotswap_Kailh_Choc_V1_1.00u` footprint (the spec fixes the footprint, not the SKU) |
-| ☐ | 1 | KEEBD **24cm dual right-angle TRRS cable**, 4-pole CTIA | $6.00 | both ends MUST be 90° — straight plugs collide across the 22.4mm mouth gap |
+| ☐ | 1 | 4-pole TRRS cable, if retained for debug | — | Qualify the shaft reach and boot on each end against the revised jack and bore before ordering. |
 | ☐ | 44–50 | **MBK Choc keycaps** (PBT, Typeractive ~$1/cap) | ~$44 | Choc v1 stems only (MX won't fit); MBK legend sets spotted sold out at splitkb — CFX (~$25/set) is the budget fallback |
-| ☐ | 1 | supermagnete **S-04-02-N** ×20 (Ø4×2mm) | €5.60 | TUB magnets, face-up flush, 16 needed |
+| ☐ | 16 + spares | Axially magnetized **N52 Ø4×2mm** discs for the tubs | per quote | The previously listed supermagnete S-04-02-N is N45. Qualify it with the actual 0.5mm cover magnet if using it as an alternate. [Manufacturer data](https://www.supermagnete.ch/eng/data_sheet_S-04-02-N.pdf) |
 | ☐ | 16 + spares | N52 disc magnets, Ø4×0.5mm, axially magnetized | — | COVER magnets, face-down flush in Ø4.3×0.7mm pockets. Confirm supply and pull force before the batch. |
 | ☐ | — | glue for the magnets: **B-7000** | $5 | flexible, nylon-safe (PA12); JB-Weld rigid alt; no hot glue |
 
 ## E. Case-shop pass
 
-> **Send exactly the files hashed in `generated/print/v0.5.0/MANIFEST.txt`**
+> **Send exactly the files hashed in `generated/print/v0.5.2/MANIFEST.txt`**
 > (sha256, both shops: plate DXF/SVG for the laser, case STEP/STL for MJF).
 > If any generator constant changed, regenerate everything and re-record
 > the manifest in the same commit — never order from a stale hash.
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
-| ☐ | — | Rogers **PORON 4701-30** Very Soft, 3.0mm bottom and 1.5mm top | — | Per half, cut eight 7×4mm pads from each thickness. |
+| ☐ | — | Very soft PORON, nominal design targets 3.0mm bottom and 1.5mm top | per quote | Confirm series, available density, sheet thickness tolerance and adhesive backing. Check compression on an assembled coupon. Cut eight 7×4mm pads per thickness per half. |
 | ☐ | 2 | **1.2mm** plate from the Left and Right DXFs | — | Through-cut OUTLINE and CUTOUT. Machine 22 nominal 0.55mm underside pockets from RELIEF. PORON is a punch template. Approve the fabrication process on a coupon that leaves ≥0.60mm of plate and ≥0.15mm seated clearance above a 1.40mm diode. At nominal thickness and gap the allowable relief is 0.55–0.60mm. |
-| ☐ | — | case + top plate **MJF PA12** (JLC), files from `gen_case.py`/`gen_cover.py` | per quote | volumes L 57.5 / R 57.5 cm³ (tub, floor −6.35) + cover 15.2 cm³ (key-field ledge) — measured 2026-10-24 (71.1/10.7 predates the thin-top + floor revs); MJF quotes from volume, so quote THESE. Self-print alternative: **PETG 100% infill** is supported (strength audit in `spec/case.md`) — a printed set is the cheap pre-MJF fit article |
+| ☐ | — | Tub and cover in **MJF PA12** | per quote | The v0.5.2 STEP volumes are approximately 57.2 cm³ per tub and 15.2 cm³ per cover. Quote the matching STEP files. PETG is an option for a first fit print. |
 | ☐ | 1 roll | Kapton/polyimide tape ≥10mm | $2–5 | cell sandwich + nano underside |
 | ☐ | 1 | SAC305 no-clean 0.5mm solder (e.g. SRA) + **NC-559-class flux pen** | ~$25 + ~$10 | ENIG pads, hand work |
 
 ## PCB order note (must be pasted into the fab order)
 
-The outline is CONCAVE, so the board MUST be tab-routed (a V-cut
-wants a straight edge anyway). The measured minimum copper-to-edge is
-**0.406mm Left / 0.575mm Right** (M3.6 nudge, 2026-10-23 — was
-0.292/0.330), which passes BOTH published rules with margin:
-JLCPCB's 0.2mm tab-route rule ("0.3mm for V-cut panelization and
-0.2mm for tab-routing") AND PCBWay's 0.3mm profile-to-copper figure —
-the board is fab-agnostic, no written confirmation needed. CNC
-routing tolerance is ±0.1mm (precision) / ±0.2mm (regular) per
-JLCPCB's capabilities page — if the quote offers the precision tier
-for a small fee, prefer it to protect the notch corridor. Put this in
-the order verbatim:
+Use tab routing for the concave outline. KiCad measured minimum
+copper-to-profile distances of **0.5821mm Left and 0.3301mm Right** on
+v0.5.1. The closest right trace belongs to the TRRS tip. Confirm the
+chosen profile tolerance and remeasure both revised boards before ordering.
 
 ```
 CONCAVE OUTLINE — TAB-ROUTE ONLY, NO V-CUT / V-SCORE
@@ -102,12 +95,13 @@ otherwise).
 ## Verify-at-cart flags (things research flagged or spec demands)
 
 1. **Encoder**: use the specified Alps EC11E15244G1 and qualify the matching knob on the first article.
-2. **Socket kit = 3.0mm 315 sockets + pins** (assembled 4.5–5.0mm). The
-   2.11mm set is banned by the cell sandwich.
-3. **Battery = 301230 only** (30×12×3). Any other clearance story is
-   fiction; measure nothing, just match the size.
-4. **TRRS cable: right-angle both ends.**
-5. **Magnets**: S-04-02-N for the tub. Source Ø4×0.5mm axially magnetized N52 discs separately for the cover.
+2. **Socket kit.** Check the installed board-to-board gap and contact
+   engagement with a fully seated module. Use the measured gap and the
+   largest insulated pack dimension to qualify the pair.
+3. **Battery.** Check the pack's maximum envelope, charge rating,
+   protection and polarity against the actual build.
+4. **TRRS.** Qualify the jack and cable together if retained for debug.
+5. Source axially magnetized N52 discs in both sizes. Verify the assembled pair force with the actual pads and cured adhesive before ordering the batch.
 6. KiCad 10.0.6 measurements hold steady in this doc; if the layout
    ever re-cuts, re-read `spec/bom.md` first — this list derives from it.
 

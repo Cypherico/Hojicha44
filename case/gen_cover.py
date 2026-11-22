@@ -123,7 +123,7 @@ def build_cover(tag):
         cutter = s if cutter is None else cutter.fuse(s)
     # ---- component windows (MCU / encoder / pwrsw body; mirrored) ------
     for bounds, radius in ((P.MCU_WIN, 2.0), (P.ENC_WIN, 2.0),
-                           (P.PWRSW_WIN, 0.5)):
+                           (P.PWRSW_WIN, 0.5), (P.TRRS_BODY_WIN, 0.5), (P.JST_WIN, 0.6)):
         x0, y0, x1, y1 = win2(tag, bounds)
         s = rrect(x1 - x0, y1 - y0, radius, (x0 + x1) / 2, (y0 + y1) / 2,
                   0.0, z0 - 1.0, z1 + 1.0)
@@ -140,16 +140,13 @@ def build_cover(tag):
     base = (ox - ux * (P.SLOT_IN + 1.0), oy - uy * (P.SLOT_IN + 1.0))
     solid = solid.cut(G.fillet_slot(base, pr["v"], pr["u"], pr["w"],
                                     z0 - 0.5, z1 + 0.5, pr["r"], travel))
-    # ---- TRRS: the SAME Ø9.5 cylinder. The lip is below the bore top,
-    # so this is an EDGE NOTCH (open above), not the old blind tunnel.
     pr = ports["trrs"]
     ox, oy = pr["o"]
     ux, uy = pr["u"]
     base = (ox - ux * (P.SLOT_IN + 1.0), oy - uy * (P.SLOT_IN + 1.0))
-    solid = solid.cut(cq.Solid.makeCylinder(
-        P.TRRS_MOUTH_R, travel,
-        gp_Pnt(base[0], base[1], P.TRRS_MOUTH_ZC),
-        gp_Dir(ux, uy, 0.0)))
+    travel = P.SLOT_IN + 1.0 + pr["out"] + 1.0
+    solid = solid.cut(G.fillet_slot(base, pr["v"], pr["u"], pr["w"],
+                                    z0 - 1.0, z1 + 1.0, pr["r"], travel))
     # ---- magnets: cut UP from the underside (faces flush at z0) --------
     for (cx, cy) in stations:
         solid = solid.cut(cq.Solid.makeCylinder(
@@ -286,11 +283,6 @@ def check_cover(tag, solid, info):
                    o[1] + u[1] * dt, zb, False)
         expect(f"{name} air beyond", o[0] + u[0] * (pr["out"] + 3.0),
                o[1] + u[1] * (pr["out"] + 3.0), mid, False)
-    pr = info["ports"]["trrs"]
-    o, u = pr["o"], pr["u"]
-    expect("trrs roof solid", o[0] + u[0] * (P.CASE_OUTSET / 2.0),
-           o[1] + u[1] * (P.CASE_OUTSET / 2.0), z1 - 0.2, True)
-
     # 5. magnets: real recesses that mirror the tub's stations
     stn = info["mag_stations"]
     if len(stn) < P.MAG_MIN_STATIONS:

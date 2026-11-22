@@ -90,7 +90,7 @@ HM_REQUIRE_PRIOR_IDLE_MS = 150   # rolls resolve to taps; deliberate holds
 HM_TAPPING_TERM_MS = 280         # high: the positional triggers decide
 HM_QUICK_TAP_MS = 175            # tap-then-hold auto-repeats the LETTER
 
-# ---- L1 (lower): digits + shifted digits + F-keys, QWERTY digit order ----
+# ---- L1 (lower): rows in physical left-to-right order ----
 L1_ROWS = [
     ["N1", "N2", "N3", "N4", "N5", "N6",
      "N7", "N8", "N9", "N0", "MINUS", "EQUAL"],
@@ -101,7 +101,7 @@ L1_ROWS = [
 ]
 L1_SENSOR = "&inc_dec_kp C_AC_SCROLL_UP C_AC_SCROLL_DOWN"
 
-# ---- L2 (raise): BT/media/clipboard left, nav right (inverted-T) ----
+# ---- L2 (raise): rows in matrix order, outer-to-inner on both halves ----
 L2_ROWS = [
     ["&bt BT_CLR", "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2",
      "&bt BT_SEL 3", "&bt BT_SEL 4",
@@ -111,7 +111,7 @@ L2_ROWS = [
      "&kp PG_UP", "&none", "&kp UP", "&none", "&none", "&none"],
     ["Z", "X", "C", "V",
      "&none", "&none",
-     "&kp PG_DN", "&kp LEFT", "&kp DOWN", "&kp RIGHT", "&kp DEL",
+     "&kp PG_DN", "&kp RIGHT", "&kp DOWN", "&kp LEFT", "&kp DEL",
      "&kp BSPC"],
 ]
 L2_SENSOR = "&inc_dec_kp C_PREV C_NEXT"
@@ -289,7 +289,9 @@ def bindings_dt(matrix_bindings, indent="                "):
 
 def generate(variant, lrows, rrows, tleft, tright):
     base = base_layer(variant, lrows, rrows, tleft, tright)
-    l1 = [f"&kp {k}" for row in L1_ROWS for k in row]
+    # The right-hand columns increase from the outside towards the split.
+    l1 = [f"&kp {k}" for row in L1_ROWS
+          for k in row[:6] + row[6:][::-1]]
     shortcut_mod = "LG" if variant["mods"] == "CAGS" else "LC"
     l2 = L2_ROWS[0] + L2_ROWS[1] + [
         f"&kp {shortcut_mod}({key})" for key in L2_ROWS[2][:4]
@@ -442,12 +444,14 @@ def validate(text, variant, lrows, rrows, tleft, tright):
                        "rows must be newline-separated")
     if len(layers) != 4:
         bad.append(f"{len(layers)} layer nodes, want exactly 4")
+        return bad
     want_sensors = [BASE_SENSOR, L1_SENSOR, L2_SENSOR, ADJUST_SENSOR]
     BIND_RE = re.compile(r"&[A-Za-z][\w-]*(?:\s+[A-Za-z0-9_+()]+)*")
     for (name, blk, sensor), want in zip(layers, want_sensors):
         toks = BIND_RE.findall(blk)
         if len(toks) != 48:
             bad.append(f"{name}: {len(toks)} bindings, want 48")
+            return bad
         if toks[-2:] != ["&kp C_MUTE", "&kp C_MUTE"]:
             bad.append(f"{name}: both encoder push positions must bind Mute")
         if sensor.strip() != want:
@@ -455,6 +459,14 @@ def validate(text, variant, lrows, rrows, tleft, tright):
         if re.search(r"&(?:trans|none)(?![\w-])", sensor):
             bad.append(f"{name}: &trans/&none in sensor-bindings "
                        f"(rejected by the pinned ZMK v0.3)")
+    lower = BIND_RE.findall(layers[1][1])
+    for start, row in zip(range(0, 36, 12), L1_ROWS):
+        physical = lower[start:start + 6] + lower[start + 6:start + 12][::-1]
+        if physical != [f"&kp {k}" for k in row]:
+            bad.append(f"L1 physical row {start // 12 + 1} is out of order")
+    nav = BIND_RE.findall(layers[2][1])
+    if nav[31:34][::-1] != ["&kp LEFT", "&kp DOWN", "&kp RIGHT"] or nav[20] != "&kp UP":
+        bad.append("L2 arrows must form an inverted T in physical order")
     # home-row mods exactly on 12-15 (&hml) and 18-21 (&hmr)
     toks = BIND_RE.findall(layers[0][1])
     mods = MOD_ORDERS[variant["mods"]]

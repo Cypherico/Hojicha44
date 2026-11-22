@@ -17,8 +17,9 @@ Locked constraints (from the layout spec):
 
 ## 1. Variants
 
-Four firmware variants, differing ONLY in the home-row mod order and in
-which thumb carries Space (spec/layout.yaml `keymap.variants`):
+Four firmware variants differ in home-row mod order, which thumb carries
+Space, and the modifier used by the L2 clipboard shortcuts
+(`spec/layout.yaml` `keymap.variants`).
 
 | variant      | mod order (pinky→index) | Space thumb | for |
 |--------------|-------------------------|-------------|-----|
@@ -48,20 +49,16 @@ order), `R*` on the right (; L K J).
 ## 2. Base layer (`default_layer`, layer 0)
 
 ```
-Q W E R T  ~`    |  P O I U Y  |\
-hml? A S D F  G [ |  ; L K J  H  ]}
-Z X C V B  -     |  / . , M N  '
-Esc  L1  Tab  Space    |    Del  L2  Bksp  Enter
+Q W E R T  ~`    |  |\  Y U I O P
+A S D F G  [{     |  ]}  H J K L ;
+Z X C V B  -      |  '   N M , . /
+Esc  L1  Tab  Space    |    Enter  Bksp  L2  Del
 ```
-(`hml`/`hmr` = the per-hand home-row mod-tap behaviors; `?` is one of
-GUI/Ctrl depending on the variant. `|` = shift-\ parses to BSLH. Left
-thumbs outer→inner; right thumbs outer→inner too — the spec's
-`thumbs.right` list is written west→east = inner→outer and the generator
-reverses it.)
+All rows use physical left-to-right order. A/S/D/F and J/K/L/;
+tap for their letters or semicolon and hold for their variant's modifiers.
 
-- Letters and `/ . , M N ; : '` are plain `&kp` — no layer games on the
-  hot alphabetic keys; G and H stay plain too (miryoku: keeps roll space
-  in the middle and leaves the workingest keys untouched).
+- G and H, the other letter rows and the outer punctuation keys send
+  ordinary key presses. The semicolon is also a right-hand home-row modifier.
 - `[ { ] }` on the inner home keys (unchanged from rev 2), `` ` ~ `` on
   the inner top (unchanged), **`-` on the left inner-bottom and `'` on
   the right inner-bottom are NEW (rev 3)** — Tab and Esc moved to the
@@ -81,7 +78,7 @@ comfortable mids, the frequent primaries take the inner palm-side:
 |--------------------|---------------------|-----|
 | Esc                | Delete              | rare + recoverable = outermost |
 | **L1 hold**        | **L2 hold**         | long holds want low strain |
-| Tab / Backspace    | Backspace / Tab*    | used pairs near the pinkie |
+| Tab                | Backspace           | adjacent to the primary thumb keys |
 | Space / Enter*     | Enter / Space*      | Space on the palm-side inner |
 
 (*left/right per the space-hand variant: left-space is the spec's
@@ -110,14 +107,14 @@ v0.3 `zmk,behavior-hold-tap` YAML: `tapping-term-ms`, `quick-tap-ms`,
 `require-prior-idle-ms`, the flavor enum, all present).
 
 How it resolves:
-- type "ao" fast: O is on A's OTHER hand? no — O is same-hand as A →
-  A resolves on O's press+release before the term → tap → "ao" ✓.
+- An A pressed just after another letter resolves to a tap during the
+  prior-idle interval. O is on the right hand, so an A started from idle
+  followed by O can trigger a modifier hold if they overlap.
 - hold A, press K: K is other-hand list → hold fires on K's release
   (hold-trigger-on-release) → instant cross-hand shortcuts ✓.
-- hold A, press G (same hand): G is not in the list → A still resolves
-  to GUI if held ≥ the term or when a listed key resolves ✓ (rare
-  same-hand chord, deliberately slower than the term — this is the
-  accidental-mod insurance).
+- For a same-hand shortcut, first hold the modifier past its tapping term
+  and then press the other key. A holds Ctrl on macOS variants and GUI on
+  Windows/Linux variants. A fast same-hand roll should emit the letters.
 - typist rolls like "the quick": require-prior-idle keeps zoom-mid-roll
   taps as taps even past 150 ms.
 
@@ -133,18 +130,16 @@ them against the layout.
  F1 F2 F3 F4 F5 F6  |  F7 F8 F9 F10 F11 F12
  thumbs: transparent (the row keeps working), L1 encoder = scroll
 ```
-Digits in QWERTY order under 1–0 exactly as printed (Corne/Sofle
-standard: one mental mapping, no relearning); equal/minus mirrored at
-the inner ends for the `=`-`-` pairs of ranges; shifted symbols sit
-directly under their digits. Encoder: `C_AC_SCROLL_*` (v0.3 has no bare
-`C_SCROLL_*`).
+Read each row from left to right across the deck. Minus/equal fill the
+last two positions after 0, and shifted symbols sit directly below
+their unshifted counterparts. The encoder uses `C_AC_SCROLL_*`.
 
 ## 5. L2 (raise, layer 2) — navigation, media, BT
 
 ```
- BT CLR  P0 .  P3 | Scr  Ins  Cap
- MUTE PREV PLAY NEXT V+ V- |  PgUp    ↑
- UNDO CUT COPY PAST    |  PgDn ←  ↓  →  Del  Bksp
+ BT CLR  P0  P1  P2  P3  P4 |   ·   End  Home  Caps  Ins  PrtSc
+ MUTE  PREV  PLAY NEXT V+ V- |   ·    ·    ·     ↑     ·    PgUp
+ UNDO  CUT   COPY PAST  ·  · |  Bksp Del   ←     ↓     →    PgDn
  thumbs: transparent; L2 encoder = prev/next track
 ```
 Left half = media/BT (Sofle's raise pattern; BT profiles 0–4 for the

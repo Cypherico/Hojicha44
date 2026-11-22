@@ -1,8 +1,7 @@
 # Hojicha44 — case CAD (CadQuery, parametric)
 
-Bottom tub + (later) top cover, derived from the laser plate — never
-hand-drawn. Roadmap Phase 5: CadQuery generates, FreeCAD inspects,
-Blender visualises.
+Each half has a tub and cover derived from the PCB and plate geometry.
+The released assembly has component fit issues. [Product audit](../audit.md)
 
 ## Layout
 
@@ -10,25 +9,38 @@ Blender visualises.
 - `gen_case.py` — tub generator + self-checks. Outputs to `case/out/`
   (STEP tracked since 2026-10-24; STL gitignored/regenerable; use
   `CASE_OUT=case/out-dev` for scratch builds).
-- `gen_cover.py` — the top plate (thin-top v4; the old ring cover is
-  history). It imports the
-  tub's `compute_ports` / `pocket_layout` / `magnet_stations`, so the
-  two parts interlock from shared anchors; same output convention.
+- `gen_cover.py` generates the cover using the tub's port, gasket and magnet positions.
 - `probe_bores.py` — offline bore shape audit on the finished solids
   (not part of CI; run before a real print).
 - `requirements.txt` — pinned CadQuery (`case/.venv`, Python 3.12).
+
+## Component fit
+
+Run the fit check with the case Python and the KiCad 10 model below.
+Set `KICAD10_3DMODEL_DIR` to the installation's 3D model directory,
+or pass the full STEP path directly.
+
+```sh
+case/.venv/bin/python case/check_component_fit.py \
+  "$KICAD10_3DMODEL_DIR/Connector_JST.3dshapes/JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step"
+```
+
+The checker tests jack handedness, TRRS body and boot clearance, the JST
+header and a service envelope, and power-switch lead clearance. For v0.5.2
+use `--switch-lead-mm 3.25` to model the finished assembly. Omit it to
+model the nominal stock leads as a negative control. `CASE_OUT` selects
+an alternate STEP directory.
 
 ## Conventions (match the rest of the repo)
 
 - Units mm. Frame = KiCad board frame (same as `lands.json` / plate DXF).
 - z = 0 is the PCB top surface. Plate underside +1.00, plate top +2.20
-  (1.2mm plate, 1.00mm gap). Current generator census (2026-10-24,
-  v4.1): tub **57.5 cm³**, cover **15.2 cm³** per half — older figures
-  in the changelog are historical (pre thin-top / floor / ledge revs).
+  (1.2mm plate, 1.00mm gap). The audited STEP volumes per half are
+  **57.55 cm³** for the tub and **15.76 cm³** for the cover.
 
 ## Regenerating the order-time geometry (print-manifest recipe)
 
-The shops are sent exactly what `generated/print/v0.5.0/MANIFEST.txt`
+The shops are sent exactly what `generated/print/v0.5.2/MANIFEST.txt`
 hashes. If ANY generator constant changes, in the SAME commit:
 
     case/.venv/bin/python case/gen_case.py            # gates exit-0

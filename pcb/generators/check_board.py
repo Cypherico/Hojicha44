@@ -577,8 +577,8 @@ def _check_design(tag, pts, path, txt):
                 bad.append(f"{p[0]}.{p[1]} pad copper {gap:.2f}mm above "
                            f"bite floor, want >={PAD_NOTCH_MM}")
         if worst is not None:
-            print(f"  notch copper {tag}: nearest pad {worst[1]}.{worst[2]} "
-                  f"gap {worst[0]:.2f}")
+            print(f"  notch floor {tag}: nearest pad within the opening's "
+                  f"x-span is {worst[1]}.{worst[2]}, vertical gap {worst[0]:.2f}")
 
     # 4. pad + via containment (COMMITTED artifact)
     if loop:
@@ -662,7 +662,7 @@ def _check_design(tag, pts, path, txt):
     libof = {r: (lib, name)
              for kind, lib, name, r, *rest in placements}
     ndiffs = 0
-    waived = G.w1_want(tag, native_choc=True)
+    waived = G.w1_want(tag, native_choc=True, native_jst=True)
     for fpname, ref in sorted(waived):
         if ref not in committed or ref not in libof:
             bad.append(f"W1 content: {ref} missing from board/placements")
@@ -1160,7 +1160,7 @@ def check_frame(tag, pts, reldir=None):
     pwr = inst.get(f"SW_{tag}PWR1")
     got = {"usb": usb_want}
     if trrs:
-        got["trrs"] = (trrs[0] + (12.1 if tag == "L" else -12.1), trrs[1])
+        got["trrs"] = (trrs[0] + (2.0 if tag == "L" else -2.0), trrs[1])
     if pwr:
         got["pwrsw"] = (pwr[0], pwr[1] + 7.0)
     for name in ("usb", "trrs", "pwrsw"):
@@ -1306,7 +1306,7 @@ def frame_selftest(reldir=None):
         trrs = inst[f"J_{tag}1"]
         pwr = inst[f"SW_{tag}PWR1"]
         anchors = {"usb": (ux, uy),
-                   "trrs": (trrs[0] + (12.1 if tag == "L" else -12.1),
+                   "trrs": (trrs[0] + (2.0 if tag == "L" else -2.0),
                             trrs[1]),
                    "pwrsw": (pwr[0], pwr[1] + 7.0)}
         for name, a in anchors.items():

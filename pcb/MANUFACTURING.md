@@ -1,8 +1,8 @@
-# Manufacturing order guide (v0.5.1)
+# Manufacturing order guide (v0.5.2)
 
-> **Use v0.5.1 for PCB samples.** The v0.5.0 drill files mirror the asymmetric
-> Choc v1 contact pattern. Check the revised cover with the installed power
-> switch before ordering the case.
+> **v0.5.2 fabrication candidate.** Use the matched PCB and print files
+> for the first article, then complete the physical checks before a batch.
+> [First-article checklist](../spec/first-article.md) · [Audit](../audit.md)
 
 The exact answers for the JLCPCB Online PCB Quote, derived from the
 committed design + vendor research (2026-10; sources at the bottom).
@@ -19,14 +19,14 @@ but every design-shaped field below has exactly one right answer.
 | smallest copper clearance **0.20 / 0.25** | signal / power pad classes |
 | currents ≤ **0.5A** (charge jumper open; BLE-only) | `spec/electronics.yaml` charger block |
 | finish **ENIG** | stamped into each `*.gbrjob` by `pcb/make_release.py` |
-| no pours, no gold fingers, no castellations, no UL | by design (DRC-clean 28-waived release) |
+| no pours, no gold fingers, no castellations, no UL | v0.5.2 release DRC records 47 library-mismatch warnings per half and zero unconnected items |
 | silk text **1.0mm / 0.15 stroke** | `gen_pcb.py` gr_text/fonts — at the vendor's guaranteed minimum, not below |
 
 ## The quote, field by field
 
 | form field | value | why |
 |---|---|---|
-| Base Material | **FR-4** | RF is a pre-certified module; substrate RF loss is irrelevant. Nothing else is honest.
+| Base Material | **FR-4** | Two-layer carrier for the nice!nano. Preserve the antenna copper clearance and validate the assembled RF performance. |
 | Layers | **2** | as designed |
 | Product Type | **Industrial/Consumer** | standard QC flow; Aerospace/Medical = fees for inspection we neither need nor asked for |
 | PCB Qty | **5 per design** (10 total) | JLC minimum is 5 per design; qty 5 carries the fixed setup cost — hobby demand ≈ 5 |
@@ -51,11 +51,11 @@ but every design-shaped field below has exactly one right answer.
   "Different Design: 2", or two orders — each design is billed its own
   5-pc minimum. Don't merge them into one panel/gerber: per-extra-design
   fees exist and a shared panel of this size gains nothing.
-- The released artifacts are `generated/release/v0.5.1/{Left,Right}/`
+- The released artifacts are `generated/release/v0.5.2/{Left,Right}/`
   (9 gerbers + job + drill + pos + pos-smt + bom + ERC/DRC each; zip
   each half's folder for upload). Cross-check the MANIFEST stamp
   (`git commit:` / `board sha256:` lines in
-  `generated/release/v0.5.1/MANIFEST.txt`) — the ERC/DRC reports in the
+  `generated/release/v0.5.2/MANIFEST.txt`) — the ERC/DRC reports in the
   release are re-run at cut time, and the manifest records the board's
   hash, so the release certifies those exact bytes.
 - **Use an approved bundle from `generated/release/vX.Y.Z/`.** The pre-M3
@@ -64,8 +64,7 @@ but every design-shaped field below has exactly one right answer.
   reports may still mention it.
 - **Drill verification:** the release gate checks the exported Choc v1
   contact holes against the physical top-side pattern on both halves.
-- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** Both
-  v0.5.1 boards passed a 0.30 mm copper-to-edge check. CNC
+- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** Review current copper-to-edge spacing with the fabricator. CNC
   routing tolerance ±0.1mm precision / ±0.2mm regular (capabilities
   page) — prefer the precision tier at quote if offered. Put this in
   the fab order verbatim:
@@ -101,15 +100,10 @@ but every design-shaped field below has exactly one right answer.
 
 ## Non-PCB orders (case, plate, magnets)
 
-- **Case tub + ring cover: MJF PA12 nylon.** Best press-fit realism for
-  the Ø4.3×2.2 magnet recesses, gasket compression and the magnet
-  zero-gap stop (the retention is recessed magnets — there is NO snap
-  lip in this design; the ring magnet seats against the tub lip
-  plane); JLC MJF build ~72h. Generate with
-  `case/.venv/bin/python case/gen_case.py` +
-  `case/gen_cover.py` (STEP out; volumes 71.1/71.1 cm³ at OUTSET 8.2,
-  measured 2026-10-22 with the current generators — 75.7 predates the
-  top-lip 4.70 rev).
+- The production case material is MJF PA12 nylon. Each half uses a
+  magnetically retained cover seated on the tub lip. The audited STEP
+  solids measure 57.2 cm³ per tub and 15.2 cm³ per cover. Quote the
+  matching v0.5.2 STEP files.
 - **Plate at 1.2mm: PC (default, per spec/case.md — the generator's
   MATERIAL constant) or POM (the firmer upgrade) or CNC aluminum.**
   **1.2mm is not a free choice: the Choc v1 clip only engages a 1.2mm
@@ -136,7 +130,7 @@ but every design-shaped field below has exactly one right answer.
   mirrors before ordering. Run `python3
   pcb/generators/check_board.py --self-test` (board 0.0000mm, plate
   0.0100mm) and `case/.venv/bin/python case/mirror_gate.py` (tub
-  0.0094mm, cover 0.0000mm); the floor is 0.05mm and both gates include
+  0.0094mm, cover 0.0010mm); the limit is 0.05mm and both gates include
   negative controls. The right plate's gasket tabs are now derived from
   the left roots (`plate/gen_plate.py`), not re-walked independently.
 

@@ -38,24 +38,14 @@ PLATE_TOP = PLATE_UNDER + PLATE_T          # +2.20 (was 3.50)
 SHELF_Z = PLATE_UNDER - FOAM_T * (1 - PRELOAD)   # = -1.55
 # Top gap = compressed top foam between plate top and lip underside:
 TOP_GAP = TOP_FOAM_T * (1 - TOP_PRELOAD)         # = 1.00
-# Floor under the PCB zone: provisioned by the BELOW-PCB protrusions
-# (M1, review-corrected; wording fixed 2026-10-21 — the hotswap SOCKETS
-# are SOLDERED BENEATH (B.Cu pads, body on B.Fab/B.SilkS) and dip ~1.25
-# below the board bottom, i.e. ~-2.85 abs, so they stay well clear of
-# the floor; the module itself is 4.5..7.7 above the board).
-# Measured ruler: encoder
-# legs -3.65 (vendored ROT_EC11E STEP; footprint maps it 1:1 into the
-# PCB frame — rotate 0, no z offset), TRRS THT pin tips -3.0 (vendored
-# PJ-320A STEP), Choc socket bump -1.25 (Kailh datasheet), slide-switch
-# legs <=-3.5 (WS-SLTV family bound; caliper on first article), JST PH
-# ~-2.5 (family bound). Deepest known -3.65 -> FLOOR_Z keeps
-# FLOOR_CLEAR mm clearance (no trimming; encoder leads left long).
-# A flat floor at sandwich depth still collides (the PCB bottom is
-# -1.6); the tub MUST step down here (spec/case.md).
-# (FUTURE OPTION: if the THT leads are clipped after soldering, the
-# deepest untrimmable feature is the socket bump -2.85 and the floor can
-# rise by ~0.8mm; not enabled without a build-step change.)
-FLOOR_CLEAR = 1.0  # clearance under the deepest untrimmed part (-3.65)
+# Depths below the nominal PCB top. The Choc socket model reaches
+# -3.468 (1.18 mm clear of the floor), the JST -3.40 and the encoder
+# -3.65. Stock Würth switch leads reach -4.70..-5.10. For this tub,
+# trim them to z >= -3.25 after soldering. Check the finished joints
+# and the clearance under an encoder press on the first article.
+POWER_LEAD_MAX = 3.25  # finished lead and solder measured from carrier top
+POWER_Z_TRAVEL = 0.40  # verified geometric reserve below nominal carrier height
+FLOOR_CLEAR = 1.0  # minimum slide-switch clearance after the travel reserve
 FLOOR_Z = -3.65 - FLOOR_CLEAR  # floor top surface = -4.65 (spec ruler above)
 FLOOR_T   = 1.7   # floor slab (MJF PA12; flat, braced by tab pockets)
                   # first-article caliper re-measures the family bounds
@@ -130,35 +120,16 @@ POCKET_TOP = TOP_LIP_Z     # open to the top (cover presses upper foam)
 #          the lip (~9.2 abs), bottom ~2.8, so only 2.8..lip of the
 #          plug crosses the wall band — its neck above the lip rides
 #          through the open top plane, which the future COVER carries.
-#   TRRS = round bore (9.5 dia) centered on the jack axis:
-#          PJ-320A measured off the vendored model
-#          (pcb/kicad/Hojicha44.3dshapes/PJ-320A.step): body 6.1 wide,
-#          top face flat at z 5.0, plastic mouth face RECESSED 0.99mm
-#          behind the board edge (review: nothing of the jack then
-#          crosses the wall band on the straight drop-in — the worst
-#          corner analysis stands as a conservative bound: r=3.94
-#          (face corner (3.05, 5.0) about axis 2.5)
-#          vs bore 4.75 -> ~0.8mm clear). The right-angle plug's ball
-#          boot (<=8.5) swings about that axis and stays inside for
-#          +/-0.5 axis drift. The bore is clipped flat by the lip only
-#          where it would pass above the open top (jack top 5.0 < lip
-#          6.0: the clip region is empty above the jack in service).
-USB_MOUTH_W = 14.0     # notch is 11; +3 for housing shoulders
-USB_MOUTH_Z0 = 2.0     # overmold bottom ~2.8 (axis ~6.1, h ~6.5) + margin
-USB_MOUTH_R = 1.2      # bottom-corner fillet (flat top, see above)
-TRRS_MOUTH_R = 3.0     # Ø6.0 SIDE HOLE, not the old Ø9.5 boot bore.
-#   Review: the Ø9.5 bore + thin cover cut a rectangular window open to
-#   the top ("gaping"); a 3.5mm plug's METAL barrel is ~Ø3.5-4.0 and the
-#   grip stays outside the 7.6mm wall, so a round Ø5.0 hole passes it.
-#   Its top (zc+r = 4.5) stays 0.7mm under the 5.2 cover top, so the
-#   cover keeps a closed roof over the port. Ø6.0 clears a 3.5mm barrel
-#   with 1.25/side and still passes the first few mm of most slim grips;
-#   right-angle boot swing inside is no longer provided (first article
-#   measures the real plug).
-TRRS_MOUTH_ZC = 1.5    # hole centre: jack axis 2.5 dropped to 1.5 so the
-#   Ø6.0 top (4.5) clears under the 5.2 cover top with a 0.7mm roof. A
-#   straight Ø3.5-4.0 barrel (spans 0.75..4.25 at the jack axis) keeps
-#   0.25-0.5mm top margin.
+USB_MOUTH_W = 14.0
+USB_MOUTH_Z0 = 2.0
+USB_MOUTH_R = 1.2
+
+# The plug boot enters an open bay. The case floor stays continuous.
+TRRS_BAY_W = 10.5
+TRRS_BAY_Z0 = -2.85
+TRRS_BAY_R = 0.60
+TRRS_JACK_AXIS_Z = 2.50
+TRRS_BODY_WIN = (119.70, -25.60, 135.30, -18.40)
 
 # ---- power-switch actuator window (v3.5, north rim) ----
 # WS-SLTV (450301014042, Wuerth datasheet + KiCad footprint name
@@ -191,10 +162,6 @@ PWRSW_MOUTH_R = 0.8    # bottom fillets (molded look, matches USB)
 # stack math, boot/face from the vendored PJ-320A STEP, lever from the
 # Wuerth WS-SLTV datasheet (blade ~2.0 + travel 1.6; verify first art.)
 USB_HOUSING_W = 12.35       # overmold body widest around the axis
-TRRS_PLUG_DIA = 4.0         # straight plug metal barrel, <= Ø4.0 (the
-#   grip/overmold stays outside the wall, so it never needs a bore)
-TRRS_FACE_HW = 3.05         # PJ-320A mouth face half-width (STEP)
-TRRS_FACE_TOP = 5.0         # PJ-320A mouth face top plane (STEP)
 PWRSW_LEVER_SWEEP = 3.6     # actuator blade ~2.0 + travel 1.6 (verify)
 
 # ---- retention magnets (v3.5 tub + ring cover, recessed both sides) ----
@@ -243,8 +210,8 @@ MAG_MIN_STATIONS = 8   # retention gate on station count (audit: the doc
 # its keep-rect — the two files cannot drift apart silently).
 # usb   = points.yaml helper usb / mirror_usb (mcu + [0,17.95])
 # trrs  = jack MOUTH centres derived from the layout trrs anchor
-#         (130.5/-22) via the PCB placement chain: anchor ± 8.05
-#         (gen_pcb.py TRRS rot-90 dX) + footprint mouth y 12.1
+#         (130.5/-22) via the PCB placement chain: anchor ± 2.05
+#         (gen_pcb.py TRRS rot-90 dX) + physical mouth at native y=-2.0
 #         -> 134.55 (L) / 156.95 (R), rounded.
 # pwrsw = the ACTUATOR MOUTH centre on the north rim plateau, NOT the
 #         switch footprint (SW_LPWR1/SW_RPWR1 sit at 106.3/185.2, 51 after
@@ -313,6 +280,10 @@ CAP_CLEAR = 1.5        # key-field opening clearance per side. gen_cover
                        # a 0.4mm top-edge chamfer is the only
                        # embellishment; caps stand full-height proud.
 CAP_ROUND = 2.0        # cutter corner radius (molded look)
+JST_SERVICE_W = 4.50
+JST_SERVICE_L = 7.00  # plug, wires and straight withdrawal beyond header face
+JST_PLATE_WIN = (115.85, 4.30, 131.65, 9.65)
+JST_WIN = (115.85, 3.30, 134.50, 10.70)  # header, plug and tool access
 MCU_WIN = (106.5, 12.0, 129.0, 48.6)      # x0, y0, x1, y1
 ENC_WIN = (111.5, -14.35, 124.5, -1.65)   # x0, y0, x1, y1: EC11
                        # BODY at the cover band (measured 12.0x11.7 at

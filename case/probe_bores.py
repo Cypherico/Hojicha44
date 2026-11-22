@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """Offline bore shape audit for v4.x (not part of CI).
 
-Run alongside `gen_case.py` (it rebuilds the halves): probes the FINISHED
-solids at bore-specific positions the generic probe battery doesn't
-cover — USB below-bore wall, flank, fillet envelope, full-width under
-the lip; TRRS axis/edges/extreme-z chords; slab sills. Handy before a
-real print.
+Probe the exported tub STEP files in CASE_OUT (default: case/out).
+Checks the bore shape and slab sills against the current parameters.
+Component and plug mating need separate fit checks.
 """
 import math
 import os
@@ -38,68 +36,47 @@ def probe(tag, name, solid, o, u, v, b, t, z, want):
 
 for tag in ("Left", "Right"):
     print(f"{tag}:")
-    solid, info = G.build_half(tag)
+    board = os.path.join(G.REPO, "pcb", "kicad", f"Hojicha44-{tag}.kicad_pcb")
+    rim = G.read_pcb_outline(board)
+    ring = G.resample_ring(rim, params.SKIN_STEP)
+    skin = G.resample_ring(G.offset_pts(rim, params.CASE_OUTSET), params.SKIN_STEP)
+    ports = G.compute_ports(tag, ring, G.outward_field(ring), skin, params)
+    step = os.path.join(G.OUT_DIR, f"Hojicha44-{tag}-tub.step")
+    solid = cq.importers.importStep(step).val()
     for name in ("usb", "trrs", "pwrsw"):
-        pr = info["ports"][name]
+        pr = ports[name]
         o, u, v = pr["o"], pr["u"], pr["v"]
         if name == "usb":
             # below the bore (z0=2.0) the wall must be solid again
             probe(tag, name + "/below", solid, o, u, v, 0.0, 3.5, 1.5, True)
-            # inside w/2 at mouth depth -> void (straight flank zone)
-            probe(tag, name + "/flank", solid, o, u, v, 6.3, 3.5, 4.5, False)
             # bottom fillet: inside the fillet envelope at z0+0.4
             r, w = pr["r"], pr["w"]
             z = params.USB_MOUTH_Z0 + 0.4
             hw = (w / 2 - r) + math.sqrt(max(
                 r ** 2 - (params.USB_MOUTH_Z0 + r - z) ** 2, 0.0))
-            probe(tag, name + "/fillet-in", solid, o, u, v,
-                  hw - 0.05, 3.5, z, False)
-            # flat top: full width void right under the lip plane
-            probe(tag, name + "/top", solid, o, u, v, 6.9, 3.5, 5.95, False)
+            # The cavity extends past the notch floor near the flanks.
+            # Probe at the wall so a missing cutter cannot pass as air.
+            depth = 12.0
+            near_lip = params.TOP_LIP_Z - 0.05
+            for sign in (-1, 1):
+                probe(tag, name + "/fillet-in", solid, o, u, v,
+                      sign * (hw - 0.05), depth, z, False)
+                probe(tag, name + "/fillet-out", solid, o, u, v,
+                      sign * (hw + 0.05), depth, z, True)
+                probe(tag, name + "/top", solid, o, u, v,
+                      sign * (w / 2 - 0.10), depth, near_lip, False)
+                probe(tag, name + "/flank", solid, o, u, v,
+                      sign * (w / 2 + 0.30), depth, near_lip, True)
         elif name == "trrs":
-            r = pr["r"]
-            zc = pr["zc"]
-            # across the axis -> void; just past the radius -> solid
-            probe(tag, name + "/axis", solid, o, u, v, 0.0, 3.5, zc, False)
-            probe(tag, name + "/edge-in", solid, o, u, v,
-                  r - 0.15, 3.5, zc, False)
-            probe(tag, name + "/edge-out", solid, o, u, v,
-                  r + 0.15, 3.5, zc, True)
-            # chord at a far z plane: in-out at the exact circle
-            for dz in (-4.2, 3.4):
-                hw = math.sqrt(max(r ** 2 - dz ** 2, 0.0))
-                if hw < 0.3:
-                    continue
-                zb = zc + dz
-                if not (params.FLOOR_Z < zb < params.TOP_LIP_Z):
-                    continue
-                probe(tag, name + f"/chord{dz:+.1f}-in", solid, o, u, v,
-                      hw - 0.05, 3.5, zb, False)
-                probe(tag, name + f"/chord{dz:+.1f}-out", solid, o, u, v,
-                      hw + 0.05, 3.5, zb, True)
-            # plug passage (thin-top revision): the bore is a Ø6.0
-            # round SIDE hole closed by a 0.7 roof — it passes the
-            # straight 3.5mm plug barrel (the jack is soldered inside
-            # the cavity and its 6.1-wide mouth face NEVER crosses the
-            # wall; the old face-slide probes belonged to the Ø9.5
-            # top-open notch and are gone). The barrel tops at 4.25 —
-            # in the COVER band (tub ends at the 3.20 lip); the cover's
-            # upper hole + roof are verified by the x=143 wall section.
-            # Here: worst tub-band slice just under the lip.
-            barrel_r, jack_axis = 2.0, 2.5
-            zt = params.TOP_LIP_Z - 0.1  # 3.1
-            hwb = math.sqrt(max(r ** 2 - (zt - zc) ** 2, 0.0))
-            hp = math.sqrt(max(barrel_r ** 2 - (zt - jack_axis) ** 2, 0.0))
-            if hwb <= hp + 0.1:
-                fails.append(f"{tag} TRRS bore r={r} too tight for a "
-                             f"Ø{2 * barrel_r} barrel at z={zt:.2f} "
-                             f"(bore hw {hwb:.3f} vs plug {hp:.3f})")
-            else:
-                for t in (0.7, 3.5):
-                    probe(tag, name + "/plug-in", solid, o, u, v,
-                          hp - 0.05, t, zt, False)
-                    probe(tag, name + "/wall-resumed", solid, o, u, v,
-                          hwb + 0.2, t, zt, True)
+            depth = 6.0
+            for z in (-2.0, 0.0, params.TOP_LIP_Z - 0.1):
+                for sign in (-1, 1):
+                    probe(tag, name + "/bay", solid, o, u, v,
+                          sign * (pr["w"] / 2 - 0.1), depth, z, False)
+                    probe(tag, name + "/wall", solid, o, u, v,
+                          sign * (pr["w"] / 2 + 0.3), depth, z, True)
+            probe(tag, name + "/sill", solid, o, u, v,
+                  0.0, depth, params.TRRS_BAY_Z0 - 0.1, True)
         elif name == "pwrsw":
             if pr.get("skipped") or pr.get("kind") == "none":
                 # thin-cover lip: the pwrsw port lives entirely ABOVE

@@ -23,8 +23,8 @@
 <polygon points="395.44,396.69 449.89,409.76 462.96,355.31 408.51,342.24" fill="#000" stroke="#fff" stroke-width="1"/>
 <polygon points="474.23,418.71 523.91,444.57 549.77,394.89 500.09,369.03" fill="#000" stroke="#fff" stroke-width="1"/>
 <polygon points="549.28,458.82 591.22,495.92 628.32,453.98 586.38,416.88" fill="#000" stroke="#fff" stroke-width="1"/>
-<polygon points="558.4,48.0 556.4,50.0 556.4,80.0 554.4,82.0 514.2,82.0 512.2,84.0 512.2,100.0 514.2,102.0 539.4,102.0 541.4,104.0 541.4,277.4 543.4,279.4 624.6,279.4 626.6,277.4 626.6,97.8 624.6,95.8 613.6,95.8 611.6,93.8 611.6,50.0 609.6,48.0" fill="#000" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="5,3"/>
-<polygon points="589.8,398.0 591.8,400.0 660.0,400.0 662.0,398.0 662.0,370.0 660.0,368.0 591.8,368.0 589.8,370.0" fill="#000" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="5,3"/>
+<polygon points="638.6,259.4 636.6,257.4 628.6,257.4 626.6,255.4 626.6,97.8 624.6,95.8 613.6,95.8 611.6,93.8 611.6,50.0 609.6,48.0 558.4,48.0 556.4,50.0 556.4,80.0 554.4,82.0 514.2,82.0 512.2,84.0 512.2,100.0 514.2,102.0 539.4,102.0 541.4,104.0 541.4,283.8 543.4,285.8 624.6,285.8 626.6,283.8 626.6,280.8 628.6,278.8 636.6,278.8 638.6,276.8" fill="#000" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="5,3"/>
+<polygon points="589.4,403.0 591.4,405.0 660.0,405.0 662.0,403.0 662.0,365.0 660.0,363.0 591.4,363.0 589.4,365.0" fill="#000" stroke="#ff9800" stroke-width="1.5" stroke-dasharray="5,3"/>
 <polygon points="551.6,350.8 553.6,352.8 614.4,352.8 616.4,350.8 616.4,305.2 614.4,303.2 553.6,303.2 551.6,305.2" fill="#000" stroke="#ff9800" stroke-width="1.5"/>
 <polygon points="146.0,169.7 146.0,182.3 154.0,182.3 154.0,169.7" fill="none" stroke="#00bcd4" stroke-width="1" stroke-dasharray="3,2"/>
 <polygon points="222.0,153.7 222.0,166.3 230.0,166.3 230.0,153.7" fill="none" stroke="#00bcd4" stroke-width="1" stroke-dasharray="3,2"/>
@@ -68,7 +68,7 @@
 <text x="8" y="26" fill="#fff" font-size="10">white square = Choc cutout 14 square (see DXF)</text>
 <text x="8" y="38" fill="#ff9800" font-size="10">solid orange = encoder window 16.2x12.4 / dashed orange = component window (tall parts)</text>
 <circle cx="160.0" cy="360.0" r="6.4" fill="none" stroke="#03a9f4" stroke-width="1"/>
-<circle cx="624.0" cy="280.0" r="6.4" fill="none" stroke="#03a9f4" stroke-width="1"/>
+<circle cx="628.0" cy="280.0" r="6.4" fill="none" stroke="#03a9f4" stroke-width="1"/>
 <text x="112.0" y="176.0" fill="#888" font-size="7" text-anchor="middle">SW_L00</text>
 <text x="188.0" y="160.0" fill="#888" font-size="7" text-anchor="middle">SW_L01</text>
 <text x="264.0" y="140.0" fill="#888" font-size="7" text-anchor="middle">SW_L02</text>
