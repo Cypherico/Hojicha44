@@ -1,24 +1,22 @@
 #!/usr/bin/env python3
 """Silk/symmetry audit for the Hojicha44 split pair.
 
-Design rule (see notes.md): the right half is a geometric mirror for
-PLACEMENT, but footprints keep absolute orientation — symmetric parts get
-negated rotations, orientation-locked parts (MCU socket, encoder, JST) are
-translated with identical rotation, helpers are grid-picked. Asymmetric
-footprint art (Choc socket body, JST body) therefore can NOT be
-mirror-identical, and must not be required to be: the physical parts fix
-pad positions, and mirrored art would mislabel them.
+The left and right halves mirror placement. The MCU socket and encoder
+keep the same orientation, while the JST headers face the split from
+opposite sides. Footprint art is compared in local coordinates.
 
 What this audit DOES require per twin pair (L ref <-> R ref):
-  1. placement rule: mirrored position for all, except U_/ENC_ (translated);
-     FID_/MT_ helpers only need containment+DRC (grid-picked, skip here).
+  1. placement rule: mirrored position for most parts. The MCU socket,
+     encoder and JST use placement checks in check_board.py. Fiducial
+     and tooling helpers use containment and DRC.
   2. rotation rule: negated mod 180 (body axis mirrors; polarity follows
-     pad numbers, N/S preserved), except U_/ENC_/JST/PWR/FID/MT (equal).
+     pad numbers, N/S preserved). The JST has a signed orientation per half.
   3. silk identity: same multiset of silk primitives (kind/layer/local
      geometry/normalized text) — both halves embed the same footprint
      files, so any difference is an embed/transform bug.
   4. texts readable: twin text angles equal (never mirrored).
-  5. board-level silk texts mirrored (position + content + angle).
+  5. board-level silk texts mirror across the split. Each JST '+' is
+     checked against its own pin-1 datum.
 
 Usage: python3 pcb/generators/audit_silk.py  (exit 1 on findings)
 """
@@ -140,9 +138,15 @@ def main():
             continue
         lx, ly, lrot, lblk = L[lref]
         rx, ry, rrot, rblk = R[nref]
-        locked = nref.startswith(("U_", "ENC_")) or "Connector_JST:" in lblk
+        locked = nref.startswith(("U_", "ENC_"))
         helper = nref.startswith(("FID_", "MT_"))
-        if locked:
+        if nref == "J_R2":
+            # The stored KiCad angles are signed opposites. Match modulo
+            # 360 so an accidental half turn cannot pass this check.
+            if abs(math.remainder(lrot - 90, 360)) > 0.01 or \
+                    abs(math.remainder(rrot + 90, 360)) > 0.01:
+                bad.append(f"{nref}: JST mouths must face the split (L={lrot} R={rrot})")
+        elif locked:
             if abs(lrot - rrot) > 0.01:
                 bad.append(f"{nref}: locked-part rotation differs (L={lrot} R={rrot})")
         elif not helper:
@@ -162,11 +166,6 @@ def main():
 
     lt = board_texts(os.path.join(PCB_DIR, "Hojicha44-Left.kicad_pcb"))
     rt = board_texts(os.path.join(PCB_DIR, "Hojicha44-Right.kicad_pcb"))
-    # The JST "+" mark rides with its translated JST (west of pin 1 on both
-    # halves — mirroring it would park it by the GND pin). Compare the rest
-    # mirrored, the "+" translated by the JST placement delta.
-    jdx = R["J_R2"][0] - L["J_L2"][0]
-    jdy = R["J_R2"][1] - L["J_L2"][1]
     ml, mr, pl, pr = [], [], [], []
     for t, (x, y), ang, lay in lt:
         (pl if t == "+" else ml).append((t, (x, y), ang, lay))
@@ -178,12 +177,16 @@ def main():
                 for t, (x, y), ang, lay in mr)
     if ml != mr:
         bad.append(f"board texts differ:\n  L-mirrored={ml}\n  R={mr}")
-    pl = sorted((t, (round(x + jdx, 2), round(y + jdy, 2)), ang, lay)
-                for t, (x, y), ang, lay in pl)
-    pr = sorted((t, (round(x, 2), round(y, 2)), ang, lay)
-                for t, (x, y), ang, lay in pr)
-    if pl != pr:
-        bad.append(f"JST '+' marks differ:\n  L-translated={pl}\n  R={pr}")
+    for ref, footprints_by_ref, marks, dx in (
+            ("J_L2", L, pl, -2.6), ("J_R2", R, pr, 2.6)):
+        if ref not in footprints_by_ref:
+            bad.append(f"{ref}: footprint missing")
+            continue
+        # Pad 1 of the JST footprint is its local origin.
+        x, y, _, _ = footprints_by_ref[ref]
+        expected = [("+", (round(x + dx, 2), round(y, 2)), 0.0, "F.SilkS")]
+        if marks != expected:
+            bad.append(f"{ref}: JST '+' mark at {marks}, expected {expected}")
 
     if bad:
         print(f"{len(bad)} asymmetries:")

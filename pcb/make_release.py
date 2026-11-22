@@ -54,7 +54,10 @@ def board_commit():
         return r.stdout.strip().splitlines()[0] if r.returncode == 0 and \
             r.stdout.strip() else "unknown"
     return run("git", "log", "-1", "--format=%H", "--",
-               "pcb/kicad", "pcb/generators", "pcb/make_release.py",
+               "pcb/kicad", "pcb/generators",
+               # These tools verify or package the board. The stamp
+               # identifies the source revision of the fabricated design.
+               ":(exclude)pcb/generators/audit_silk.py",
                "spec/electronics.yaml",
                # three more board-affecting input trees (3-review audit
                # 2026-10-21): the placement anchors, the board outline and
