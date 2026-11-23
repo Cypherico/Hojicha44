@@ -340,6 +340,19 @@ def krot(erg_r):
     return r2(-erg_r)
 
 
+def placement_source(kind, lib, name):
+    """The local footprint geometry shared by board emission and routing."""
+    src = fp_source(lib, name)
+    if kind != "DIODE":
+        return src
+    # A back-side flip about the local X axis keeps the pad-1 end fixed.
+    src = frame.mirror_geometry(src)
+    src = re.sub(r'"F\.(Cu|SilkS|Fab|CrtYd|Mask|Paste)"', r'"B.\1"', src)
+    return re.sub(r'(\(effects\s*\(font\s*\(size [^)]*\)\s*'
+                  r'\(thickness [^)]*\)\s*\)\s*)(\))',
+                  r'\1(justify mirror)\2', src)
+
+
 def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
           ref_on_fab=False, strip_silk=False, cathode_tick=False,
           ref_shift=(0.0, 0.0)):
@@ -351,7 +364,7 @@ def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
     Fab instead (dense matrix: silk refs sit on neighbour silk/pads);
     ref_shift offsets the Reference field's local coordinates (per-half
     silk-collision dodge; PWR uses mirrored x signs across the halves);
-    strip_silk drops F.SilkS graphics (SOD-123: the cathode bar sits 0.2mm
+    strip_silk drops the mounting side's silk graphics (the SOD-123 bar sits 0.2mm
     from the pad and trips angle-dependent DRC noise; Fab keeps polarity).
     cathode_tick re-adds a minimal cathode tick for stripped SOD-123s:
     1.0mm bar just outside pad 1 (cathode) at 0.29mm local clearance, so
@@ -360,7 +373,8 @@ def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
     rotation-proof; DRC re-verifies every placed rotation.
     """
     s = re.sub(r'\(footprint "[^"]*"', f'(footprint "{libref}"', src, count=1)
-    s = re.sub(r'(\(layer "F\.Cu"\)\n)',
+    side = re.search(r'\(layer "([FB])\.Cu"\)', src).group(1)
+    s = re.sub(r'(\(layer "[FB]\.Cu"\)\n)',
                rf'\1\t(uuid "{U()}")\n\t(at {r2(x)} {r2(y)} {r2(rot)})\n',
                s, count=1)
     s = re.sub(r'\(property "Reference" "[^"]*"',
@@ -387,17 +401,17 @@ def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
                    r'\1\n\t\t(hide yes)', s, count=1)
     if ref_on_fab:
         s = re.sub(r'(\(property "Reference" "[^"]*"\n\t\t\(at [^)]*\)\n'
-                   r'\t\t\(layer ")F\.SilkS(")',
-                   r'\1F.Fab\2', s, count=1)
+                   r'\t\t\(layer "[FB]\.)SilkS(")',
+                   r'\1Fab\2', s, count=1)
     if strip_silk:
-        s = strip_layer_graphics(s, "F.SilkS")
+        s = strip_layer_graphics(s, f"{side}.SilkS")
     s = re.sub(r'\(property "Value" "[^"]*"',
                f'(property "Value" "{value}"', s, count=1)
 
     def padsub(blk, num):
-        if libref == "Hojicha44:TRRS-PJ-320A" and num:
+        if num and (cathode_tick or libref == "Hojicha44:TRRS-PJ-320A"):
             # KiCad board pad angles are absolute. Turn the long axis
-            # of each contact slot with the jack body.
+            # of the contact slots and diode lands with their bodies.
             blk = re.sub(r'(\(at [-\d.]+ [-\d.]+)\)', rf'\1 {rot})', blk, count=1)
         if num and num in pin_nets and "(net " not in blk:
             code, name = pin_nets[num]
@@ -433,7 +447,7 @@ def embed(src, libref, ref, value, x, y, rot, pin_nets, hide_ref=False,
     if cathode_tick:
         s = (s.rstrip()[:-1].rstrip() +
              f'\n\t(fp_line (start -2.45 -0.5) (end -2.45 0.5)'
-             f' (stroke (width 0.12) (type solid)) (layer "F.SilkS")'
+             f' (stroke (width 0.12) (type solid)) (layer "{side}.SilkS")'
              f' (uuid "{U()}"))\n)')
     if ":" in libref:
         _lib, _name = libref.split(":", 1)
@@ -1192,17 +1206,14 @@ def build_placements(tag, pts, pin_net):
         placements.append(("SW", *FP_SRC["SW"], f"SW_{tag}{idx:02d}",
                            f"K{idx:02d}", x, y, krot(rot), False, True, False,
                            ref_nets(pin_net, f"SW_{tag}{idx:02d}")))
-        # Diode in the inter-key gap beside its switch. The RIGHT half is a
-        # true mirror: offset direction negates (east on L, west on R) while
-        # the body rotation stays krot+90 — mod 180 that IS the mirrored axis
-        # (-(k+90) == -k+90), and N/S polarity is preserved across the mirror
-        # (nets follow pad numbers either way). Same-side offsets would pile
-        # the outer-column diode against the board edge instead of the gap.
-        sgn = 1 if tag == "L" else -1
-        dx = sgn * 9.5 * math.cos(math.radians(rot))
-        dy = sgn * 9.5 * math.sin(math.radians(rot))
+        # The sockets are handed and keep their orientation on both halves.
+        # Place the diode alongside the socket anode pad, keeping the
+        # right-hand diode below the adjacent socket's courtyard.
+        diode_y = 0.0 if tag == "L" else -3.0
+        dx, dy = cw_rotate(9.5, diode_y, krot(rot))
+        angle = krot(rot) + (90 if tag == "L" else -90)
         placements.append(("DIODE", *FP_SRC["DIODE"], f"D_{tag}{idx:02d}",
-                           "1N4148W", x + dx, y + dy, krot(rot) + 90,
+                           "1N4148W", x + dx, y + dy, angle,
                            False, True, True,
                            ref_nets(pin_net, f"D_{tag}{idx:02d}")))
 
@@ -1317,7 +1328,7 @@ def build_board(tag, pts):
 
     body = []
     for kind, lib, name, ref, value, x, y, rot, hide, fab, strip, pn in placements:
-        src = fp_source(lib, name)
+        src = placement_source(kind, lib, name)
         if kind == "PWR":
             # M3: the switch moved +4.3 inboard; the stock left-justified
             # 8-char ref string now pronounces past the body end. Shift it

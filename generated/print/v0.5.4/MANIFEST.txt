@@ -1,0 +1,13 @@
+# Hojicha44 v0.5.4 plate and case first-article candidate
+# Pair with the v0.5.4 PCB. Plate DXFs use through-cuts; PORON is a punch template.
+# STEP is the fabrication format. Generate local STL meshes from the case CAD if needed.
+cfef63f53e995222b05109fcf4889cd096995c102b51163a57bd0a0c012be58f  plate/Hojicha44-Left-lands.json
+901590fb54563209fc26c0165d472290da36e129651487748e6055a9ba07d2d8  plate/Hojicha44-Right-lands.json
+17917d06a58239140a2fd6e9ca637a35efba10248d459667dcd0705b534d2e54  plate/Hojicha44-Left-plate.dxf
+937883e177ab66fc58b55d61074c3e511f1e99d31ad66fa534ef5498241d1bf6  plate/Hojicha44-Right-plate.dxf
+0e8d7886899c6863ec362f88580bdb78d2034013700608f15bf5807ac8f2c64a  plate/Hojicha44-Left-plate.svg
+b4a6231b43d44024f14aaa3e98a859023fd72450ee75cfb9359d06dd0eaeb641  plate/Hojicha44-Right-plate.svg
+9c3b50148a6536ce604b8561b9d8c1e555c39b1eebd46a4b3daeeab9dc903f5d  case/out/Hojicha44-Left-cover.step
+c05a1948e236a5150ea49c1c5c27e7e148659225bbc02e45f02c0b1e532828f4  case/out/Hojicha44-Left-tub.step
+2e4d8840dae84ee98d9a816ce06951be04ca270f53d645a8beea4d8d3ee5b9d7  case/out/Hojicha44-Right-cover.step
+6ecc8d7d5eee8503eb9eaf9a1de634c298ea0d2a121c4d13f0e0320b1ec6bdd5  case/out/Hojicha44-Right-tub.step

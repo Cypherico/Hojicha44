@@ -28,9 +28,8 @@ geometry, never hand-drawn):
 Stack contract (spec/case.md), rev 2 / support (b): 1.2mm PC plate,
 1.00mm PCB-to-plate gap, 14.0mm Choc cutout (the clip MUST engage: the
 lower body is 13.80, the clip lip sits 0.9-1.3 above the PCB and the
-14.8 ears bear on the plate's top at 2.20).  The 22 top-side diodes
-(1.260mm tall, MEASURED off KiCad's D_SOD-123.step) clear the plate
-through 0.55mm relief pockets in its underside (RELIEF layer).
+14.8 ears bear on the plate's top at 2.20). The diodes mount below the
+PCB, so the plate uses through-cuts.
 
 Usage:
   python3 plate/gen_plate.py          # writes plate/
@@ -38,7 +37,7 @@ Usage:
 
 Outputs (gitignored scratch, like out/fit):
   plate/Hojicha44-{Left,Right}-plate.dxf   (R12, mm, layers
-      OUTLINE/CUTOUT/PORON[reference-only]/RELIEF[machine 0.55 deep])
+      OUTLINE/CUTOUT/PORON[reference-only])
   plate/Hojicha44-{Left,Right}-plate.svg   (preview, lands hatched)
   plate/Hojicha44-{Left,Right}-lands.json  (gasket map for case design)
 
@@ -159,49 +158,6 @@ assert 1.0 <= PLATE_THICK <= 1.25, (
 # [0.9, 1.3] capture band as measured (better: 2.2 - 1.2).
 GAP = 1.00             # PCB top -> plate underside (design point;
                        # settled gap = 2.2 - PLATE_THICK, see above)
-# DIODE RELIEF.  The 22 matrix diodes (1N4148W SOD-123) stand on the
-# PCB's TOP side and are the only thing under the plate in the matrix
-# field.  Their Z-extent: KiCad's own D_SOD-123.step (the vendored
-# model) tops out at 1.260mm above the PCB plane; the Diodes Inc
-# DS30086 package outline (Rev. 31-2, 2024-09, p4) gives the REAL
-# tolerance: A 1.00..1.35 = total HEIGHT (A1 0.00..0.10 = the terminal
-# seat), so a real part can be 0.14mm taller than the model.  With GAP
-# 1.00 the plate underside would foul the diode by up to 0.40mm, so the
-# plate carries a 0.55mm RELIEF POCKET under every diode: the pocket
-# floor sits at GAP+0.55 = 1.55, i.e. 0.29mm above the MODELLED diode
-# top (1.26) and 0.15mm above the PART TOLERANCE ceiling (1.40).
-# 0.65mm of plate is left under the pocket (gate: floor >= 0.60).
-# (The old 0.40mm relief left only 0.14mm — inside the part's height
-# tolerance, it would have scraped a tall diode.)
-# Alternatives rejected: (a) diodes on B.Cu — the Choc hotswap socket
-# is a bottom-side part whose solder tabs and plastic body are
-# asymmetric, and the switch fixes the socket's orientation, so the
-# two halves' bottom copper CANNOT be mirror-symmetric and a back-side
-# diode would break the project's left/right mirror discipline for no
-# functional gain; (b) no relief at all — needs GAP >= 1.4, outside
-# the switch's clip band.
-DIODE_RELIEF_D = 0.55  # relief pocket depth in the plate underside
-# The pocket's XY: the diode occupies the pocket at the plate's UNDER-
-# SIDE band (z 1.00..1.55) where the SOD-123 body is at its WIDEST
-# cross-section (the chamfer is at the top, z > 1.0; the old 2.566 x
-# 1.416 was the model's top face — the section AT the plate plane is
-# 2.700 x 1.550, and the DS30086 outline grows to E 2.85 x D 1.70).
-# Size the pocket to the LARGEST of those, + 0.15/side (audit-1/M3.2
-# fix: the old basis left 0.008mm/side against a DS-max part, which a
-# +/-0.1mm mill tolerance eats entirely).
-DIODE_BODY_L = 2.85    # DS30086 E_max = body length (STEP widest 2.700)
-DIODE_BODY_W = 1.70    # DS30086 D_max = body WIDTH (STEP widest 1.550;
-                       # 1.70 is width, NOT height — the outline labels
-                       # A(1.00..1.35)=height, D=width, E=length)
-DIODE_RELIEF_CLR = 0.15  # pocket margin around the body, per side
-DIODE_TOP_Z = 1.26     # measured diode top above the PCB top surface
-DIODE_TOP_MAX_Z = 1.40  # the part tolerance ceiling (DS30086 A_max 1.35 +
-                       # seat margin; the relief is sized against THIS,
-                       # not against the model alone)
-assert DIODE_BODY_L >= 2.70 and DIODE_BODY_W >= 1.55, (
-    "diode pocket basis must cover the STEP's widest section "
-    "(2.700 x 1.550) — the old 2.566 x 1.416 top-face basis undersized "
-    "the pocket")
 TAB_W = 10.0             # tab width along the rim
 TAB_L = 5.0              # tab protrusion past the outline
 TAB_FILLET = 2.0         # root fillets (crack control, esp. carbon/acrylic)
@@ -245,7 +201,6 @@ WEB_MIN = {            # min solid web (mm) per plate material, 1.5mm stock.
                        # conductive: plate touches switch plastic + gaskets
                        # only by construction — verify at assembly
 }[MATERIAL]
-DIODE_CLEAR = 0.3      # min diode-to-cutout-edge (diodes stay under solid plate)
 WIN_TRRS_WEST_MARGIN = 1.0  # mirror-exact with the right half's outboard
                             # tpad: 0.5 made the left window 17.55 wide vs
                             # 18.05 for a cosmetic-but-real asymmetry
@@ -254,7 +209,6 @@ WIN_FILLET = 0.5            # inside-corner relief on the big windows and
                             # rounds the cut, the FILE must not stay square
 
 CHOC_RE = re.compile(r'SW_[LR]\d+$')
-DIODE_RE = re.compile(r'D_[LR]\d+$')
 
 
 def r2(x):
@@ -628,8 +582,6 @@ def build_half(tag):
            if re.match(r'ENC_[LR]1$', r)]
     assert len(enc) == 1, f'{tag}: want 1 encoder, got {enc}'
     enc = enc[0]
-    di = [(r, v[1], v[2]) for r, v in inst.items() if DIODE_RE.match(r)]
-    assert len(di) == 22, f'{tag}: want 22 diodes, got {len(di)}'
     tool = [(v[1], v[2]) for r, v in inst.items()
             if v[0].startswith('MountingHole:')]
     assert len(tool) == 2, f'{tag}: want 2 tooling holes, got {tool}'
@@ -645,26 +597,6 @@ def build_half(tag):
     trrs = one(r'J_[LR]1$')
 
     cuts = [cut_poly(x, y, CUTOUT, CUTOUT, rot) for _, x, y, rot in sw]
-
-    # Diode relief pockets (support b): a 0.55mm-deep pocket in the
-    # plate underside under every matrix diode, clearing the SOD-123s
-    # at the GAP 1.00 band. Sized at the constants (DS30086 outline-max
-    # body 2.85 x 1.70, which also covers the vendored STEP's widest
-    # section) + DIODE_RELIEF_CLR per side, rotated with the diode.
-    diodes = [(r, v[1], v[2], v[3]) for r, v in inst.items()
-              if DIODE_RE.match(r)]
-    assert len(diodes) == 22, f'{tag}: want 22 diodes, got {len(diodes)}'
-    relief = []
-    for r, dx, dy, drot in diodes:
-        hl = (DIODE_BODY_L / 2 + DIODE_RELIEF_CLR)
-        hw = (DIODE_BODY_W / 2 + DIODE_RELIEF_CLR)
-        a = math.radians(drot)
-        ca, sa = math.cos(a), math.sin(a)
-        poly = []
-        for ux, uy in ((-hl, -hw), (hl, -hw), (hl, hw), (-hl, hw)):
-            # KiCad clockwise-positive rotation
-            poly.append((dx + ux * ca + uy * sa, dy - ux * sa + uy * ca))
-        relief.append(poly)
 
     # component windows, derived per half from placed part bodies
     _, swp_fp, _, _, srot = swp
@@ -812,8 +744,7 @@ def build_half(tag):
 
     # ---- z-stack gate (review 2026-10-24 §2): the 2D web gates cannot
     # see z. Every TOP-side part whose z-span crosses the plate band
-    # [GAP, GAP+PLATE_THICK] must clear it through a plate opening or a
-    # machined relief. One table, asserted here, so a new or moved part
+    # [GAP, GAP+PLATE_THICK] must clear it through a plate opening. One table, asserted here, so a new or moved part
     # must be reasoned against the band in the same commit. Below-PCB
     # parts (sockets bump -1.25, JST legs, encoder legs) never reach the
     # band and stay ruled by case/params.py FLOOR_CLEAR.
@@ -829,12 +760,6 @@ def build_half(tag):
     if _crosses(0.0, 1.5) and not (
             ENC_W >= ENC_ENV_X + 0.2 and ENC_H >= ENC_ENV_Y + 0.2):
         fail('zstack: encoder window < terminal envelope + 0.2/side')
-    # 2. diode body, z 0..DIODE_TOP_MAX_Z: cleared by the 0.55 relief —
-    #    the pocket floor (GAP + DIODE_RELIEF_D) must keep >= 0.15 over
-    #    the part ceiling (comment-only before this gate).
-    if _crosses(0.0, DIODE_TOP_MAX_Z) and (
-            (GAP + DIODE_RELIEF_D) - DIODE_TOP_MAX_Z) < 0.15:
-        fail('zstack: diode relief floor within 0.15 of DIODE_TOP_MAX_Z')
     # 3. MCU module + Mill-Max socket stack, z 0..~7.7 (module 4.5..7.7
     #    on the 4.5-5.0 socket stack; JST PH body beside it): the W1 core
     #    must keep >= 0.75 margin beyond the UNEXPANDED part extents
@@ -853,7 +778,6 @@ def build_half(tag):
     #    real part before the MJF order (family bounds feed FLOOR_CLEAR).
     print(f'{tag}: zstack band {band_lo:.2f}..{band_hi:.2f} — encoder '
           f'0..1.5 win {ENC_W}x{ENC_H} vs env {ENC_ENV_X}x{ENC_ENV_Y}; '
-          f'diode 0..{DIODE_TOP_MAX_Z} relief floor {GAP + DIODE_RELIEF_D}; '
           f'mcu+sockets 0..7.7 W1 margin >=0.75; trrs 0..5.0 pad {tpad}; '
           f'pwrsw switch strip')
 
@@ -890,13 +814,6 @@ def build_half(tag):
             if point_in_poly(v, loop) and poly_dist(v, loop) < WEB_MIN:
                 fail(f'window corner {r2(v[0])},{r2(v[1])} web '
                      f'{poly_dist(v, loop):.2f} < {WEB_MIN}')
-
-    for ref, dx, dy in di:
-        if any(point_in_poly((dx, dy), c) for c in cuts):
-            fail(f'{ref} sits inside a switch cutout')
-        d = min(poly_dist((dx, dy), c) for c in cuts)
-        if d < DIODE_CLEAR:
-            fail(f'{ref} {d:.2f} from cutout edge < {DIODE_CLEAR}')
 
     # NOTE (2026-10-15): a pads-vs-cutout containment check lived here
     # and was reverted — socket solder pads sit on the FAR side of the PCB
@@ -1308,41 +1225,6 @@ def build_half(tag):
              f'{poron_edge_at} < {PORON_EDGE_MIN}mm — the 7mm pad keeps '
              f'>=0.6mm to the plate edge (kerf + tolerance)')
     poron_edge_mm = poron_edge
-    # --- diode relief gates (support b) --------------------------------
-    # (a) the stack must actually clear the measured diode: the relief
-    #     floor (GAP + DIODE_RELIEF_D) must stand above the diode top
-    #     (DIODE_TOP_Z) with the stated margin.
-    clear = GAP + DIODE_RELIEF_D - DIODE_TOP_MAX_Z
-    if clear < 0.10:
-        fail(f'diode relief leaves only {clear:.3f}mm over the WORST-CASE '
-             f'diode top ({DIODE_TOP_MAX_Z}mm, floor 0.10) — raise GAP or '
-             f'DIODE_RELIEF_D')
-    clear_model = GAP + DIODE_RELIEF_D - DIODE_TOP_Z
-    if tag == 'Left':
-        print(f"diode relief: {DIODE_RELIEF_D}mm deep, floor at "
-              f"{GAP + DIODE_RELIEF_D:.2f}, clearance {clear:.3f}mm over the "
-              f"worst-case diode ({DIODE_TOP_MAX_Z}) / {clear_model:.3f}mm "
-              f"over the model ({DIODE_TOP_Z})")
-    # (b) the relief must not eat the plate: the material left under a
-    #     pocket is PLATE_THICK - DIODE_RELIEF_D.
-    if PLATE_THICK - DIODE_RELIEF_D < 0.6:
-        fail(f'diode relief leaves {PLATE_THICK - DIODE_RELIEF_D:.2f}mm of '
-             f'plate under the pocket (floor 0.6)')
-    # (c) every pocket must sit in solid material: inside the outline,
-    #     clear of the switch cutouts, and clear of the other pockets.
-    for i, pk in enumerate(relief):
-        for v in pk:
-            if not point_in_poly(v, new_loop):
-                fail(f'diode relief pocket {i} corner ({r2(v[0])},'
-                     f'{r2(v[1])}) is off the plate')
-        for c in cuts:
-            if web_poly(pk, c) < 0.3:
-                fail(f'diode relief pocket {i} is within 0.3mm of a switch '
-                     f'cutout (the clip must bear on solid material)')
-        for j, pk2 in enumerate(relief[:i]):
-            if web_poly(pk, pk2) < 0.3:
-                fail(f'diode relief pockets {i} and {j} are too close')
-
     # Output-side mirror gate: every right tab root must land on the
     # mirror of a left tab root, not merely be derived from one.
     if tag == 'Right' and _LAST_LEFT_TABS is not None:
@@ -1369,7 +1251,7 @@ def build_half(tag):
     return {'half': tag, 'loop': loop, 'outline': new_loop, 'cuts': cuts,
             'sw': sw, 'enc': enc_hole, 'wins': wins, 'tool': tool,
             'tabs': tabs, 'poron': poron, 'enc_web': enc_web,
-            'poron_edge': poron_edge_mm, 'relief': relief}, bad
+            'poron_edge': poron_edge_mm}, bad
 
 
 # ---- DXF R12 writer ----
@@ -1379,8 +1261,7 @@ def dxf_write(path, res):
     A('0\nSECTION\n2\nHEADER\n9\n$ACADVER\n1\nAC1009\n'
       '9\n$INSUNITS\n70\n4\n0\nENDSEC\n')
     A('0\nSECTION\n2\nTABLES\n0\nTABLE\n2\nLAYER\n70\n3\n')
-    for name, color in (('OUTLINE', 3), ('CUTOUT', 7), ('PORON', 2),
-                         ('RELIEF', 1)):
+    for name, color in (('OUTLINE', 3), ('CUTOUT', 7), ('PORON', 2)):
         A(f'0\nLAYER\n2\n{name}\n70\n0\n62\n{color}\n6\nCONTINUOUS\n')
     A('0\nENDTAB\n0\nENDSEC\n0\nSECTION\n2\nENTITIES\n')
 
@@ -1396,8 +1277,6 @@ def dxf_write(path, res):
     closed_poly(res['enc'] + res['enc'][:1], 'CUTOUT')
     for pad in res['poron']:
         closed_poly(pad + pad[:1], 'PORON')
-    for pocket in res['relief']:
-        closed_poly(pocket + pocket[:1], 'RELIEF')
     # H3: the PORON layer is a knife/punch 1:1 template, not laser
     # content — say so on the file itself (it travels to vendors without
     # the repo README). North of the outline: tabs tip out ~2.8 there.
@@ -1406,13 +1285,6 @@ def dxf_write(path, res):
     A('0\nTEXT\n8\nPORON\n10\n' + str(r2(ox)) + '\n20\n' + str(r2(oy + 6.0))
       + '\n30\n0.0\n40\n3.0\n1\n'
       'DO NOT CUT PORON - KNIFE/PUNCH TEMPLATE ONLY, REFERENCE\n')
-    # RELIEF: a PARTIAL-DEPTH pocket in the plate underside (0.55mm),
-    # not a through-cut.  Cutting it through would leave the switch
-    # with no plate support; skipping it fouls the diodes.
-    A('0\nTEXT\n8\nRELIEF\n10\n' + str(r2(ox)) + '\n20\n'
-      + str(r2(oy + 3.0)) + '\n30\n0.0\n40\n3.0\n1\n'
-      'RELIEF POCKETS - MACHINE 0.55mm DEEP INTO THE UNDERSIDE - '
-      'DO NOT CUT THROUGH\n')
     A('0\nENDSEC\n0\nEOF\n')
     open(path, 'w').write(''.join(L))
 
@@ -1444,10 +1316,6 @@ def svg_write(path, res):
                  f'stroke-dasharray="5,3"/>')
     o.append(f'<polygon points="{" ".join(P(p) for p in enc_poly)}" '
              f'fill="#000" stroke="#ff9800" stroke-width="1.5"/>')
-    for pk in res.get('relief', []):
-        o.append(f'<polygon points="{" ".join(P(p) for p in pk)}" '
-                 f'fill="none" stroke="#00bcd4" stroke-width="1" '
-                 f'stroke-dasharray="3,2"/>')
     for k, (t, pad) in enumerate(zip(res['tabs'], res['poron']), 1):
         o.append(f'<polygon points="{" ".join(P(p) for p in pad)}" '
                  f'fill="rgba(255,235,59,0.30)" stroke="#ff0" '
@@ -1496,15 +1364,6 @@ def emit(tag, out_dir, res):
                   'center': 'tab root center + 2.0 outward '
                             '(fully on tongue)'},
         'tabs': res['tabs'],
-        'diode_relief': {
-            'depth': DIODE_RELIEF_D,
-            'pockets': len(res['relief']),
-            'floor_z': round(GAP + DIODE_RELIEF_D, 3),
-            'diode_top_z': DIODE_TOP_Z,
-            'clearance': round(GAP + DIODE_RELIEF_D - DIODE_TOP_Z, 3),
-            'note': 'partial-depth pocket in the plate UNDERSIDE; '
-                    'machine 0.55mm, do not cut through',
-        },
     }, open(os.path.join(out_dir, f'Hojicha44-{tag}-lands.json'),
             'w'), indent=1)
 

@@ -26,13 +26,13 @@ Encoder push over the window zone stays soft by design.
 
 | Layer | Spec |
 |---|---|
-| Top case | v0.5.3 magnetic cover. Underside z=3.20 at the pad stations, top z=6.40, thumb lip z=5.20. One merged key field, controller and encoder openings, and a dedicated power-switch actuator slot. Underside pockets roof the JST, TRRS body and switch housing. The lined USB-C channel is 14.0mm wide with a z=1.25 sill. Eight Ø4.3×0.7mm magnet pockets mirror the tub. |
+| Top case | v0.5.4 magnetic cover. Underside z=3.20 at the pad stations, top z=6.40, thumb lip z=5.20. One merged key field, controller and encoder openings, and a dedicated power-switch actuator slot. Underside pockets roof the JST, TRRS body and switch housing. The lined USB-C channel is 14.0mm wide with a z=1.25 sill. Eight Ø4.3×0.7mm magnet pockets mirror the tub. |
 | Top gaskets | Poron pads 7×4mm on each tab (PORON layer in the DXF), **1.5mm** thick (thin-top revision; compressed to 1.00 at 33% — TOP_FOAM_T/TOP_PRELOAD in `case/params.py`) |
 | Plate | **1.2mm** (material below), outline = PCB outline + tabs (USB notch included). 1.2mm is the Choc v1 clip-engagement thickness (Keebio: a Choc plate must be 1.2mm for the clip to engage; at 1.5/1.6mm the "lower catch doesn't engage" and the switch is held by friction alone) |
-| Plate↔PCB gap | **1.00mm** — the Choc v1 clip band. MEASURED from the Kailh Choc v1 outline drawing + a community STEP model (`spec/research-open-items-2026-10-21.md` §PG1350): above the PCB the switch is skirt 0–0.9, **flexible clip arms 0.9–1.3 (their lip grabs the plate underside)**, then the **14.8–15.0 "ears" at 2.2–3.0 that bear on the plate's top**. So the plate must sit between the lip (≤1.3) and the ears (2.2): a 1.2mm plate on a 1.00mm gap occupies **1.00–2.20** — the lip grabs the underside, the ears seat exactly on the top. A 1.05 gap lifts the ears 0.05 into the plate; a 1.3 gap drives the plate top through the ears (no grab at all). The 22 top-side diodes are the only thing under the plate in the matrix field, so the plate carries a **0.55mm relief pocket** under each one (RELIEF layer in the DXF: machine 0.55mm into the underside, do NOT cut through; `plate/gen_plate.py` `DIODE_RELIEF_D`, asserted against `DIODE_TOP_MAX_Z = 1.40`). The pocket XY is the **SOD-123 outline MAX (DS30086 rev 31-2: E 2.55–2.85 long, D 1.40–1.70 wide — `D` is width, A 1.00–1.35 is the height)**, which also covers the KiCad STEP's widest section (2.700 × 1.550 at the plate plane; the earlier 2.566 × 1.416 was the chamfered top face), + **0.15/side** → pocket **3.15 × 2.00** (measured top **1.260mm**; relief floor at 1.00 + 0.55 = **1.55mm**, **0.15mm** over the 1.40 window top and 0.65mm of plate under it) |
-| PCB | 1.6mm, v0.5.3 carrier (hangs from the plate on the switches) |
+| Plate↔PCB gap | **1.00mm** — the Choc v1 clip band. MEASURED from the Kailh Choc v1 outline drawing + a community STEP model (`spec/research-open-items-2026-10-21.md` §PG1350): above the PCB the switch is skirt 0–0.9, **flexible clip arms 0.9–1.3 (their lip grabs the plate underside)**, then the **14.8–15.0 "ears" at 2.2–3.0 that bear on the plate's top**. So the plate must sit between the lip (≤1.3) and the ears (2.2): a 1.2mm plate on a 1.00mm gap occupies **1.00–2.20** — the lip grabs the underside, the ears seat exactly on the top. A 1.05 gap lifts the ears 0.05 into the plate; a 1.3 gap drives the plate top through the ears (no grab at all). The diodes sit on the underside of the PCB, so the plate is through-cut. |
+| PCB | 1.6mm, v0.5.4 carrier (hangs from the plate on the switches) |
 | Bottom gaskets | Same 7×4 pads (3.0mm, compressed to 2.55 at 15%) under each tab (pairs at one XY); tub floor steps to −4.65 under the PCB zone (sockets + clearance) — foam sets tab height, floor depth is separate (see `case/params.py`) |
-| Bottom case | v0.5.3 tub. Floor top z=−4.65, nominal slab 1.70mm, overall case height about 12.8mm. The rounded side bay clears the modeled Ø9.50mm TRRS boot. Keep optional acoustic foam away from the switch leads and moving parts. |
+| Bottom case | v0.5.4 tub. Floor top z=−4.65, nominal slab 1.70mm, overall case height about 12.8mm. The rounded side bay clears the modeled Ø9.50mm TRRS boot. Keep optional acoustic foam clear of the diodes, sockets, switch leads and moving parts through the full gasket travel. |
 
 - **Bottom-case floor.** The floor top is z=−4.65 and the 1.70mm slab
   ends at −6.35, measured from the nominal carrier PCB top. The bare
@@ -78,7 +78,7 @@ Encoder push over the window zone stays soft by design.
   underside is open foam. Hojicha44 keeps the same plate stack (plate at
   the Choc clip band) and adds a thin magnetic cosmetic cover over
   everything, enclosing the acoustic volume without visible fasteners.
-  The v0.5.3 thumb lip lowers the wrist-facing cover beside the thumb
+  The v0.5.4 thumb lip lowers the wrist-facing cover beside the thumb
   caps. Check thumb access and cap travel on the assembled first article.
 
 ## Sources (suppliers, verified)

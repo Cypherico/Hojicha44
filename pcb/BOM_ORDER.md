@@ -1,6 +1,6 @@
-# Part order list (v0.5.3)
+# Part order list (v0.5.4)
 
-> Use v0.5.3 for the first article and qualify the assembly before a batch. [Order guide](MANUFACTURING.md)
+> Use v0.5.4 for the first article and qualify the assembly before a batch. [Order guide](MANUFACTURING.md)
 
 Prices/stock verified 2026-10-19 against vendor pages — they WILL drift;
 re-check at cart time. PCB fab choices are NOT here: see
@@ -38,7 +38,7 @@ re-check at cart time. PCB fab choices are NOT here: see
 | Hold | 2 | Protected **301230 LiPo** with JST-PH pigtail | per quote | The kriscables 110mAh listing is a candidate. Require manufacturer confirmation of the PCM, permitted charge current and finished pack dimensions before connecting a cell. |
 | Hold | 2 | Series harness PPTC | per quote | Select the exact part and qualify it in the insulated pack-positive harness. Pack protection and charge-current qualification are separate requirements. |
 | ☐ | 5 | Kailh **PG1350 Choc v1** switches (Typeractive, $5.50/10) | $27.50 | 44 needed; pick feel family; any PG1350 fits the hotswap socket |
-| ☐ | 44 | **Kailh Choc v1 hotswap SOCKETS** (socketed, bottom side) | ~$1–2 ea | **not in the released bom.csv** — the release BOM only lists parts with an MPN, and a footprint-only socket has none, so this line is the ONLY place the 44 sockets get ordered. Sockets solder on B.Cu under each switch; the diode sits beside its switch, not under it. Verify the variant matches the vendored `SW_Hotswap_Kailh_Choc_V1_1.00u` footprint (the spec fixes the footprint, not the SKU) |
+| ☐ | 44 | **Kailh Choc v1 hotswap SOCKETS** (socketed, bottom side) | ~$1–2 ea | **not in the released bom.csv** — the release BOM only lists parts with an MPN, and a footprint-only socket has none, so this line is the ONLY place the 44 sockets get ordered. Sockets and diodes solder on B.Cu. Verify the variant matches the vendored `SW_Hotswap_Kailh_Choc_V1_1.00u` footprint (the spec fixes the footprint, not the SKU) |
 | ☐ | 1 | 4-pole TRRS cable, if retained for debug | — | Qualify the shaft reach and boot on each end against the revised jack and bore before ordering. |
 | ☐ | 44–50 | **MBK Choc keycaps** (PBT, Typeractive ~$1/cap) | ~$44 | Choc v1 stems only (MX won't fit); MBK legend sets spotted sold out at splitkb — CFX (~$25/set) is the budget fallback |
 | ☐ | 16 + spares | Axially magnetized **N52 Ø4×2mm** discs for the tubs | per quote | The previously listed supermagnete S-04-02-N is N45. Qualify it with the actual 0.5mm cover magnet if using it as an alternate. [Manufacturer data](https://www.supermagnete.ch/eng/data_sheet_S-04-02-N.pdf) |
@@ -47,24 +47,24 @@ re-check at cart time. PCB fab choices are NOT here: see
 
 ## E. Case-shop pass
 
-> Use the [v0.5.3 print manifest](../generated/print/v0.5.3/MANIFEST.txt)
+> Use the [v0.5.4 print manifest](../generated/print/v0.5.4/MANIFEST.txt)
 > to identify the plate DXFs and case STEPs for the shops. The SVGs are
-> previews. The blind plate reliefs need a separate machining operation.
+> previews. The plate uses through-cuts.
 > If any generator constant changed, regenerate everything and re-record
 > the manifest in the same commit — never order from a stale hash.
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
 | ☐ | — | Very soft PORON, nominal design targets 3.0mm bottom and 1.5mm top | per quote | Confirm series, available density, sheet thickness tolerance and adhesive backing. Check compression on an assembled coupon. Cut eight 7×4mm pads per thickness per half. |
-| ☐ | 2 | **1.2mm** plate from the Left and Right DXFs | — | Through-cut OUTLINE and CUTOUT. Machine 22 nominal 0.55mm underside pockets from RELIEF. PORON is a punch template. Approve the fabrication process on a coupon that leaves ≥0.60mm of plate and ≥0.15mm seated clearance above a 1.40mm diode. At nominal thickness and gap the allowable relief is 0.55–0.60mm. |
-| ☐ | — | Tub and cover in **MJF PA12** | per quote | The v0.5.3 STEP volumes are approximately 57.2 cm³ per tub and 23.4 cm³ per cover. PETG is an option for a first fit print. |
+| ☐ | 2 | **1.2mm** plates from the Left and Right DXFs | — | Through-cut OUTLINE and CUTOUT. Use PORON as a punch template. Approve Choc clip fit on a sample cut by the intended supplier. |
+| ☐ | — | Tub and cover in **MJF PA12** | per quote | The v0.5.4 STEP volumes are approximately 57.2 cm³ per tub and 23.4 cm³ per cover. PETG is an option for a first fit print. |
 | ☐ | 1 roll | Kapton/polyimide tape ≥10mm | $2–5 | cell sandwich + nano underside |
 | ☐ | 1 | SAC305 no-clean 0.5mm solder (e.g. SRA) + **NC-559-class flux pen** | ~$25 + ~$10 | ENIG pads, hand work |
 
 ## PCB order note (must be pasted into the fab order)
 
-Use tab routing for the concave outline. On v0.5.3 the nearest track
-copper is **0.666mm Left and 0.582mm Right** from the nominal routed
+Use tab routing for the concave outline. On v0.5.4 the nearest track
+copper is **0.582mm on both halves** from the nominal routed
 profile. Confirm the chosen profile tolerance and both drill layers
 before approving the CAM files.
 

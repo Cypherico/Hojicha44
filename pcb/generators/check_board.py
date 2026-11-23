@@ -326,6 +326,7 @@ def silk_items(proj):
         x1, y1, x2, y2 = (float(m.group(i)) for i in range(1, 5))
         items.append(("gr_rect", [(x1, y1), (x2, y2)]))
     for ref, x, y, rot, blk in A.footprints(proj["path"]):
+        silk_layer = "B.SilkS" if re.fullmatch(r"D_[LR]\d\d", ref) else "F.SilkS"
 
         def _rel(sub, t):
             mm = re.search(r'\(' + t + r' ([-\d.]+) ([-\d.]+)\)', sub)
@@ -335,7 +336,7 @@ def silk_items(proj):
             if kw not in ("fp_line", "fp_arc", "fp_rect", "fp_circle"):
                 continue
             lay = re.search(r'\(layer "([^"]+)"', sub)
-            if not lay or lay.group(1) != "F.SilkS":
+            if not lay or lay.group(1) != silk_layer:
                 continue
             if kw == "fp_circle":
                 c, e = _rel(sub, "center"), _rel(sub, "end")
@@ -659,7 +660,7 @@ def _check_design(tag, pts, path, txt):
     #    (position included — a moved pad inside a waived ref is drift)
     import audit_silk as A
     committed = {r: blk for r, x, y, rot, blk in A.footprints(path)}
-    libof = {r: (lib, name)
+    libof = {r: (kind, lib, name)
              for kind, lib, name, r, *rest in placements}
     ndiffs = 0
     waived = G.w1_want(tag, native_choc=True, native_jst=True)
@@ -667,7 +668,7 @@ def _check_design(tag, pts, path, txt):
         if ref not in committed or ref not in libof:
             bad.append(f"W1 content: {ref} missing from board/placements")
             continue
-        lp = w1_pad_texts(G.fp_source(*libof[ref]))
+        lp = w1_pad_texts(G.placement_source(*libof[ref]))
         bp = w1_pad_texts(committed[ref])
         if lp != bp:
             ndiffs += 1
@@ -738,33 +739,32 @@ def _check_design(tag, pts, path, txt):
           f"{len(unmatched)} unmatched vs model")
 
     # 9. diode cathode tick: the ONLY polarity mark on 44 diodes. Each
-    #    D_* footprint must carry exactly one F.SilkS tick bar at the
+    #    D_* footprint must carry exactly one B.SilkS tick bar at the
     #    local cathode mark, and no stock cathode graphics (the SOD-123
     #    silk is stripped so the tick can take its place).
     import audit_silk as A2
     nticks = 0
+    required_layers = {'"B.Cu"', '"B.Mask"', '"B.Paste"'}
     for ref, x, y, rot, blk in A2.footprints(path):
         if not re.match(r"^D_[LR]\d\d$", ref):
             continue
-        lines = []
-        for kw, sub in A2.split_top(blk):
-            if kw != "fp_line":
-                continue
-            lay = re.search(r'\(layer "([^"]+)"', sub)
-            if not lay or lay.group(1) != "F.SilkS":
-                continue
-            st = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', sub)
-            en = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', sub)
-            if st and en:
-                lines.append(((float(st.group(1)), float(st.group(2))),
-                              (float(en.group(1)), float(en.group(2)))))
+        diode_pads = [p for p in cpads if p[0] == ref]
+        if (re.search(r'\(layer "([^"]+)"\)', blk).group(1) != "B.Cu"
+                or len(diode_pads) != 2
+                or any(set(p[8].split()) != required_layers for p in diode_pads)):
+            bad.append(f"{ref}: expected a bottom-side diode with two B.Cu/B.Mask/B.Paste pads")
+        for pin, _, _, pad in _pad_blocks(blk):
+            at = re.search(r'\(at [-\d.]+ [-\d.]+(?: ([-\d.]+))?\)', pad)
+            if not at or abs(math.remainder(float(at[1] or 0) - rot, 180)) > 0.01:
+                bad.append(f"{ref}.{pin}: land rotation does not follow the diode body")
+        lines = diode_silk_lines(blk)
         tick = cathode_ticks(lines)
         if len(tick) != 1:
             bad.append(f"{ref}: {len(tick)} cathode ticks (want exactly 1) "
                        f"— the diode's polarity mark is the tick; the stock "
                        f"cathode bar is stripped")
         elif len(lines) != 1:
-            bad.append(f"{ref}: {len(lines)} F.SilkS lines (want only the "
+            bad.append(f"{ref}: {len(lines)} B.SilkS lines (want only the "
                        f"tick) — the stock SOD-123 cathode graphics are "
                        f"stripped")
         else:
@@ -785,7 +785,7 @@ def _check_design(tag, pts, path, txt):
                 if d < worst:
                     worst, where = d, (owner, s1)
     if worst is not None and worst < SILK_EDGE_MM:
-        bad.append(f"F.SilkS {where[0]} at ({where[1][0]:.2f},"
+        bad.append(f"Silk {where[0]} at ({where[1][0]:.2f},"
                    f"{where[1][1]:.2f}) only {worst:.2f}mm from edge, "
                    f"want >= {SILK_EDGE_MM}")
     print(f"  silk-edge {tag}: {len(items)} items, min edge distance "
@@ -1195,6 +1195,24 @@ def check_frame(tag, pts, reldir=None):
     return bad
 
 
+def diode_silk_lines(footprint):
+    from audit_silk import split_top
+
+    lines = []
+    for kw, sub in split_top(footprint):
+        if kw != "fp_line":
+            continue
+        lay = re.search(r'\(layer "([^"]+)"', sub)
+        if not lay or lay.group(1) != "B.SilkS":
+            continue
+        st = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', sub)
+        en = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', sub)
+        if st and en:
+            lines.append(((float(st.group(1)), float(st.group(2))),
+                          (float(en.group(1)), float(en.group(2)))))
+    return lines
+
+
 def cathode_ticks(lines):
     """The cathode-end tick lines of one diode footprint.
 
@@ -1208,8 +1226,9 @@ def cathode_ticks(lines):
     """
     return [ln for ln in lines
             if abs(ln[0][0] - TICK_LOCAL_X) < 0.01
-            and abs(abs(ln[0][1]) - TICK_HALF_LEN) < 0.01
-            and abs(abs(ln[1][1]) - TICK_HALF_LEN) < 0.01]
+            and abs(ln[1][0] - TICK_LOCAL_X) < 0.01
+            and abs(min(ln[0][1], ln[1][1]) + TICK_HALF_LEN) < 0.01
+            and abs(max(ln[0][1], ln[1][1]) - TICK_HALF_LEN) < 0.01]
 
 
 def tick_selftest():
@@ -1227,19 +1246,7 @@ def tick_selftest():
         for ref, x, y, rot, blk in A3.footprints(path):
             if not re.match(r"^D_[LR]\d\d$", ref):
                 continue
-            lines = []
-            for kw, sub in A3.split_top(blk):
-                if kw != "fp_line":
-                    continue
-                lay = re.search(r'\(layer "([^"]+)"', sub)
-                if not lay or lay.group(1) != "F.SilkS":
-                    continue
-                st = re.search(r'\(start ([-\d.]+) ([-\d.]+)\)', sub)
-                en = re.search(r'\(end ([-\d.]+) ([-\d.]+)\)', sub)
-                if st and en:
-                    lines.append(((float(st.group(1)), float(st.group(2))),
-                                  (float(en.group(1)), float(en.group(2)))))
-            got = lines
+            got = diode_silk_lines(blk)
             break
         if not got:
             bad.append(f"self-test {half}: no diode footprint found for "
@@ -1247,8 +1254,7 @@ def tick_selftest():
             continue
         if len(cathode_ticks(got)) != 1:
             bad.append(f"self-test {half}: the real tick was not matched")
-        flipped = [(((2.45 if abs(a[0]) < 2.5 else a[0]), a[1]), b)
-                   for a, b in got]
+        flipped = [((-a[0], a[1]), (-b[0], b[1])) for a, b in got]
         if cathode_ticks(flipped):
             bad.append(f"self-test {half}: an ANODE-side tick (+2.45) was "
                        f"accepted — the polarity mark is not policed")

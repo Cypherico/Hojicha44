@@ -139,7 +139,9 @@ def main():
         lx, ly, lrot, lblk = L[lref]
         rx, ry, rrot, rblk = R[nref]
         locked = nref.startswith(("U_", "ENC_"))
-        helper = nref.startswith(("FID_", "MT_"))
+        # Underside diodes follow the handed Choc socket routing. The board
+        # checker compares their pads with the side-specific placement model.
+        helper = nref.startswith(("FID_", "MT_", "D_R"))
         if nref == "J_R2":
             # The stored KiCad angles are signed opposites. Match modulo
             # 360 so an accidental half turn cannot pass this check.

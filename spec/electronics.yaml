@@ -1,7 +1,7 @@
 # Electronics specification (source of truth for schematic/PCB).
 # Statuses: fixed | provisional | candidate | measured | undecided.
 
-version: 0.5.3
+version: 0.5.4
 status: provisional
     # schematic rev 0.3 regenerated (must-fix review applied), PCB placed+routed
   # with DRC clean modulo waiver W1 (exact 28 asserted) + W2 predicate armed
@@ -113,20 +113,7 @@ matrix_per_half:
     # but the layout/boards use 19.00 — documented as-measured, not as-nominal
   diode_direction: COL2ROW         # status: fixed
   diode_part: 1N4148W SOD-123      # status: fixed
-      # MEASURED (KiCad's own Diode_SMD/D_SOD-123.step, 2026-10-21):
-      # body 2.566 x 1.416mm, TOP 1.260mm above the PCB top surface
-      # (the old "1.35" in the stack table was 0.09 pessimistic).  The
-      # diodes stay on the TOP side (F.Cu) in rev 2: the Choc hotswap
-      # socket is a BOTTOM-side part whose solder tabs and plastic body
-      # are asymmetric and whose orientation is fixed by the switch, so
-      # the two halves' bottom copper cannot be mirror-symmetric and a
-      # back-side diode would break the project's left/right mirror
-      # discipline for no functional gain.  Instead the PLATE relieves
-      # 0.55mm over every diode (RELIEF layer in the plate DXF) so the
-      # plate can sit at the Choc v1 clip band (1.00mm gap) and still
-      # clear a 1.40mm-tall diode (the measured model says 1.26mm; the
-      # part tolerance reaches 1.40, which the 0.40mm relief did NOT).
-      # See spec/case.md "Stack" and plate/gen_plate.py.
+  diode_side: bottom               # B.Cu / B.Mask / B.Paste, beside hotswap sockets
   diode_symbol: Diode:1N4001 with Value 1N4148W
       # 1N4148 symbol uses
     # `extends` which kicad-cli ERC cannot netlist; identical graphics
@@ -330,7 +317,7 @@ pcb:
     routed 0.25mm GND chains, no pours on this 2-layer rev; pour only if
     BLE range disappoints (first-article gate).
   switch_orientation: as vendored, NOT flipped — switch on top (F.Cu cutout),
-    hotswap socket soldered beneath (B.Cu pads), diodes SMD on the front.
+    hotswap socket soldered beneath (B.Cu pads), diodes SMD on the underside.
     Confirmed by part geometry (switch pins and socket pads not co-planar).
 
 mechanical:
@@ -370,8 +357,7 @@ mechanical:
     - Choc v1 hotswap as vendored, NOT flipped — switch on top (F.Cu cutout +
       F.Fab/F.SilkS), socket soldered beneath (B.Cu pads + B.Fab/B.SilkS
       body). Sockets must not hang off the back of the PCB; all 44 SOD-123
-      diodes are SMD on the front and must sit clear of the bottom-side
-      socket courtyard
+      diodes are SMD on the underside outside the bottom socket courtyards
     - WS-SLTV pad 1 (middle) is the common per the Würth drawing — guarded
       by check_pwr_footprint(); first article confirms which slider end is ON
     - each half's board outline is the `board` outline from

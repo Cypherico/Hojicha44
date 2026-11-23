@@ -7,7 +7,6 @@ switch has 5.00 mm nominal leads. Use --switch-lead-mm to check a finished
 lead length measured from the PCB top. Dimensions are in millimetres.
 """
 import argparse
-import json
 import math
 import sys
 from pathlib import Path
@@ -28,19 +27,17 @@ def plate_overlap(header, half):
     outline, = [points for layer, points in layers if layer == "OUTLINE"]
     underside = params.PLATE_UNDER
     overlap = header.intersect(gen_case.prism(outline, underside, params.PLATE_TOP))
-    lands = json.loads(Path(f"{base}-lands.json").read_text())
-    depths = {"CUTOUT": params.PLATE_T, "RELIEF": lands["diode_relief"]["depth"]}
     bounds = header.BoundingBox()
     for layer, points in layers:
         if overlap.Volume() == 0.0:
             break
-        if layer not in depths:
+        if layer != "CUTOUT":
             continue
         xs, ys = zip(*points)
         if (max(xs) < bounds.xmin or min(xs) > bounds.xmax or
                 max(ys) < bounds.ymin or min(ys) > bounds.ymax):
             continue
-        overlap = overlap.cut(gen_case.prism(points, underside, underside + depths[layer]))
+        overlap = overlap.cut(gen_case.prism(points, underside, params.PLATE_TOP))
     return overlap.Volume()
 
 
@@ -62,6 +59,24 @@ def check_jack(half, pins):
     return offset < 0
 
 
+def diode_floor_clearance(tub, pins, side):
+    """Bound the bottom-side SOD-123 package at the gasket travel limit."""
+    height = 1.40  # 1.35 mm package height plus 0.05 mm solder allowance
+    travel = params.POWER_Z_TRAVEL
+    # DS30086 maximum terminal span and width, plus a 0.05 mm
+    # allowance on each side and the full in-plane travel.
+    radius = math.hypot(3.95 / 2, 1.80 / 2) + math.sqrt(2) * travel
+    bottom = -params.PCB_THICK_MAX - height - travel
+    gaps = []
+    for idx in range(22):
+        x, y = pins[f"D_{side}{idx:02d}", "1"]
+        x2, y2 = pins[f"D_{side}{idx:02d}", "2"]
+        gauge = cq.Solid.makeCylinder(radius, height + 2 * travel,
+                                      ((x + x2) / 2, (y + y2) / 2, bottom))
+        gaps.append(gauge.distance(tub))
+    return min(gaps)
+
+
 def check_half(half, header_model, lead_length):
     side = half[0]
     board = REPO / "pcb" / "kicad" / f"Hojicha44-{half}.kicad_pcb"
@@ -79,6 +94,8 @@ def check_half(half, header_model, lead_length):
         cq.importers.importStep(str(Path(gen_case.OUT_DIR) / f"Hojicha44-{half}-{kind}.step")).val()
         for kind in ("tub", "cover")
     )
+    diode_gap = diode_floor_clearance(tub, pins, side)
+    print(f"{half} bottom-side diode sweep to tub: {diode_gap:.3f} mm clearance")
     volumes = (plate_overlap(header, half), header.intersect(cover).Volume(),
                header.intersect(tub).Volume())
     print(f"{half} JST overlap with plate, cover, tub (mm³): "
@@ -163,6 +180,7 @@ def check_half(half, header_model, lead_length):
         print(f"{half} switch pin {pin}: {volume:.3f} mm³ tub overlap, "
               f"{clearance:.3f} mm clearance")
     return (jack_handedness_ok and max(volumes) < 1e-6 and fits
+            and diode_gap >= params.FLOOR_CLEAR - 1e-5
             and min(clearances) >= params.FLOOR_CLEAR + params.POWER_Z_TRAVEL - 1e-5)
 
 

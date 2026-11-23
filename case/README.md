@@ -1,7 +1,7 @@
 # Hojicha44 — case CAD (CadQuery, parametric)
 
 Each half has a tub and cover derived from the PCB and plate geometry.
-`case/out/` holds the v0.5.3 first-article candidate, with a lined
+`case/out/` holds the v0.5.4 first-article candidate, with a lined
 USB-C channel, a separate power-switch recess and a lowered thumb lip.
 [Product audit](../audit.md)
 
@@ -34,7 +34,7 @@ case/.venv/bin/python case/check_component_fit.py \
 
 The checker tests jack handedness, the USB-C and TRRS plug envelopes,
 the liner clearance from the suspended plate, the JST service envelope,
-and power-switch fit and lead clearance. For the finished assembly
+power-switch fit and lead clearance, and the swept diode-to-tub clearance. For the finished assembly
 use `--switch-lead-mm 3.25` to model the finished assembly. Omit it to
 model the nominal stock leads as a negative control. `CASE_OUT` selects
 an alternate STEP directory. CI checks both lead lengths against the
@@ -44,7 +44,7 @@ orderable STEPs using the SHA-256-verified KiCad 10.0.6 JST model.
 
 - Units mm. Frame = KiCad board frame (same as `lands.json` / plate DXF).
 - z = 0 is the PCB top surface. Plate underside +1.00, plate top +2.20
-  (1.2mm plate, 1.00mm gap). The v0.5.3 STEP volumes per half are
+  (1.2mm plate, 1.00mm gap). The v0.5.4 STEP volumes per half are
   **57.2 cm³** for the tub and **23.4 cm³** for the cover.
 
 ## Checking a current case build
@@ -58,8 +58,8 @@ case/.venv/bin/python case/probe_bores.py
 case/.venv/bin/python case/mirror_gate.py
 ```
 
-For a v0.5.3 first article, use the matched PCB, plate, and case files
-listed in the [print manifest](../generated/print/v0.5.3/MANIFEST.txt).
+For a v0.5.4 first article, use the matched PCB, plate, and case files
+listed in the [print manifest](../generated/print/v0.5.4/MANIFEST.txt).
 The static job verifies the order files' hashes. The case job compares
 a fresh build with the four orderable STEPs and probes both sets. STL
 meshes can be generated locally for slicers.
@@ -68,6 +68,9 @@ meshes can be generated locally for slicers.
 
 Older entries retain the measurements for their own builds.
 
+- v0.5.4. The case fits the underside diodes through the modeled gasket
+  travel. The switch plate uses through-cuts. See the
+  [v0.5.4 fit record](../audit.md#v054-underside-diodes).
 - v0.5.3. The 3.20mm cover roofs the component recesses and lowers the
   thumb lip to 5.20mm. The 14.0mm USB-C channel has a 1.25mm sill and
   a liner tied to the tub. The power switch has a separate actuator

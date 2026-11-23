@@ -1,7 +1,7 @@
-# Manufacturing order guide (v0.5.3)
+# Manufacturing order guide (v0.5.4)
 
-> **v0.5.3 engineering sample.** Use the [matching PCB package](../generated/release/v0.5.3/)
-> and [plate and case manifest](../generated/print/v0.5.3/MANIFEST.txt).
+> **v0.5.4 engineering sample.** Use the [matching PCB package](../generated/release/v0.5.4/)
+> and [plate and case manifest](../generated/print/v0.5.4/MANIFEST.txt).
 > The published v0.5.2 case fails the modeled USB-C envelope. Complete the
 > physical first-article checks before ordering a batch.
 > [First-article checklist](../spec/first-article.md) · [Audit](../audit.md)
@@ -21,7 +21,7 @@ but every design-shaped field below has exactly one right answer.
 | smallest copper clearance **0.20 / 0.25** | signal / power pad classes |
 | currents ≤ **0.5A** (charge jumper open; BLE-only) | `spec/electronics.yaml` charger block |
 | finish **ENIG** | stamped into each `*.gbrjob` by `pcb/make_release.py` |
-| no pours, no gold fingers, no castellations, no UL | v0.5.3 DRC records 47 documented footprint warnings per half and zero unconnected items |
+| no pours, no gold fingers, no castellations, no UL | v0.5.4 DRC records 47 documented footprint warnings per half and zero unconnected items |
 | silk text **1.0mm / 0.15 stroke** | `gen_pcb.py` gr_text/fonts — at the vendor's guaranteed minimum, not below |
 
 ## The quote, field by field
@@ -53,12 +53,12 @@ but every design-shaped field below has exactly one right answer.
   "Different Design: 2", or two orders — each design is billed its own
   5-pc minimum. Don't merge them into one panel/gerber: per-extra-design
   fees exist and a shared panel of this size gains nothing.
-- The first-article artifacts are `generated/release/v0.5.3/{Left,Right}/`.
+- The first-article artifacts are `generated/release/v0.5.4/{Left,Right}/`.
   For each PCB quote, zip that half's nine Gerbers, job file and both
   drill files. Keep the placement, bill of materials and ERC/DRC files
   with your build record. Cross-check the manifest stamp
   (`git commit:` / `board sha256:` lines in
-  `generated/release/v0.5.3/MANIFEST.txt`) — the ERC/DRC reports in the
+  `generated/release/v0.5.4/MANIFEST.txt`) — the ERC/DRC reports in the
   release are re-run at cut time, and the manifest records the board's
   hash, so the release certifies those exact bytes.
 - **Use an approved bundle from `generated/release/vX.Y.Z/`.** The pre-M3
@@ -87,7 +87,7 @@ but every design-shaped field below has exactly one right answer.
 
 ## Assembly
 
-- **Intent is hand-solder**: diodes (D_L*/D_R*), the **44 Choc v1
+- **Intent is hand-solder**: bottom-side diodes (D_L*/D_R*), the **44 Choc v1
   hotswap sockets** (soldered on B.Cu under each switch — they are
   footprint-only parts, so they carry no MPN and never appear in the
   released `bom.csv`; order them from `pcb/BOM_ORDER.md`), the 2
@@ -95,26 +95,24 @@ but every design-shaped field below has exactly one right answer.
   and the pwrsw/JST. The SWITCHES themselves are never soldered (they
   plug into the hotswap sockets). ENIG is the friendly finish for
   exactly this.
-- For diode-only PCBA, use `pos-smt.csv` with a matching 22-diode
-  parts list per half. The full `bom.csv` is schematic reference data.
+- For diode-only PCBA, use the bottom-side `pos-smt.csv` with a matching 22-diode
+  parts list per half. Confirm diode orientation in the assembly preview
+  and have the assembler omit the hand-soldered socket apertures from
+  its paste stencil. The full `bom.csv` is schematic reference data.
   For a complete assembly quote, reconcile it with [BOM_ORDER.md](BOM_ORDER.md)
   and explicitly include 22 underside Choc sockets per half.
 
 ## Non-PCB orders (case, plate, magnets)
 
 - The case material for quotes is MJF PA12 nylon. Each half uses a
-  magnetically retained cover seated on the tub lip. The v0.5.3 STEP
+  magnetically retained cover seated on the tub lip. The v0.5.4 STEP
   solids measure 57.2 cm³ per tub and 23.4 cm³ per cover.
 - **Plate at 1.2mm: PC (default, per spec/case.md — the generator's
   MATERIAL constant) or POM (the firmer upgrade) or CNC aluminum.**
   **1.2mm is not a free choice: the Choc v1 clip only engages a 1.2mm
-  plate** (at 1.5/1.6mm the switch has no retention).  The plate also
-  carries a **0.55mm relief pocket in its underside under each of the
-  22 diodes** (RELIEF layer in the DXF; the DXF text entity repeats the
-  depth). Specify a controlled-depth machining pass for the blind pockets.
-  Approve the coupon only if the pocket leaves **at least 0.60mm**
-  of plate and **at least 0.15mm** of seated clearance above the worst-case
-  diode. The **encoder
+  plate** (at 1.5/1.6mm the switch has no retention). Through-cut the
+  OUTLINE and CUTOUT layers. Use PORON as the pad template. Verify
+  Choc clip retention on a supplier coupon. The **encoder
   window is 16.2 x 12.4** (rev 1's 12.7 square fouled the encoder's
   terminal blocks at the rev-2 plate height — measured off the
   vendored EC11E STEP).  The

@@ -2,6 +2,23 @@
 
 **21–22 November 2026** · Reviewed the working tree at `9c192e8`, PCB release **v0.5.1** from `3d016fc`, and the checked-in case STEP files from the **v0.5.0 print manifest**. Dimensions are in mm. XY coordinates use the plate/Excellon frame and z=0 is the nominal carrier PCB top. The findings describe the reviewed baseline. Sections 6 and 7 record the edits and their verification.
 
+## v0.5.4 underside diodes
+
+All 22 SOD-123 diodes per half now mount beside the Choc sockets on the
+underside. The socket pads are handed, so the diode placements differ
+between Left and Right. The matrix nets and diode polarity are retained.
+The nearest modeled diode-courtyard gap to the underside socket courtyards
+and holes is 0.598mm on Left and 1.900mm on Right. The exact KiCad layout
+passes courtyard, copper, mask, and connectivity checks.
+
+The case check finds **1.090mm** of minimum diode-to-tub clearance with
+the PCB at 1.76mm, a 1.40mm assembled diode envelope, and the 0.40mm
+gasket travel allowance. The cover and tub STEPs match a fresh build.
+The through-cut plate retains the same outline, switch cuts, and gasket
+tab positions. Optional case foam needs clearance around the underside
+parts. Confirm clip fit, solder workmanship, gasket travel, and battery
+charge qualification on the physical first article. [Diode dimensions](https://www.diodes.com/datasheet/download/1N4148W.pdf) · [First-article checklist](spec/first-article.md)
+
 ## v0.5.3 fabrication verification
 
 The v0.5.3 PCB, plate and case are a matched engineering sample. Follow

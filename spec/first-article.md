@@ -1,6 +1,6 @@
 # Hojicha44 — first-article checklist (hands + parts required)
 
-Use the v0.5.3 PCB, plate and case files together. Confirm connector
+Use the v0.5.4 PCB, plate and case files together. Confirm connector
 seating, cable fit and switch lead clearance on the first pair. The
 [product audit](../audit.md) records the CAD checks and their limits.
 
@@ -52,7 +52,7 @@ add supports only for a poor bridger.
 **Order policy (rev 3, review 2026-10-24):** *engineering-sample*
 orders — the plate coupon below, the encoder coupon, one corrected PCB
 pair, and one printed tub/cover set — are required before §0. The current
-PCB and case files are [v0.5.3 first-article candidates](../pcb/MANUFACTURING.md). Sections
+PCB and case files are [v0.5.4 first-article candidates](../pcb/MANUFACTURING.md). Sections
 1–7 gate the **production batch** (the §0 quantities). The
 cheap sequence is: coupon + 1 PCB pair + 1 tub (~USD 60–100), then the
 10-half pilot. "Before ordering anything" in older revisions meant the
@@ -70,12 +70,7 @@ batch; it never forbade coupons.
   same process, carrying every candidate feature. Not a full plate.
   *What to ask for:* a **100 x 100mm sheet of 1.2mm PC** with four
   **20 x 20mm squares**, one hole each of **13.8 / 14.0 / 14.2 /
-  15.0mm**, all holes concentric in their square, PLUS one extra
-  20x20mm square with a 14.0mm hole **and a 0.55mm-deep pocket in its
-  underside** (the diode relief, **3.15 x 2.00mm** — the error bars of
-  the SOD-123 outline max (2.85 x 1.70) + 0.15/side; the fabricator
-  takes it from the RELIEF layer of the plate file). Cost: a few
-  dollars; turnaround: a day.
+  15.0mm**, all holes concentric in their square.
   *What to do with it:* caliper the coupon's thickness first — it must
   be **≤1.25mm** (the capture margin for the plate's underside is the
   0.9–1.3mm lip band, and thickness spends it: 1.3 = lip tip).
@@ -86,15 +81,7 @@ batch; it never forbade coupons.
   1.00mm underside and the 14.8mm ears seat on the 2.20mm top face;
   13.8 may be line-to-line (a switch that will not insert); 15.0
   reproduces the old rev-1 failure (the ears fall into the hole, no
-  retention, the switch rocks out). Check the relieved square on the
-  assembled switch-and-diode stack.
-- [ ] **Plate relief pocket (PRE-ORDER).** Machine the RELIEF layer from
-  the underside to 0.55mm nominal. The coupon must retain **at least
-  0.60mm** of plate above each pocket and leave **at least 0.15mm**
-  above a **1.40mm** diode with the plate seated. Measure stock thickness,
-  pocket depth and the seated PCB-to-plate gap. At 1.20mm stock and
-  1.00mm gap these criteria allow 0.55–0.60mm of relief. Confirm the
-  switch ears seat flat and the clips capture the underside.
+  retention, the switch rocks out).
 - [ ] **Encoder window (PRE-ORDER, new in rev 2)** — the plate's encoder
   window is now **16.2 x 12.4** (rev 1 had a 12.7 square, which fouled
   the encoder's terminal blocks once the plate moved down to the 1.00mm
@@ -208,10 +195,9 @@ batch; it never forbade coupons.
 
 ## 3. Assembly order (both halves)
 
-- [ ] Match each diode to its same-numbered switch. From the top, the
-  diode centre is 9.50mm along the switch's local +X on Left and −X on
-  Right. This offset rotates with the thumb switches. Match the diode
-  band to the cathode tick and confirm the cathode connects to its row.
+- [ ] Fit 22 SOD-123 diodes per half on the underside. Match the band
+  on each diode to its bottom silkscreen tick and verify the cathode
+  connects to its row. Inspect solder and clearance before fitting sockets.
 - [ ] Measure the installed socket stack before inserting the cell.
   Caliper from carrier PCB top to module PCB underside with all pins
   fully engaged. Accept a 4.5–5.0mm gap and check the usable space under
@@ -246,16 +232,10 @@ batch; it never forbade coupons.
 - [ ] Antenna end: 5mm copper-free respected, no case material within 3mm.
   Case shell near the antenna end must be plastic/wood — no metal, no
   carbon fibre (both detune/kill 2.4GHz).
-- [ ] Plate clearance (rev 2): the 22 top-side diodes stand **1.26mm**
-  (measured; up to 1.40mm on a real part) in the inter-key gaps, and
-  the plate now sits **1.00mm** above the PCB top with a **0.55mm
-  RELIEF POCKET** over each diode (RELIEF layer in the DXF — machine
-  it, do not cut through). The pocket floor is at 1.55mm, so there is
-  **0.15–0.29mm** of clearance over the diode, not the solid plate.
-  Depth-gauge the pockets and measure the actual stock thickness and
-  seated gap. Accept at least 0.60mm remaining material and at least
-  0.15mm clearance over the assembled diode as in §1. Inspect both
-  pocket ends for contact or scrape marks.
+- [ ] **Underside clearance.** Inspect all 22 diodes beside the hotswap
+  sockets on each half. The PCB must clear the tub during a firm press.
+  If using optional case foam, cut it away around the diodes and sockets.
+  Verify the foam stays off those parts and does not limit gasket motion.
 - [ ] Plate fit (rev-2 plate in `plate/`): 1:1 print over the real PCB —
   every 14×14 cutout frames its switch footprint, the 16.2×12.4 window frames
   the encoder body, W1/W2 windows clear switch/module/JST/TRRS bodies,
@@ -303,7 +283,7 @@ batch; it never forbade coupons.
   cable. Left TIP→right TIP, left RING1→right RING1 and sleeve→sleeve
   must measure <1Ω each. RING2 must remain open on both ends.
 - [ ] Inspect solder, mask and edge registration at the USB notch
-  shoulders. Compare the physical boards with the v0.5.3 CAM preview.
+  shoulders. Compare the physical boards with the v0.5.4 CAM preview.
 - [ ] ×2 Encoder: spin both directions + push click register; knob
   clears the cover rim and the nearest cap through full rotation +
   full push (skirt ≥0.9mm off the cover at max travel).
@@ -400,7 +380,7 @@ rev-2 has a list.
 - Ground is a 0.25mm daisy-chain, no pour. OK for prototype; rev-2 gets a
   B.Cu pour for EMC/robustness.
 - Recheck notch-to-copper clearance after routing the revised components.
-- Diode height vs plate (§3) and antenna-enclosure rule (§3–§4 range test)
+- Underside diode clearance (§3) and antenna-enclosure rule (§3–§4 range test)
   validate on the first article; failures go to the case design, not a
   PCB re-spin, unless the range test indicts the layout.
 

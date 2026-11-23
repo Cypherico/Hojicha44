@@ -72,13 +72,5 @@
    "width": 10.0,
    "protrusion": 5.0
   }
- ],
- "diode_relief": {
-  "depth": 0.55,
-  "pockets": 22,
-  "floor_z": 1.55,
-  "diode_top_z": 1.26,
-  "clearance": 0.29,
-  "note": "partial-depth pocket in the plate UNDERSIDE; machine 0.55mm, do not cut through"
- }
+ ]
 }

@@ -4,12 +4,12 @@
 Strategy (2-layer, no pours, dual-layer A* throughout, vias wherever
 routable — POWER width 0.5 for battery nets, 0.25 signal, exact per-class
 clearance + quantization margin):
-  * Anode links first (22/half, short local SW.2 -> via -> D.2).
+  * Anode links first (22/half, local bottom-side SW.2 to D.2).
   * COL rails: matrix SW.1 pads chained in y order; thumb + MCU pins tap
     into the finished rail (interleaving the MCU pin forced 100mm+ jumps).
-  * ROW rails: same in x order over D.1 pads.
-  * Stubs (ENC x3, TRRS x2, VBAT x2), then GND nearest-neighbour chain.
-Rails claim corridors before stubs; single pass, no rip-up (it oscillated).
+  * GND and connector stubs reserve their corridors.
+  * ROW rails run in x order over D.1 pads.
+Single pass, with no rip-up.
 Emit dedupes vias/segments and trims buried trailing micro-steps.
 
 Deterministic: same inputs -> same copper. Rerun-safe via gen_pcb's
@@ -31,7 +31,7 @@ GRID = 0.25
 MARGIN = 0.15  # quantization slop: segments between free cell centres still
 # graze pad corners (r5 at 0.10 left 0.025mm grazes: ROW2/COL4 on F vs diode
 # pad2). Carve uses the same margin so THT pin escape stays open.
-ROUTER_VERSION = 15  # bump when routing behavior changes: stale generator
+ROUTER_VERSION = 16  # bump when routing behavior changes: stale generator
 # copper from older revisions is dropped (it would dangle/short); GUI-added
 # copper is preserved only within the same revision.
 W = {"s": 0.25, "p": 0.5}
@@ -75,7 +75,7 @@ class Board:
                 continue
             if kind == "FID":
                 continue
-            src = G.fp_source(lib, name)
+            src = G.placement_source(kind, lib, name)
             pn = dict()
             for (r, p), (c, n) in pin_net.items():
                 if r == ref:
@@ -722,7 +722,7 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
 
 
 
-    # ---- anode links: SW.2 -> D.2 (different layers: vias auto-placed)
+    # ---- anode links: SW.2 -> D.2, both on the underside.
     for idx in range(22):
         sref, dref = f"SW_{tag}{idx:02d}", f"D_{tag}{idx:02d}"
         spa, apa = P(sref, "2"), P(dref, "2")
@@ -758,36 +758,8 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
             tap(net, t)
 
 
-    # On the right, reserve the USB-end ground bridge before row taps.
-    if tag == "R":
-        route_ground()
-
-    # ---- ROW rails: finger-row D.1 pads in x order; thumb row chained.
-    for r in range(4):
-        net = f"/ROW{r}_{tag}"
-        main, taps = [], []
-        for idx in range(22):
-            rr, cc = divmod(idx, 6)
-            if rr == 3 and cc >= 4:
-                continue
-            if rr != r:
-                continue
-            p = P(f"D_{tag}{idx:02d}", "1")
-            (main if r < 3 else taps).append(p)
-        if r < 3:
-            main.sort(key=lambda q: q[0])
-        else:
-            main = sorted(taps, key=lambda q: q[0])
-            taps = []
-        mcu = [p for p in board.pads if p[7].startswith("U_") and p[6] == net]
-        assert len(mcu) == 1, f"{net}: want 1 MCU pin, got {len(mcu)}"
-        # same as COLs: rail the matrix, tap the MCU pin in afterwards.
-        main.sort(key=lambda q: q[0])
-        chain(net, main)
-        taps.append((mcu[0][0], mcu[0][1], {"F", "B"}))
-        for t in taps:
-            tap(net, t)
-
+    # Reserve the connector and encoder corridors before row taps.
+    route_ground()
     # Route the debug link after the matrix taps have cleared the MCU bay.
     for pin in ("T", "R1"):
         ref = f"J_{tag}1"
@@ -818,10 +790,31 @@ def plan(tag, pts, placements, nets, pin_net, avoid_segs=None, avoid_vias=None):
     for net, a, b in jobs:
         connect(net, a, b)
 
-
-
-    if tag == "L":
-        route_ground()
+    # ---- ROW rails: finger-row D.1 pads in x order; thumb row chained.
+    for r in range(4):
+        net = f"/ROW{r}_{tag}"
+        main, taps = [], []
+        for idx in range(22):
+            rr, cc = divmod(idx, 6)
+            if rr == 3 and cc >= 4:
+                continue
+            if rr != r:
+                continue
+            p = P(f"D_{tag}{idx:02d}", "1")
+            (main if r < 3 else taps).append(p)
+        if r < 3:
+            main.sort(key=lambda q: q[0])
+        else:
+            main = sorted(taps, key=lambda q: q[0])
+            taps = []
+        mcu = [p for p in board.pads if p[7].startswith("U_") and p[6] == net]
+        assert len(mcu) == 1, f"{net}: want 1 MCU pin, got {len(mcu)}"
+        # same as COLs: rail the matrix, tap the MCU pin in afterwards.
+        main.sort(key=lambda q: q[0])
+        chain(net, main)
+        taps.append((mcu[0][0], mcu[0][1], {"F", "B"}))
+        for t in taps:
+            tap(net, t)
 
     return board, tracks, vias
 

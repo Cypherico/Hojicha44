@@ -17,7 +17,7 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 
 | Qty | Part | Notes |
 |---|---|---|
-| 22 | 1N4148W, SOD-123 (example MPN: Diodes Incorporated 1N4148W-7-F, SOD-123 — listed at DigiKey `1N4148W-7-F` and Mouser `1N4148W-7-F`, manufacturer page `diodes.com/part/view/1N4148W`; or equivalent) | matrix diodes, front side |
+| 22 | 1N4148W, SOD-123 (example MPN: Diodes Incorporated 1N4148W-7-F, SOD-123 — listed at DigiKey `1N4148W-7-F` and Mouser `1N4148W-7-F`, manufacturer page `diodes.com/part/view/1N4148W`; or equivalent) | matrix diodes, underside |
 
 ## Hand assembly (through-hole / modules / mechanical)
 
@@ -41,7 +41,7 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 
 | Qty | Part | Notes |
 |---|---|---|
-| 1 | Switch plate, **1.2mm** | Through-cut OUTLINE and CUTOUT from the plate DXF. Machine RELIEF as 22 nominal **0.55mm** underside pockets. Use PORON as a punch template. Accept the coupon with **≥0.60mm** plate remaining and **≥0.15mm** seated clearance above a **1.40mm** diode. |
+| 1 | Switch plate, **1.2mm** | Through-cut OUTLINE and CUTOUT from the plate DXF. Use PORON as a punch template. Verify switch clip retention on a same-material coupon. |
 | 8 of each thickness | PORON 4701-30, 240kg/m³ candidate, 7×4mm pads | Target **3.0mm** bottom and **1.5mm** top. Confirm exact grade, density, thickness, tolerances and backing with the supplier. Qualify compression on the assembled coupon. |
 | 8 | N52 disc magnet Ø4×2mm, axially magnetized | TUB pockets, Ø4.3×2.2mm, face up flush at the lip plane. |
 | 8 | N52 disc magnet Ø4×0.5mm, axially magnetized | COVER pockets, Ø4.3×0.7mm, face down flush at the lip plane. Verify pull force on the assembled first article. |
@@ -94,7 +94,7 @@ ours = 0.30 drill in 0.65 pad → annular 0.175 — JLC-verified 2026-10; the
 old "0.15/0.25" line quoted the KiCad template, not the boards),
 150×115mm halves (2-layer max 670×600), 1.6mm/0.3 drill = 5.3:1 aspect
 (max 8:1). Use tab routing for the concave profile. Review the
-v0.5.3 copper-to-profile measurements and slot requirements with the
+v0.5.4 copper-to-profile measurements and slot requirements with the
 fabricator. [PCB order guide](../pcb/BOM_ORDER.md)
 
 Use the measured maximum insulated pack thickness and the minimum clear

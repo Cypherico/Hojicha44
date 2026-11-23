@@ -95,6 +95,14 @@ def choc_drill_findings(half, drill):
     return findings
 
 
+def smt_placements_match(half, rows):
+    return (
+        {r.get("Ref") for r in rows} == {f"D_{half[0]}{i:02d}" for i in range(22)}
+        and len(rows) == 22
+        and all(r.get("Package") == "D_SOD-123" and r.get("Side") == "bottom" for r in rows)
+    )
+
+
 def component_drill_findings(half, drills):
     """Check plating, PJ-320A seating and the controller socket slots."""
     from check_board import case_ports, committed_pads
@@ -188,7 +196,8 @@ def export_half(half, outdir):
     with open(os.path.join(outdir, "pos.csv"), newline="") as f:
         rows = list(csv.DictReader(f))
     smt = [r for r in rows if r.get("Package", "") == "D_SOD-123"]
-    assert len(smt) == 22, f"{half}: want 22 SMT diodes, got {len(smt)}"
+    if not smt_placements_match(half, smt):
+        sys.exit(f"release cut refused: {half} must have 22 bottom-side SMT diodes")
     with open(os.path.join(outdir, "pos-smt.csv"), "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=rows[0].keys())
         w.writeheader()
@@ -320,6 +329,12 @@ def verify_release(reldir, with_manifest=True):
             bad.append(f"{half}: want 9 gerbers, got {len(gerbers)}")
         if not any(f.endswith(".gbrjob") for f in files):
             bad.append(f"{half}: job file missing")
+        smt_path = os.path.join(d, "pos-smt.csv")
+        if os.path.isfile(smt_path):
+            with open(smt_path, newline="") as f:
+                smt = list(csv.DictReader(f))
+            if not smt_placements_match(half, smt):
+                bad.append(f"{half}: pos-smt.csv must list all 22 bottom-side diodes")
         from check_board import release_drills
 
         try:

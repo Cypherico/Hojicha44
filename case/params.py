@@ -10,9 +10,8 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SUPPORT STRATEGY (b), rev-2: the plate now carries the Choc v1 clip
 # engagement (14.0mm cutout, 1.2mm plate) and sits at the Choc gap of
 # 1.00mm above the PCB top, so the whole top of the case comes DOWN
-# 1.30mm (plate top 3.50 -> 2.20).  The diodes stay on the PCB's top
-# side and the plate relieves 0.55mm over them (measured SOD-123 top
-# = 1.26mm, part tolerance up to 1.40; see plate/gen_plate.py).
+# 1.30mm (plate top 3.50 -> 2.20). The diodes sit under the PCB,
+# leaving the plate at full thickness between the switch openings.
 PLATE_UNDER = 1.00  # PCB top -> plate underside (Choc v1 clip band:
                     # the plate must sit between the clip lip <=1.3 and the
                     # 14.8 ears at 2.2 -> 1.0 gap + 1.2 plate = 1.0..2.2)
@@ -45,6 +44,7 @@ TOP_GAP = TOP_FOAM_T * (1 - TOP_PRELOAD)         # = 1.00
 # and the clearance under an encoder press on the first article.
 POWER_LEAD_MAX = 3.25  # finished lead and solder measured from carrier top
 POWER_Z_TRAVEL = 0.40  # verified geometric reserve below nominal carrier height
+PCB_THICK_MAX = 1.76  # 1.60 mm nominal carrier at the +10% fabrication limit
 FLOOR_CLEAR = 1.0  # minimum slide-switch clearance after the travel reserve
 FLOOR_Z = -3.65 - FLOOR_CLEAR  # floor top surface = -4.65 (spec ruler above)
 FLOOR_T   = 1.7   # floor slab (MJF PA12; flat, braced by tab pockets)
