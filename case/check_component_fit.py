@@ -143,10 +143,19 @@ def check_half(half, header_model, lead_length):
                       for dz in (-travel_z, 0.0, travel_z))
     print(f"{half} USB liner to suspended plate: {liner_plate:.3f} mm³ max interference")
     # Gauge the entire boot path from its seating face out of the case.
+    pcb = gen_case.prism(gen_case.read_pcb_outline(str(board)),
+                         -params.PCB_THICK_MAX, 0)
+    boot_clears_pcb = True
     for dz in (-params.POWER_Z_TRAVEL, 0, params.POWER_Z_TRAVEL):
         boot = cq.Solid.makeCylinder(params.TRRS_BOOT_D / 2, 16,
                                      (mouth_x, mouth_y, params.TRRS_JACK_AXIS_Z + dz),
                                      (facing, 0, 0))
+        # The board, plate and jack move together. Test the board profile
+        # at the nominal relative position and the case at each travel limit.
+        if dz == 0:
+            pcb_overlap = boot.intersect(pcb).Volume()
+            print(f"{half} TRRS boot to PCB edge: {pcb_overlap:.3f} mm³ interference")
+            boot_clears_pcb = pcb_overlap < 1e-6
         interfaces.append((f"TRRS Ø9.50 boot gauge at dz={dz:+.2f}",
                            boot, dz == 0))
         interfaces.append((f"PJ-320A body at dz={dz:+.2f}",
@@ -163,7 +172,7 @@ def check_half(half, header_model, lead_length):
                            plug.translate((0, 0, dz)), dz == 0))
         interfaces.append((f"JST header at dz={dz:+.2f}",
                            header.translate((0, 0, dz)), False))
-    fits = switch_gap > 0.0 and liner_plate < 1e-6
+    fits = boot_clears_pcb and switch_gap > 0.0 and liner_plate < 1e-6
     for name, envelope, check_plate in interfaces:
         overlaps = (plate_overlap(envelope, half) if check_plate else 0.0,
                     envelope.intersect(cover).Volume(), envelope.intersect(tub).Volume())

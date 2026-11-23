@@ -136,11 +136,10 @@ def port_rim_relief(port, sections):
 def build_cover(tag):
     P = params
     dxf = os.path.join(G.PLATE_DIR, f"Hojicha44-{tag}-plate.dxf")
-    pcb = os.path.join(REPO, "pcb", "kicad", f"Hojicha44-{tag}.kicad_pcb")
     lands = json.load(open(os.path.join(
         G.PLATE_DIR, f"Hojicha44-{tag}-lands.json")))
     outline = G.read_outline(dxf)          # plate outline (tabs included)
-    rim = G.read_pcb_outline(pcb)          # PCB rim
+    rim = G.read_case_rim(tag)
     cav_poly = G.offset_pts(outline, P.RIM_CLEAR)
     rim_ring = G.resample_ring(rim, P.SKIN_STEP)
     rnorm = G.outward_field(rim_ring)

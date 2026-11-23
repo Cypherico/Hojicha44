@@ -4,8 +4,8 @@
 Derives the laser-cut switch plate from the placed PCB (generator-owned
 geometry, never hand-drawn):
 
-  outline  = PCB Edge.Cuts loop, identical (USB notch included, so the
-             plug housing passes the plate edge exactly as it passes the PCB)
+  outline  = nominal Ergogen perimeter with its USB notch. The PCB's
+             local TRRS scallop is inside the plate's existing W2 window.
   cutouts  = 22x 14.0mm-square Choc PG1350 squares (CUTOUT constant) at
               instances/rotations
   encoder  = 16.2x12.4mm window (instance rot 0, body axis-aligned):
@@ -52,6 +52,7 @@ import sys
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO, "pcb", "generators"))
 import frame
+from gen_pcb import outline_segments
 PCB_DIR = os.path.join(REPO, "pcb", "kicad")
 OUT_DIR = os.path.join(REPO, "plate")
 
@@ -305,71 +306,16 @@ def parse_instances(path):
     return out
 
 
-def parse_outline(path):
-    s = frame.read_design(path)
-    segs = []
-    for m in re.finditer(
-            r'\(gr_line \(start (-?[\d.]+) (-?[\d.]+)\) '
-            r'\(end (-?[\d.]+) (-?[\d.]+)\) \(layer "Edge\.Cuts"', s):
-        segs.append(('line', (float(m.group(1)), float(m.group(2))),
-                     (float(m.group(3)), float(m.group(4)))))
-    for m in re.finditer(
-            r'\(gr_arc \(start (-?[\d.]+) (-?[\d.]+)\) '
-            r'\(mid (-?[\d.]+) (-?[\d.]+)\) '
-            r'\(end (-?[\d.]+) (-?[\d.]+)\) \(layer "Edge\.Cuts"', s):
-        segs.append(('arc', (float(m.group(1)), float(m.group(2))),
-                     (float(m.group(3)), float(m.group(4))),
-                     (float(m.group(5)), float(m.group(6)))))
-    return segs
-
-
-def arc_center(p0, pm, p1):
-    (x0, y0), (x1, y1), (x2, y2) = p0, pm, p1
-    d = 2 * (x0 * (y1 - y2) + x1 * (y2 - y0) + x2 * (y0 - y1))
-    assert abs(d) > 1e-9, f'collinear arc {p0} {pm} {p1}'
-    ux = ((x0 * x0 + y0 * y0) * (y1 - y2) + (x1 * x1 + y1 * y1) * (y2 - y0) +
-          (x2 * x2 + y2 * y2) * (y0 - y1)) / d
-    uy = ((x0 * x0 + y0 * y0) * (x2 - x1) + (x1 * x1 + y1 * y1) * (x0 - x2) +
-          (x2 * x2 + y2 * y2) * (x1 - x0)) / d
-    return (ux, uy)
-
-
 def subdivide(seq, step=1.0):
-    # seq entries are (seg, flip) from chain_loop: walk every segment in
-    # CHAIN direction, or backward-stored segments spike out-and-back
-    # (parallel double tracks + jumps in the resample).
+    """Sample the chained perimeter in walk order."""
     pts = []
-    for s, flip in seq:
-        if s[0] == 'line':
-            _, a, b = s
-            if flip:
-                a, b = b, a
-            n = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1]) / step))
-            for k in range(n):
-                t = k / n
-                pts.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
-        else:
-            _, a, m, b = s
-            if flip:
-                a, b = b, a
-            c = arc_center(a, m, b)
-            r = math.hypot(a[0] - c[0], a[1] - c[1])
-            a0 = math.atan2(a[1] - c[1], a[0] - c[0])
-            am = math.atan2(m[1] - c[1], m[0] - c[0])
-            a1 = math.atan2(b[1] - c[1], b[0] - c[0])
-
-            def norm(t):
-                while t <= -math.pi:
-                    t += 2 * math.pi
-                while t > math.pi:
-                    t -= 2 * math.pi
-                return t
-            d1, d2 = norm(am - a0), norm(a1 - am)
-            total = d1 + d2 if (d1 > 0) == (d2 > 0) else d1 - d2
-            n = max(2, int(abs(r * total) / step))
-            for k in range(n):
-                t = a0 + total * k / n
-                pts.append((c[0] + r * math.cos(t), c[1] + r * math.sin(t)))
+    for (a, b), flip in seq:
+        if flip:
+            a, b = b, a
+        n = max(1, int(math.hypot(b[0] - a[0], b[1] - a[1]) / step))
+        for k in range(n):
+            t = k / n
+            pts.append((a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t))
     return pts
 
 
@@ -384,7 +330,7 @@ def chain_loop(segs):
         nxt = flip = None
         for i in unused:
             s = segs[i]
-            if key(s[1]) == cur_end:
+            if key(s[0]) == cur_end:
                 nxt, flip = i, False
                 break
             if key(s[-1]) == cur_end:
@@ -394,9 +340,9 @@ def chain_loop(segs):
         unused.remove(nxt)
         s = segs[nxt]
         seq.append((s, flip))
-        cur_end = key(s[1] if flip else s[-1])
-    assert cur_end == key(seq[0][0][1]), \
-        f'outline not closed (end {cur_end} vs start {key(seq[0][0][1])})'
+        cur_end = key(s[0] if flip else s[-1])
+    assert cur_end == key(seq[0][0][0]), \
+        f'outline not closed (end {cur_end} vs start {key(seq[0][0][0])})'
     return seq
 
 
@@ -572,7 +518,7 @@ def build_half(tag):
     global _LAST_LEFT_TABS
     pcb = os.path.join(PCB_DIR, f'Hojicha44-{tag}.kicad_pcb')
     inst = parse_instances(pcb)
-    seq = chain_loop(parse_outline(pcb))
+    seq = chain_loop(outline_segments(tag[0], relieve_trrs=False))
     loop = subdivide(seq)
 
     sw = sorted((r, v[1], v[2], v[3]) for r, v in inst.items()

@@ -1,23 +1,67 @@
 #VRML V2.0 utf8
-# nice!nano ENVELOPE PLACEHOLDER (bounding box only, not a detailed model).
-# Real dims 34.1 x 18.3 x 3.2 mm; KiCad reads VRML in 0.1-inch units
-# (1 unit = 2.54 mm — calibrated by render 2026-10-14), hence /2.54 below.
-# KiCad maps VRML +y to footprint-local -y (proven by two-cube render),
-# so footprint-local (lx,ly) is written here as VRML (lx,-ly).
-# Floats 4.5 mm over the board on the socket stack. USB nub toward
-# footprint pad-1 end. Proves keepout and stack envelope only.
+# Preview envelope in KiCad's 2.54 mm VRML units.
+# Footprint pin 1 is at (0, 0). The pin rows run toward +Y in model space.
+# PCB is 17.8 x 33.0 mm, with the underside 4.50 mm above the carrier.
+DEF Mask Appearance {
+  material Material { diffuseColor 0.10 0.10 0.16 }
+}
 Transform {
-  translation -3.0 -5.5 2.402
-  children [
-    Shape {
-      appearance Appearance { material Material { diffuseColor 0.10 0.10 0.16 } }
-      geometry Box { size 7.205 13.425 1.260 }
-    }
-    Transform {
-      translation 0 7.874 0
-      children [ Shape {
-        appearance Appearance { material Material { diffuseColor 0.65 0.65 0.70 } }
-        geometry Box { size 3.504 2.756 1.260 } } ]
-    }
-  ]
+  translation -3.0 6.645 2.087
+  children [ Shape {
+    appearance USE Mask
+    geometry Box { size 7.008 10.702 0.630 }
+  } ]
+}
+Transform {
+  translation -5.628 -0.996 2.087
+  children [ Shape {
+    appearance USE Mask
+    geometry Box { size 1.752 2.290 0.630 }
+  } ]
+}
+Transform {
+  translation -0.372 -0.996 2.087
+  children [ Shape {
+    appearance USE Mask
+    geometry Box { size 1.752 2.290 0.630 }
+  } ]
+}
+# Open USB-C sleeve at the pin-1 end. Mouth faces model -Y.
+DEF USBMetal Appearance {
+  material Material { diffuseColor 0.65 0.65 0.70 }
+}
+Transform {
+  translation -3.0 -0.343 2.611
+  children [ Shape {
+    appearance USE USBMetal
+    geometry Box { size 3.484 2.843 0.159 }
+  } ]
+}
+Transform {
+  translation -3.0 -0.343 1.563
+  children [ Shape {
+    appearance USE USBMetal
+    geometry Box { size 3.484 2.843 0.159 }
+  } ]
+}
+Transform {
+  translation -4.661 -0.343 2.087
+  children [ Shape {
+    appearance USE USBMetal
+    geometry Box { size 0.162 2.843 1.048 }
+  } ]
+}
+Transform {
+  translation -1.339 -0.343 2.087
+  children [ Shape {
+    appearance USE USBMetal
+    geometry Box { size 0.162 2.843 1.048 }
+  } ]
+}
+Transform {
+  translation -3.0 -0.540 2.087
+  children [ Shape {
+    appearance Appearance { material Material { diffuseColor 0.09 0.09 0.10 } }
+    geometry Box { size 2.559 2.134 0.264 }
+  } ]
 }

@@ -261,35 +261,65 @@ def arc_segments(cx, cy, r, a1, a2, max_step=6.0):
             if math.hypot(p2[0] - p1[0], p2[1] - p1[1]) >= 1e-3]
 
 
+def outline_segments(side, *, relieve_trrs=True):
+    """Design-frame perimeter shared by Edge.Cuts and copper containment."""
+    segments = []
+    for kind, *values in load_dxf_entities():
+        if kind == "line":
+            x1, y1, x2, y2 = values
+            belongs_left = max(x1, x2) < MIRROR_AXIS
+            if belongs_left == (side == "L"):
+                segments.append(((x1, y1), (x2, y2)))
+        else:
+            cx, cy, radius, first, last = values
+            if (cx < MIRROR_AXIS) == (side == "L"):
+                segments.extend(arc_segments(cx, cy, radius, first, last))
+    if relieve_trrs:
+        segments = trrs_edge_relief(side, segments)
+    return [(tuple(map(r2, a)), tuple(map(r2, b))) for a, b in segments]
+
+
+def trrs_edge_relief(side, segments):
+    """Route a mirrored scallop behind the PJ-320A mating face."""
+    direction = 1 if side == "L" else -1
+    mouth_x = 134.55 if side == "L" else 156.95
+    low, high = -27.25, -16.75
+    floor = mouth_x - 0.50 * direction
+    radius = 0.80
+    for index, (a, b) in enumerate(segments):
+        if (min(a[1], b[1]) < low < high < max(a[1], b[1])
+                and all(abs(point[0] - mouth_x) < 5 for point in (a, b))):
+            break
+    else:
+        raise ValueError(f"{side}: missing straight rim at TRRS relief")
+
+    def edge_x(y):
+        return a[0] + (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1])
+
+    # Build the arcs in the left-hand frame, then reflect the right.
+    tangent = floor + direction * radius
+    points = [(edge_x(low), low)]
+    for y, start, stop in ((low + radius, -90, -180),
+                           (high - radius, 180, 90)):
+        for angle in range(start, stop - 1, -15):
+            r = math.radians(angle)
+            points.append((tangent + direction * radius * math.cos(r),
+                           y + radius * math.sin(r)))
+    points.append((edge_x(high), high))
+    if a[1] > b[1]:
+        points.reverse()
+    chain = [a, *points, b]
+    return [*segments[:index], *zip(chain, chain[1:]), *segments[index + 1:]]
+
+
 def outline_graphics(side):
     """Edge.Cuts gr_line items for one side, arcs segmented."""
-    ents = load_dxf_entities()
-    out = []
-    n_arc = 0
-    for e in ents:
-        if e[0] == "line":
-            _, x1, y1, x2, y2 = e
-            if side == "L" and max(x1, x2) >= MIRROR_AXIS:
-                continue
-            if side == "R" and min(x1, x2) < MIRROR_AXIS:
-                continue
-            out.append(
-                f'\t(gr_line (start {r2(x1)} {r2(y1)}) (end {r2(x2)} {r2(y2)})'
-                f' (layer "Edge.Cuts") (stroke (width 0.1) (type solid))'
-                f' (uuid "{U()}"))')
-        else:
-            _, cx, cy, r, a1, a2 = e
-            if side == "L" and cx >= MIRROR_AXIS:
-                continue
-            if side == "R" and cx < MIRROR_AXIS:
-                continue
-            n_arc += 1
-            for (p1, p2) in arc_segments(cx, cy, r, a1, a2):
-                out.append(
-                    f'\t(gr_line (start {r2(p1[0])} {r2(p1[1])})'
-                    f' (end {r2(p2[0])} {r2(p2[1])})'
-                    f' (layer "Edge.Cuts") (stroke (width 0.1) (type solid))'
-                    f' (uuid "{U()}"))')
+    out = [
+        f'\t(gr_line (start {x1} {y1}) (end {x2} {y2})'
+        f' (layer "Edge.Cuts") (stroke (width 0.1) (type solid))'
+        f' (uuid "{U()}"))'
+        for (x1, y1), (x2, y2) in outline_segments(side)
+    ]
     # closed-loop sanity: every segment endpoint meets another segment
     ends = {}
     for g in out:
@@ -299,7 +329,7 @@ def outline_graphics(side):
         ends[a] = ends.get(a, 0) + 1
         ends[b] = ends.get(b, 0) + 1
     dangle = [p for p, n in ends.items() if n != 2]
-    print(f"  outline {side}: {len(out)} segments ({n_arc} arcs), "
+    print(f"  outline {side}: {len(out)} segments, "
           f"{len(dangle)} open endpoints")
     assert not dangle, f"outline {side} not closed: {dangle[:6]}"
     return out
@@ -480,23 +510,7 @@ def cw_rotate(x, y, deg):
 
 def outline_loops(side):
     """Closed Edge.Cuts loops for one side, largest first."""
-    ents = load_dxf_entities()
-    segs = []
-    for e in ents:
-        if e[0] == "line":
-            _, x1, y1, x2, y2 = e
-            if side == "L" and max(x1, x2) >= MIRROR_AXIS:
-                continue
-            if side == "R" and min(x1, x2) < MIRROR_AXIS:
-                continue
-            segs.append(((x1, y1), (x2, y2)))
-        else:
-            _, cx, cy, r, a1, a2 = e
-            if side == "L" and cx >= MIRROR_AXIS:
-                continue
-            if side == "R" and cx < MIRROR_AXIS:
-                continue
-            segs.extend(arc_segments(cx, cy, r, a1, a2))
+    segs = outline_segments(side)
     # chain into loops (segments usable in either direction)
     def key(p):
         return (round(p[0], 2), round(p[1], 2))

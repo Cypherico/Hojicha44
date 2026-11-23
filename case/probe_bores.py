@@ -69,8 +69,7 @@ def check_plug_clearance(tag, ports, tub, cover):
 
 for tag in ("Left", "Right"):
     print(f"{tag}:")
-    board = os.path.join(G.REPO, "pcb", "kicad", f"Hojicha44-{tag}.kicad_pcb")
-    rim = G.read_pcb_outline(board)
+    rim = G.read_case_rim(tag)
     ring = G.resample_ring(rim, params.SKIN_STEP)
     skin = G.resample_ring(G.offset_pts(rim, params.CASE_OUTSET), params.SKIN_STEP)
     ports = G.compute_ports(tag, ring, G.outward_field(ring), skin, params)

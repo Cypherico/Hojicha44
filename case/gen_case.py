@@ -2,8 +2,8 @@
 """Hojicha44 bottom tub — v3.5 (CadQuery, parametric).
 
 Derives the tub from the plate + PCB: plate outline and tab roots from
-plate/Hojicha44-{half}-plate.dxf (OUTLINE) and -lands.json, the PCB rim
-(rim = plate outline MINUS tabs) from pcb/kicad/Hojicha44-{half}.kicad_pcb.
+plate/Hojicha44-{half}-plate.dxf (OUTLINE) and -lands.json, and the nominal
+Ergogen board perimeter before the local TRRS relief.
 Never hand-drawn; one generic build_half() routine, both halves.
 
   case/.venv/bin/python case/gen_case.py            # both halves -> case/out/
@@ -152,9 +152,7 @@ def segd(pt, a, b):
 
 
 def read_pcb_outline(path):
-    """Closed Edge.Cuts loop from a .kicad_pcb (the PCB rim: the plate
-    outline withOUT tabs — tabs are plate features, not rim features).
-    The case exterior dilates THIS, so tab tongues never bump the skin."""
+    """Read the actual routed PCB perimeter, including local reliefs."""
     import re as _re
     segs = []
     # PCB storage is y-negated; the case is authored in the plate/design
@@ -165,7 +163,18 @@ def read_pcb_outline(path):
             frame.read_design(path)):
         segs.append(((float(m.group(1)), float(m.group(2))),
                      (float(m.group(3)), float(m.group(4)))))
-    assert len(segs) > 8, f"no Edge.Cuts loop in {path}"
+    return chain_rim(segs)
+
+
+def read_case_rim(tag):
+    """Use the Ergogen perimeter before the local PCB relief at the jack."""
+    from gen_pcb import outline_segments
+
+    return chain_rim(outline_segments(tag[0], relieve_trrs=False))
+
+
+def chain_rim(segs):
+    assert len(segs) > 8, "no perimeter loop"
     key = lambda p: (round(p[0], 2), round(p[1], 2))
     loop = [segs[0][0], segs[0][1]]
     used = {0}
@@ -608,12 +617,10 @@ def magnet_stations(P, tag, skin, cav, pocket_rects, ports):
 def build_half(tag):
     P = params
     dxf = os.path.join(PLATE_DIR, f"Hojicha44-{tag}-plate.dxf")
-    pcb = os.path.join(REPO, "pcb", "kicad",
-                       f"Hojicha44-{tag}.kicad_pcb")
     lands = json.load(open(os.path.join(
         PLATE_DIR, f"Hojicha44-{tag}-lands.json")))
     outline = read_outline(dxf)        # PLATE outline (tabs included)
-    rim = read_pcb_outline(pcb)        # PCB rim (tabs are NOT rim)
+    rim = read_case_rim(tag)           # layout perimeter before PCB relief
     tabs = lands["tabs"]
     assert len(tabs) == 8, f"{tag}: want 8 tabs, got {len(tabs)}"
     for t in tabs:  # params must match the plate generator's truth
