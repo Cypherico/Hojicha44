@@ -14,11 +14,11 @@ about the shared x=145.75 axis, then takes a two-sided max vertex
 distance to the Right solid.  A 0.5mm translation of the Right solid is
 the negative control; the tolerance is 0.05mm (H-7).
 """
-import math
 import os
 import sys
 
 import cadquery as cq
+import numpy as np
 from OCP.BRepBuilderAPI import BRepBuilderAPI_MakeVertex
 from OCP.BRepExtrema import BRepExtrema_DistShapeShape
 from OCP.gp import gp_Pnt
@@ -54,7 +54,23 @@ def distance(pt, shape):
 
 
 def max_distance(pts, shape):
-    return max(distance(p, shape) for p in pts)
+    """Compute the exact maximum, pruning points using vertex distances."""
+    vertices = np.asarray(points(shape)).reshape(-1, 3)
+    if not len(vertices):
+        return max(distance(pt, shape) for pt in pts)
+    upper_bounds = []
+    for pt in pts:
+        # A target vertex belongs to the target shape. Its distance is
+        # an upper bound on the exact point-to-shape distance.
+        offsets = vertices - pt
+        nearest = np.sqrt(np.min(np.einsum("ij,ij->i", offsets, offsets)))
+        upper_bounds.append((nearest, pt))
+    worst = 0.0
+    for upper, pt in sorted(upper_bounds, reverse=True):
+        if upper == 0.0 or upper + 1e-7 <= worst:
+            break
+        worst = max(worst, distance(pt, shape))
+    return worst
 
 
 def check(kind):
@@ -68,13 +84,11 @@ def check(kind):
     d = max(d1, d2)
     print(f"  {kind}: {len(pl)}/{len(pr)} vertices, "
           f"L->R {d1:.4f}mm, R->L {d2:.4f}mm, max {d:.4f}mm "
-          f"(floor {TOL:.2f})", flush=True)
+          f"(limit {TOL:.2f})", flush=True)
     bad = []
     if d > TOL:
         bad.append(f"{kind}: mirror residual {d:.4f}mm > {TOL:.2f}mm")
-    # Negative control: a 0.5mm shift must be rejected.  A subset is
-    # enough (every point moves ~0.5mm) and keeps the gate under a
-    # minute after the two full passes.
+    # Negative control: the same metric must detect a 0.5mm translation.
     ctl = max_distance(pl[:80], right.translate((0.5, 0, 0)))
     print(f"  {kind}: 0.5mm control {ctl:.4f}mm", flush=True)
     if ctl <= TOL:

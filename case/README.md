@@ -1,7 +1,9 @@
 # Hojicha44 — case CAD (CadQuery, parametric)
 
 Each half has a tub and cover derived from the PCB and plate geometry.
-The released assembly has component fit issues. [Product audit](../audit.md)
+`case/out/` holds the recorded v0.5.2 fabrication candidate. Current
+generator output includes newer port and cover geometry.
+[Product audit](../audit.md)
 
 ## Layout
 
@@ -10,8 +12,8 @@ The released assembly has component fit issues. [Product audit](../audit.md)
   (STEP tracked since 2026-10-24; STL gitignored/regenerable; use
   `CASE_OUT=case/out-dev` for scratch builds).
 - `gen_cover.py` generates the cover using the tub's port, gasket and magnet positions.
-- `probe_bores.py` — offline bore shape audit on the finished solids
-  (not part of CI; run before a real print).
+- `probe_bores.py` checks the USB-C and TRRS openings and the floor
+  beneath each port in the exported tubs. CI runs it on fresh CAD.
 - `requirements.txt` — pinned CadQuery (`case/.venv`, Python 3.12).
 
 ## Component fit
@@ -38,21 +40,20 @@ an alternate STEP directory.
   (1.2mm plate, 1.00mm gap). The audited STEP volumes per half are
   **57.55 cm³** for the tub and **15.76 cm³** for the cover.
 
-## Regenerating the order-time geometry (print-manifest recipe)
+## Checking a current case build
 
-The shops are sent exactly what `generated/print/v0.5.2/MANIFEST.txt`
-hashes. If ANY generator constant changes, in the SAME commit:
+```sh
+export CASE_OUT=out/case-dev
+case/.venv/bin/python case/gen_case.py
+case/.venv/bin/python case/gen_cover.py
+case/.venv/bin/python case/probe_bores.py
+case/.venv/bin/python case/mirror_gate.py
+```
 
-    case/.venv/bin/python case/gen_case.py            # gates exit-0
-    case/.venv/bin/python case/gen_cover.py           # gates exit-0
-    shasum -a 256 case/out/* > /tmp/h.txt             # paste over the old hashes
-    npm test                                          # print-manifest gate re-verifies
-
-The STEP files are tracked and CI verifies their hashes; the STLs are
-regenerable and gitignored. Never order from a stale hash.
-- Single source of truth: `plate/Hojicha44-{half}-plate.dxf` (OUTLINE +
-  tab geometry via `lands.json`). Spec numbers: `spec/case.md`.
-- Generators own geometry; `case/out/` is scratch like `out/fit`.
+For a v0.5.2 order, use the matched PCB, plate, and case files
+listed in the [print manifest](../generated/print/v0.5.2/MANIFEST.txt).
+The static job verifies those hashes. The case job builds and verifies
+the current generator output in a temporary directory.
 
 ## Status
 

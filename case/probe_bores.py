@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Offline bore shape audit for v4.x (not part of CI).
+"""Bore shape audit for the current generated tub STEP files.
 
 Probe the exported tub STEP files in CASE_OUT (default: case/out).
 Checks the bore shape and slab sills against the current parameters.
@@ -47,13 +47,14 @@ for tag in ("Left", "Right"):
         pr = ports[name]
         o, u, v = pr["o"], pr["u"], pr["v"]
         if name == "usb":
-            # below the bore (z0=2.0) the wall must be solid again
-            probe(tag, name + "/below", solid, o, u, v, 0.0, 3.5, 1.5, True)
-            # bottom fillet: inside the fillet envelope at z0+0.4
+            # Bracket the configured sill through the same part of the wall.
+            z0 = pr["z0"]
+            probe(tag, name + "/below", solid, o, u, v, 0.0, 3.5, z0 - 0.1, True)
+            probe(tag, name + "/above", solid, o, u, v, 0.0, 3.5, z0 + 0.1, False)
             r, w = pr["r"], pr["w"]
-            z = params.USB_MOUTH_Z0 + 0.4
+            z = z0 + 0.4
             hw = (w / 2 - r) + math.sqrt(max(
-                r ** 2 - (params.USB_MOUTH_Z0 + r - z) ** 2, 0.0))
+                r ** 2 - (z0 + r - z) ** 2, 0.0))
             # The cavity extends past the notch floor near the flanks.
             # Probe at the wall so a missing cutter cannot pass as air.
             depth = 12.0

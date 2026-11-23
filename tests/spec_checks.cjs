@@ -86,6 +86,10 @@ sys.path.insert(0, ${JSON.stringify(
     path.join(REPO, "pcb", "generators")
   )})
 import gen_pcb, os, re
+from contextlib import redirect_stdout
+from io import StringIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
 reldir = ${JSON.stringify(
     path.join(
       REPO,
@@ -108,9 +112,13 @@ for tag, half in (("L", "Left"), ("R", "Right")):
 # negative control: an extra mismatch must fail
 s = open(os.path.join(reldir, "Left", "Hojicha44-Left-drc.rpt")).read()
 s += "[lib_footprint_mismatch]: Footprint 'D_SOD-123' does not match copy in library 'Diode_SMD'\\n    Local override; warning\\n    @(0, 0): Footprint D_L99\\n"
-open("/tmp/hojicha-w1-neg.rpt", "w").write(s)
-neg = gen_pcb.check_drc_report("/tmp/hojicha-w1-neg.rpt", "L", native_choc=native_choc, native_jst=native_jst)
-assert neg == 1, "W1 gate must reject an extra mismatch"
+with TemporaryDirectory() as temp:
+    report = Path(temp) / "extra-footprint-drc.rpt"
+    report.write_text(s)
+    diagnostic = StringIO()
+    with redirect_stdout(diagnostic):
+        neg = gen_pcb.check_drc_report(report, "L", native_choc=native_choc, native_jst=native_jst)
+    assert neg == 1 and "W1 extra ('D_SOD-123', 'D_L99')" in diagnostic.getvalue(), diagnostic.getvalue()
 print("w1-gate: exact release exception set checked, extra mismatch rejected")
 sys.exit(rc)
 `;

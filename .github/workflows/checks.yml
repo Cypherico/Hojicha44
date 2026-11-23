@@ -83,10 +83,13 @@ jobs:
           cache: pip
       # pinned in case/requirements.txt; OCP wheels are big but cacheable
       - run: pip install -r case/requirements.txt
+      # Build the current CAD separately from the recorded fabrication set.
+      - run: echo "CASE_OUT=$RUNNER_TEMP/hojicha-case" >> "$GITHUB_ENV"
       - run: python3 case/gen_case.py
       # M6 (multi-model review): the ring cover was committed ungated —
       # its pad-press / single-solid / passage gates must run in CI too
       - run: python3 case/gen_cover.py
+      - run: python3 case/probe_bores.py
       # H-7 left/right mirror gate — was manual-only (MANUFACTURING);
       # the negative control (0.5mm Right translation) must still fail
       # whenever the gate is touched
