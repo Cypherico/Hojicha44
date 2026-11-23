@@ -1,6 +1,6 @@
 # Hojicha44 — first-article checklist (hands + parts required)
 
-Use the v0.5.2 PCB, plate and case files together. Confirm connector
+Use the v0.5.3 PCB, plate and case files together. Confirm connector
 seating, cable fit and switch lead clearance on the first pair. The
 [product audit](../audit.md) records the CAD checks and their limits.
 
@@ -52,7 +52,7 @@ add supports only for a poor bridger.
 **Order policy (rev 3, review 2026-10-24):** *engineering-sample*
 orders — the plate coupon below, the encoder coupon, one corrected PCB
 pair, and one printed tub/cover set — are required before §0. The current
-PCB and case files are [v0.5.2 first-article candidates](../pcb/MANUFACTURING.md). Sections
+PCB and case files are [v0.5.3 first-article candidates](../pcb/MANUFACTURING.md). Sections
 1–7 gate the **production batch** (the §0 quantities). The
 cheap sequence is: coupon + 1 PCB pair + 1 tub (~USD 60–100), then the
 10-half pilot. "Before ordering anything" in older revisions meant the
@@ -114,9 +114,10 @@ batch; it never forbade coupons.
   the housing hits the shoulders beside the notch, widen it to ~14mm. Plug
   axis rides high on 4.5mm sockets with a ~9mm-inboard shell, so verify the
   housing clears the plate top in the solid-board overlap zone (seating depth), not just the notch width.
-- [ ] **Case port bores.** Seat the actual USB-C plug through a 14.0mm
-  slot in a printed tub and cover slice. If the revised design retains
-  TRRS, use its corrected board placement and case for the mating test.
+- [ ] **Case port bores.** Seat the actual USB-C plug and its full
+  overmold through the 14.0mm passage in a matching printed tub and
+  cover slice. Test the low and high module positions and the full
+  measured gasket motion. If debug TRRS is populated, check both plugs.
   Measure shaft reach, boot clearance at both ends and cable bend at the
   planned half spacing.
 - [ ] **Power-switch aperture.** With the real switch installed, check that the
@@ -165,6 +166,11 @@ batch; it never forbade coupons.
   do not protrude above ~1.5mm, the window may return to 12.7 square —
   but only with that measurement in hand (see the coupon bullet above).
 - [ ] 301230 cell outline (12×30mm) fits between the socket rows on print.
+- [ ] Dry-fit each EC11E15244G1 in the production-thickness board. Verify
+  the tabs drop into the round Ø2.60mm holes without force and the
+  encoder sits flush. The Alps drawing specifies oblong openings. If
+  the tabs bind or the body sits high, correct the drill pattern before
+  ordering a batch. [Alps drawing 2](https://tech.alpsalpine.com/cms.media/product_catalog_ec_01_ec11e_en_611f078659.pdf)
 - [ ] If TRRS is retained, compare the revised drilling at 1:1 with the
   actual jack and verify each contact with an inserted plug. At the nominal
   22.40mm face-to-face spacing, check both mating depths, boot fit in the
@@ -178,6 +184,9 @@ batch; it never forbade coupons.
   signal vias (0.50-in-1.00 power) accepted — the old "0.8-0.4mm" line
   quoted the KiCad template, not the boards; rev-2
   flex slots (typically >=1mm) quoted separately.
+- [ ] Approve the manufacturer's CAM for the two drill files. Confirm
+  the controller and jack G85 slots are routed end to end and plated.
+  Confirm the Choc and jack locator holes are non-plated. [Order guide](../pcb/MANUFACTURING.md)
 - [ ] ORDER GATE — do not place the fab order until every box in §1 passes
   on paper AND the fab has accepted the limits above. §2–§5 need physical
   boards; nothing below can substitute for a failed box here.
@@ -256,8 +265,9 @@ batch; it never forbade coupons.
   interference — rock is the reject criterion. If loose in every region,
   the cutout tightens 14.0 → 13.9.)
 - [ ] **Poron pads.** Use eight 7×4mm pads per side of the plate, per
-  half: 3.0mm stock below and 1.5mm stock above. Keep the pads on the
-  tabs and away from adjacent cutouts.
+  half, with 3.0mm stock below and 1.5mm stock above. Record the exact
+  grade, measured sheet thickness, tolerance and adhesive for the lot.
+  Keep the pads on the tabs and away from adjacent cutouts.
 - [ ] **Gasket preload.** The 4.75mm shelf-to-cover distance allows
   3.55mm for the two pads beside the 1.20mm plate. For nominal 4.50mm
   free foam this gives 0.95mm total compression. Measure the PCB's
@@ -279,20 +289,29 @@ batch; it never forbade coupons.
 
 ## 4. Power-on
 
-- [ ] On both halves, measure charge current into a qualified, partially
-  discharged pack with USB connected and switch ON. Verify it falls to
-  zero with the switch OFF. Record current, pack voltage, termination
-  behavior and LED indication with the switch in each position.
-- [ ] ×2 TRRS continuity jack-to-jack over a straight cable: left
-  TIP→right TIP, left RING1→right RING1, sleeve→sleeve (<1Ω each);
-  RING2 open both ends (must never join batteries).
-- [ ] Inspect solder and mask registration at the USB notch shoulders.
-  On v0.5.1 the nearest socket-pad copper is 1.844mm from the notch
-  profile on both halves. The nearest trace is 0.582mm on Left and
-  0.405mm on Right. Recheck on the revised boards.
+- [ ] Before connecting a pack, record its part number and revision,
+  PCM, permitted charge limits, verified polarity and exact installed
+  harness PPTC. Measure the actual module's charge current on each
+  half with a current-limited bench setup or battery simulator before
+  the first pack charge. Check it against the pack limit.
+- [ ] Monitor the first charge of the qualified pack outside the
+  enclosure. Record current, pack temperature, termination and
+  resting voltage. Verify charging stops with the switch OFF. Check
+  installed clearance, restraint and abrasion through full gasket
+  travel before enclosing the cell.
+- [ ] If TRRS debug jacks are installed, check continuity over a straight
+  cable. Left TIP→right TIP, left RING1→right RING1 and sleeve→sleeve
+  must measure <1Ω each. RING2 must remain open on both ends.
+- [ ] Inspect solder, mask and edge registration at the USB notch
+  shoulders. Compare the physical boards with the v0.5.3 CAM preview.
 - [ ] ×2 Encoder: spin both directions + push click register; knob
   clears the cover rim and the nearest cap through full rotation +
   full push (skirt ≥0.9mm off the cover at max travel).
+- [ ] Measure A/B contact current on the encoder. The installed
+  internal pull-ups are below Alps' 1mA minimum resistive-load rating.
+  Qualify a pull-up change for contact loading and battery draw before
+  a batch. Check direction and counts at slow and fast turns on both
+  halves. [Alps electrical ratings](https://tech.alpsalpine.com/e/products/detail/EC11E15244G1/) · [Nordic GPIO specification](https://docs.nordicsemi.com/r/bundle/ps_nrf52840/page/gpio.html)
 - [ ] Stack height: 4.5–5.0mm rows swallow the 3mm cell + PCM with
   clearance; JST sits beside the cell, not under the stack.
 - [ ] BLE range with battery and case: with cells fitted and halves in
@@ -311,6 +330,8 @@ batch; it never forbade coupons.
   before using a full chip erase.
 - [ ] Verify D16 is usable as GPIO on each half and check both encoder
   pushes send Mute to the host over BLE.
+- [ ] Record each half's battery report, idle current and wake behavior
+  with the exact firmware build and hardware used for the first article.
 - [ ] D10/P0.09 is spare and the keyboard assigns it no pull or behavior.
   If needed, check continuity at its unpowered header contact. Exercise
   the populated D16 inputs with both encoder pushes after the stock UF2 flash.

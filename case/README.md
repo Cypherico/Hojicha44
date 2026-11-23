@@ -15,7 +15,9 @@ USB-C channel, a separate power-switch recess and a lowered thumb lip.
 - `probe_bores.py` checks the port profiles and the floor beneath them.
   It also checks the full 12.35 × 6.50 mm USB-C overmold and Ø9.50 mm
   TRRS boot envelopes against both case pieces across the modeled
-  socket stack and gasket travel. CI runs it on fresh STEP exports.
+  socket stack and gasket travel. CI runs it on fresh and recorded STEP exports.
+- `check_case_exports.py` compares the recorded fabrication solids with a fresh
+  build, ignoring STEP header dates.
 - `requirements.txt` — pinned CadQuery (`case/.venv`, Python 3.12).
 
 ## Component fit
@@ -26,7 +28,8 @@ or pass the full STEP path directly.
 
 ```sh
 case/.venv/bin/python case/check_component_fit.py \
-  "$KICAD10_3DMODEL_DIR/Connector_JST.3dshapes/JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step"
+  "$KICAD10_3DMODEL_DIR/Connector_JST.3dshapes/JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step" \
+  --switch-lead-mm 3.25
 ```
 
 The checker tests jack handedness, the USB-C and TRRS plug envelopes,
@@ -34,14 +37,15 @@ the liner clearance from the suspended plate, the JST service envelope,
 and power-switch fit and lead clearance. For the finished assembly
 use `--switch-lead-mm 3.25` to model the finished assembly. Omit it to
 model the nominal stock leads as a negative control. `CASE_OUT` selects
-an alternate STEP directory.
+an alternate STEP directory. CI checks both lead lengths against the
+orderable STEPs using the SHA-256-verified KiCad 10.0.6 JST model.
 
 ## Conventions (match the rest of the repo)
 
 - Units mm. Frame = KiCad board frame (same as `lands.json` / plate DXF).
 - z = 0 is the PCB top surface. Plate underside +1.00, plate top +2.20
-  (1.2mm plate, 1.00mm gap). The audited STEP volumes per half are
-  **57.55 cm³** for the tub and **15.76 cm³** for the cover.
+  (1.2mm plate, 1.00mm gap). The v0.5.3 STEP volumes per half are
+  **57.2 cm³** for the tub and **23.4 cm³** for the cover.
 
 ## Checking a current case build
 
@@ -49,20 +53,26 @@ an alternate STEP directory.
 export CASE_OUT=out/case-dev
 case/.venv/bin/python case/gen_case.py
 case/.venv/bin/python case/gen_cover.py
+case/.venv/bin/python case/check_case_exports.py "$CASE_OUT"
 case/.venv/bin/python case/probe_bores.py
 case/.venv/bin/python case/mirror_gate.py
 ```
 
 For a v0.5.3 first article, use the matched PCB, plate, and case files
 listed in the [print manifest](../generated/print/v0.5.3/MANIFEST.txt).
-The static job verifies those hashes. The case job builds and verifies
-the current generator output in a temporary directory.
+The static job verifies the order files' hashes. The case job compares
+a fresh build with the four orderable STEPs and probes both sets. STL
+meshes can be generated locally for slicers.
 
 ## Status
 
-(Entries are newest-first. Each older entry keeps the measured
-values of ITS build — those are historical, not current; the v3.6
-entry below is the current truth for every number it quotes.)
+Older entries retain the measurements for their own builds.
+
+- v0.5.3. The 3.20mm cover roofs the component recesses and lowers the
+  thumb lip to 5.20mm. The 14.0mm USB-C channel has a 1.25mm sill and
+  a liner tied to the tub. The power switch has a separate actuator
+  opening, and the TRRS bore blends into the side wall. See the
+  [v0.5.3 fit record](../audit.md#v053-fabrication-verification).
 
 - v4.2 (2026-10-24, review-triage + strength round): **PETG at 100%
   infill is a supported self-print material** (user decision): strength

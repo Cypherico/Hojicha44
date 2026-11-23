@@ -9,7 +9,7 @@ ERC: 0 errors + 5 documented spare warnings/half (check_erc_report gate)
 DRC: 0 non-waived (exact W1 set of 47/half asserted); unconnected NOT waived; PTH/NPTH-in-courtyard = error
 reports: ERC on the exported schematic; DRC on the design-frame reflection of the exported y-negated board (same physical geometry, same project rules) at cut time
 
-[Left] 16 files
+[Left] 17 files
   b06925d53e50d6c79dd4d186130cc11ee9891394d5f27bc9a43f4312714de86f  Hojicha44-Left-B_Cu.gbl
   da35bfebe94541f7a77ef23b669fc886c06ec94253ff90052f17e7a7d7df56da  Hojicha44-Left-B_Mask.gbs
   fdbd5ff069e31bc084f7d4376f3e719bedeb5c0ce5f6181f11905554682f3fc6  Hojicha44-Left-B_Paste.gbp
@@ -19,14 +19,15 @@ reports: ERC on the exported schematic; DRC on the design-frame reflection of th
   74aefb044fe555a8ac2d95802a03c95f819afd5033162813c7062528996384dc  Hojicha44-Left-F_Mask.gts
   ed974285d219a2385daf9a06e4871d428215fd7702b6fbce3176ad3639fcb280  Hojicha44-Left-F_Paste.gtp
   cead4d5f55f897fa4c9361a384b4cbb6c4ba9c01958241015dd5ce90aff17ead  Hojicha44-Left-F_Silkscreen.gto
+  4f07674bcf81b69b8c2763ccfcc682cfeb491b96f17778c172fd5665b87e201b  Hojicha44-Left-NPTH.drl
+  ebae4c17b39b4ebad89ca9fba4a952f9c014131f05486ed2ab34297d91b5205d  Hojicha44-Left-PTH.drl
   e2cba6def4b382872d77354c07b552342faf3f128756913c05507ba6f811efd7  Hojicha44-Left-drc.rpt
   7166afdf47b66bdc5d9da18ed57ed33d4e632b8267d791f5cd2e9e04b92eabba  Hojicha44-Left-erc.rpt
   4cc15e5616d71ec457af1501c4dd8a1eb7b1727bbc45878215b54bed6b7f373a  Hojicha44-Left-job.gbrjob
-  b56ed54fdbc5e030a8f67930866c74d327ff8fe1c9e3820a0c83fea32e0b7253  Hojicha44-Left.drl
   9688cbb777f01aab07dd5c84bbbdcb70f015293df58db00cd430406d13f9d4c8  bom.csv
   f38ff6ef76fceba4d79be77386aa8f2a39752f70ff0617fb1fdf534e5b2eace5  pos-smt.csv
   15fb8a64d829063001195a315cb11afca80e0f6b16d05d432aeb57ed721da60a  pos.csv
-[Right] 16 files
+[Right] 17 files
   7318cc9410f9d0f69879c15d2ebf1e477a0a6e951059c71336a040561fe07005  Hojicha44-Right-B_Cu.gbl
   42e935566a0be50b0569c0de015315183e553b05ae232eaeb255d01696ea8534  Hojicha44-Right-B_Mask.gbs
   ba05dbf4f2aa7780c4ac561da3e231c3c6e1b6d1eaed7c04318b5de9e0d93a51  Hojicha44-Right-B_Paste.gbp
@@ -36,10 +37,11 @@ reports: ERC on the exported schematic; DRC on the design-frame reflection of th
   3b1d3b25c1d9c6b023e1582d5afb923f9bc30aa0c8c05e623730d771c307b89e  Hojicha44-Right-F_Mask.gts
   c0293a99038342b2280654f8f24a2abe6d24d2e11366052071919a7a205a48e3  Hojicha44-Right-F_Paste.gtp
   884acd345e00345058d9bff17b7f17c62a7474e990a0a16acc908948d8325351  Hojicha44-Right-F_Silkscreen.gto
+  ff877e8aeded708ff21e3094d59938cd7fc571c6644b2c977db727b80566794f  Hojicha44-Right-NPTH.drl
+  440c5b9a841ad674cc316a95c60ef6fda3ceb18058cab01fb1f72191e1f7cb3d  Hojicha44-Right-PTH.drl
   2783a0a0be8fd4684edf1b312a12bb1c904a765ab3e967ef384d5a29495b063c  Hojicha44-Right-drc.rpt
   2934acbf654b80ff9eb3a3df333e217d03d83d98171b0e28512da34d753a2366  Hojicha44-Right-erc.rpt
   e3a3d48d457a96daa48ad717094e5304ef1c81e685a90b11140996a551dfaa36  Hojicha44-Right-job.gbrjob
-  aaa105c6bc20a0bee6196d193cd37461afbdf7cc1ac76d3a7e200ee2c7a534f6  Hojicha44-Right.drl
   f34d2926ee1ca8182e73e1b9c0db0ae868afbba863eeb9085049fabec0965e16  bom.csv
   aa7759cd8d7d3be0341d354de3f6e74dcf800676e110c2efb65d2bd5ec88db59  pos-smt.csv
   acb1b2282fc823fc567fafcf074534c11fcbda1e04d105bf9e5c6f16b56c9e7a  pos.csv

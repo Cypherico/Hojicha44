@@ -6,7 +6,7 @@ A low-profile wireless split keyboard with 44 keys, two knobs, and a gasket-moun
 
 Set each half where your hands naturally land. The staggered columns follow your fingers, and four keys along each thumb’s arc put everyday controls within reach. Turn either knob for volume, scrolling, or track control, depending on the active layer. Push either one to mute.
 
-[Download the v0.5.2 build files](https://github.com/Cypherico/Hojicha44/releases/tag/v0.5.2) · [See the keymap](spec/keymap.md) · [Explore the assembly](generated/renders/v0.5.1/bright/exploded.png)
+[Find the v0.5.3 build files](pcb/MANUFACTURING.md) · [See the keymap](spec/keymap.md) · [Explore the assembly](generated/renders/v0.5.1/bright/exploded.png)
 
 ## What’s inside
 
@@ -17,7 +17,7 @@ Set each half where your hands naturally land. The staggered columns follow your
 
 ## Build one
 
-**v0.5.2 is ready for a first-article build.** The download includes both PCBs’ fabrication files, plate drawings, case models, a parts list, and matching left and right firmware for all four keymap variants. Build one pair and check the real parts before ordering a batch. The images show an earlier CAD revision.
+**v0.5.3 is the engineering sample.** Use the matching PCB, plate and case files from this tree. The published v0.5.2 case can obstruct larger USB-C plugs at the low end of the socket stack. Build one pair and work through the first-article checks before ordering a batch. The images show an earlier CAD revision.
 
 [Parts list](spec/bom.md) · [Fabrication guide](pcb/MANUFACTURING.md) · [First-article checklist](spec/first-article.md)
 

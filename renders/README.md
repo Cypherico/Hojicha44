@@ -1,5 +1,9 @@
 # Hojicha44 renders (Phase 10)
 
+Keep selected README images in Git. For future published sets, attach the
+full-resolution images as release assets so they stay available without
+adding their full size to each clone.
+
 ## Bright studio set, v0.5.2
 
 The [bright set](../generated/renders/v0.5.2/bright/) includes the hero,

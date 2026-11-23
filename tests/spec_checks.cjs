@@ -275,8 +275,7 @@ try {
   }
 }
 
-// 6. Print-order manifest inventory and hashes. STEP files are tracked.
-// STL files are optional on disk, but any local STL must match its entry.
+// 6. Print-order manifest inventory and hashes for tracked fabrication files.
 try {
   const crypto = require("crypto");
   const { version } = yaml.load(fs.readFileSync(path.join(REPO, "spec/electronics.yaml"), "utf8"));
@@ -288,10 +287,7 @@ try {
     `plate/Hojicha44-${half}-plate.dxf`,
     `plate/Hojicha44-${half}-plate.svg`,
     `plate/Hojicha44-${half}-lands.json`,
-    ...["tub", "cover"].flatMap((part) => [
-      `case/out/Hojicha44-${half}-${part}.step`,
-      `case/out/Hojicha44-${half}-${part}.stl`,
-    ]),
+    ...["tub", "cover"].map((part) => `case/out/Hojicha44-${half}-${part}.step`),
   ]));
   for (const line of txt.split("\n")) {
     if (!line.trim() || line.startsWith("#")) continue;
@@ -314,8 +310,7 @@ try {
     }
     const p = path.join(REPO, f);
     if (!fs.existsSync(p)) {
-      if (!f.endsWith(".stl"))
-        problems.push(`${f} listed in manifest but missing`);
+      problems.push(`${f} listed in manifest but missing`);
       continue;
     }
     if (sha(p) !== h) problems.push(`${f} drifted from ${mpath}`);
@@ -325,7 +320,7 @@ try {
   if (problems.length)
     fail("print-manifest", problems.slice(0, 4).join("; "));
   else ok(`print-manifest (${verifiedPlate} tracked plate files + ` +
-    `${verifiedCase} local case solids verified against the order record)`);
+    `${verifiedCase} tracked case solids verified against the order record)`);
 } catch (e) {
   fail("print-manifest", e.message);
 }

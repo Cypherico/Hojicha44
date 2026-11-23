@@ -1,6 +1,6 @@
-# Part order list (v0.5.2) — with live-verified SKUs
+# Part order list (v0.5.3)
 
-> Use v0.5.2 for the first article and qualify the assembly before a batch. [Order guide](MANUFACTURING.md)
+> Use v0.5.3 for the first article and qualify the assembly before a batch. [Order guide](MANUFACTURING.md)
 
 Prices/stock verified 2026-10-19 against vendor pages — they WILL drift;
 re-check at cart time. PCB fab choices are NOT here: see
@@ -28,15 +28,15 @@ re-check at cart time. PCB fab choices are NOT here: see
 | ☐ | 2 | JST **S2B-PH-K-S** (DigiKey) | $0.12 | side-entry battery header |
 | ☐ | 2 | JST **PHR-2** housing | $0.10 | |
 | ☐ | 1 | JST **SPH-002T-P0.5S** contacts, strip of 100 | $4.09 | 4 needed; strip = cheapest entry + spares |
-| ☐ | 2 | XKB **PJ-320A** (LCSC **C2884926**, MOQ 5) | $0.75 | footprint is PJ-320A-specific — don't substitute PJ-3xx variants |
+| ☐ | 2 if needed | XKB **PJ-320A** (LCSC **C2884926**, MOQ 5) | $0.75 | Optional debug part. Leave it unpopulated for a wireless-only build. |
 | ☐ | 2 | Knob matched to the qualified encoder shaft | — | Dry-fit the knob through full rotation and push travel. The low render knob was sized for a shorter shaft and does not fit the unmodified EC11E15244G1 at the shown height. |
 
 ## D. Keyboard-specialty pass
 
 | Buy | Qty | Part | ~Price | Note |
 |---|---|---|---|---|
-| ☐ | 2 | kriscables **301230 110mAh LiPo**, PCM + JST-PH pigtail | €8.90–18.90 ea (two listings seen; re-check at checkout) | Qualify actual maximum pack dimensions and charge rating. Meter pigtail polarity against the carrier before first plug-in. |
-| ☐ | 2 | **Polyfuse (PPTC), 0.5–1A hold, ≥16V** (axial/radial) | ~$1–2 | series with pack+ (1/half; the 10-half pilot buys 20) — wired, NOT on the PCB; research §2b/2d |
+| Hold | 2 | Protected **301230 LiPo** with JST-PH pigtail | per quote | The kriscables 110mAh listing is a candidate. Require manufacturer confirmation of the PCM, permitted charge current and finished pack dimensions before connecting a cell. |
+| Hold | 2 | Series harness PPTC | per quote | Select the exact part and qualify it in the insulated pack-positive harness. Pack protection and charge-current qualification are separate requirements. |
 | ☐ | 5 | Kailh **PG1350 Choc v1** switches (Typeractive, $5.50/10) | $27.50 | 44 needed; pick feel family; any PG1350 fits the hotswap socket |
 | ☐ | 44 | **Kailh Choc v1 hotswap SOCKETS** (socketed, bottom side) | ~$1–2 ea | **not in the released bom.csv** — the release BOM only lists parts with an MPN, and a footprint-only socket has none, so this line is the ONLY place the 44 sockets get ordered. Sockets solder on B.Cu under each switch; the diode sits beside its switch, not under it. Verify the variant matches the vendored `SW_Hotswap_Kailh_Choc_V1_1.00u` footprint (the spec fixes the footprint, not the SKU) |
 | ☐ | 1 | 4-pole TRRS cable, if retained for debug | — | Qualify the shaft reach and boot on each end against the revised jack and bore before ordering. |
@@ -47,8 +47,9 @@ re-check at cart time. PCB fab choices are NOT here: see
 
 ## E. Case-shop pass
 
-> **Send exactly the files hashed in `generated/print/v0.5.2/MANIFEST.txt`**
-> (sha256, both shops: plate DXF/SVG for the laser, case STEP/STL for MJF).
+> Use the [v0.5.3 print manifest](../generated/print/v0.5.3/MANIFEST.txt)
+> to identify the plate DXFs and case STEPs for the shops. The SVGs are
+> previews. The blind plate reliefs need a separate machining operation.
 > If any generator constant changed, regenerate everything and re-record
 > the manifest in the same commit — never order from a stale hash.
 
@@ -56,16 +57,16 @@ re-check at cart time. PCB fab choices are NOT here: see
 |---|---|---|---|---|
 | ☐ | — | Very soft PORON, nominal design targets 3.0mm bottom and 1.5mm top | per quote | Confirm series, available density, sheet thickness tolerance and adhesive backing. Check compression on an assembled coupon. Cut eight 7×4mm pads per thickness per half. |
 | ☐ | 2 | **1.2mm** plate from the Left and Right DXFs | — | Through-cut OUTLINE and CUTOUT. Machine 22 nominal 0.55mm underside pockets from RELIEF. PORON is a punch template. Approve the fabrication process on a coupon that leaves ≥0.60mm of plate and ≥0.15mm seated clearance above a 1.40mm diode. At nominal thickness and gap the allowable relief is 0.55–0.60mm. |
-| ☐ | — | Tub and cover in **MJF PA12** | per quote | The v0.5.2 STEP volumes are approximately 57.2 cm³ per tub and 15.2 cm³ per cover. Quote the matching STEP files. PETG is an option for a first fit print. |
+| ☐ | — | Tub and cover in **MJF PA12** | per quote | The v0.5.3 STEP volumes are approximately 57.2 cm³ per tub and 23.4 cm³ per cover. PETG is an option for a first fit print. |
 | ☐ | 1 roll | Kapton/polyimide tape ≥10mm | $2–5 | cell sandwich + nano underside |
 | ☐ | 1 | SAC305 no-clean 0.5mm solder (e.g. SRA) + **NC-559-class flux pen** | ~$25 + ~$10 | ENIG pads, hand work |
 
 ## PCB order note (must be pasted into the fab order)
 
-Use tab routing for the concave outline. KiCad measured minimum
-copper-to-profile distances of **0.5821mm Left and 0.3301mm Right** on
-v0.5.1. The closest right trace belongs to the TRRS tip. Confirm the
-chosen profile tolerance and remeasure both revised boards before ordering.
+Use tab routing for the concave outline. On v0.5.3 the nearest track
+copper is **0.666mm Left and 0.582mm Right** from the nominal routed
+profile. Confirm the chosen profile tolerance and both drill layers
+before approving the CAM files.
 
 ```
 CONCAVE OUTLINE — TAB-ROUTE ONLY, NO V-CUT / V-SCORE

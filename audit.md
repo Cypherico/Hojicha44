@@ -2,10 +2,28 @@
 
 **21–22 November 2026** · Reviewed the working tree at `9c192e8`, PCB release **v0.5.1** from `3d016fc`, and the checked-in case STEP files from the **v0.5.0 print manifest**. Dimensions are in mm. XY coordinates use the plate/Excellon frame and z=0 is the nominal carrier PCB top. The findings describe the reviewed baseline. Sections 6 and 7 record the edits and their verification.
 
+## v0.5.3 fabrication verification
+
+The v0.5.3 PCB, plate and case are a matched engineering sample. Follow
+the [order guide](pcb/MANUFACTURING.md) and
+[first-article checklist](spec/first-article.md).
+
+| Check | Result |
+|---|---|
+| Published v0.5.2 case | The exact tag STEPs show **53.385 mm³** of tub interference per half across the USB-C plug sweep. The published v0.5.2 case is superseded for sample orders. |
+| v0.5.3 case exports | The recorded and freshly generated STEP data match for all four solids. The recorded set clears the modeled 12.35 × 6.50 mm USB-C overmold, Ø9.50 mm TRRS boot, and JST header and service gauge. The case mirror differences are 0.0094 mm for the tubs and 0.0010 mm for the covers against a 0.05 mm limit. |
+| Power-switch leads | Finished 3.25 mm leads give 1.40 mm nominal clearance and 1.00 mm after the 0.40 mm travel allowance. All three modeled 5.00 mm stock leads on each half hit the floor. |
+| PCB and drill exports | Separate PTH/NPTH files per half. The release checker verifies the 24 controller slots, four jack contact slots, two non-plated jack pegs and Choc pattern on each half. The nearest nominal track copper is 0.666 mm on Left and 0.582 mm on Right. CAM approval remains open. |
+| Plate and suspension | The tracked plate geometry matches its generator. At nominal thickness and gap, the blind diode pockets have a 0.55–0.60 mm allowable depth. Verify the machined coupon, pad grade and deflection, and magnet retention with real parts. |
+
+Battery and harness qualification, encoder tab seating and A/B contact
+loading, actual plug fit, and firmware bench results remain open.
+TRRS carries optional debug signals. The split link uses BLE.
+
 ## v0.5.2 disposition
 
-The PCB and print package is a first-article fabrication candidate. The
-sections below retain the v0.5.1 measurements for comparison.
+This section records the historical v0.5.2 audit. The sections below
+retain the v0.5.1 measurements for comparison.
 
 | Correction | v0.5.2 verification |
 |---|---|

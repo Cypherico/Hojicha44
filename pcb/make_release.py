@@ -58,6 +58,7 @@ def board_commit():
                # These tools verify or package the board. The stamp
                # identifies the source revision of the fabricated design.
                ":(exclude)pcb/generators/audit_silk.py",
+               ":(exclude)pcb/generators/check_board.py",
                "spec/electronics.yaml",
                # three more board-affecting input trees (3-review audit
                # 2026-10-21): the placement anchors, the board outline and
@@ -94,34 +95,37 @@ def choc_drill_findings(half, drill):
     return findings
 
 
-def jack_drill_findings(half, drill):
-    """Check the XKB top-side pattern against actual fabricated slots and pegs."""
-    from check_board import case_ports
+def component_drill_findings(half, drills):
+    """Check plating, PJ-320A seating and the controller socket slots."""
+    from check_board import case_ports, committed_pads
 
     x, y = case_ports()[half]["trrs"]
     facing = 1 if half == "Left" else -1
-    diameter = None
-    plating = None
-    tools, slots, pegs = {}, [], []
-    with open(drill) as file:
-        for line in map(str.strip, file):
-            if "AperFunction,NonPlated" in line:
-                plating = False
-            elif "AperFunction,Plated" in line:
-                plating = True
-            if match := re.fullmatch(r"(T\d+)C([\d.]+)", line):
-                tools[match[1]] = float(match[2]), plating
-            elif line in tools:
-                diameter, plating = tools[line]
-            elif diameter == 0.90 and plating and "G85" in line:
-                coords = re.findall(r"X([-\d.]+)Y([-\d.]+)", line)
-                if len(coords) == 2:
-                    slots.append(tuple(tuple(map(float, xy)) for xy in coords))
-            elif diameter == 1.20 and plating is False:
-                if match := re.fullmatch(r"X([-\d.]+)Y([-\d.]+)", line):
-                    pegs.append(tuple(map(float, match.groups())))
+    slots, pegs, bad = [], [], []
+    for drill in drills:
+        diameter = plating = None
+        tools = {}
+        expected = (drill.endswith("-PTH.drl") if len(drills) == 2 else None)
+        with open(drill) as file:
+            for line in map(str.strip, file):
+                if "AperFunction,NonPlated" in line:
+                    plating = False
+                elif "AperFunction,Plated" in line:
+                    plating = True
+                if match := re.fullmatch(r"(T\d+)C([\d.]+)", line):
+                    if expected is not None and plating != expected:
+                        bad.append(f"{os.path.basename(drill)}: wrong plating for {match[1]}")
+                    tools[match[1]] = float(match[2]), plating
+                elif line in tools:
+                    diameter, plating = tools[line]
+                elif diameter == 0.90 and plating and "G85" in line:
+                    coords = re.findall(r"X([-\d.]+)Y([-\d.]+)", line)
+                    if len(coords) == 2:
+                        slots.append(tuple(tuple(map(float, xy)) for xy in coords))
+                elif diameter == 1.20 and plating is False:
+                    if match := re.fullmatch(r"X([-\d.]+)Y([-\d.]+)", line):
+                        pegs.append(tuple(map(float, match.groups())))
 
-    bad = []
     for setback in (3.6, 10.6):
         point = (x - facing * setback, y)
         if not any(math.dist(point, p) <= 0.01 for p in pegs):
@@ -134,6 +138,16 @@ def jack_drill_findings(half, drill):
             for a, b in slots
         ):
             bad.append(f"PJ-320A 0.90 × 1.80 plated axial slot missing at {point}")
+    board = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
+    controller = [p for p in committed_pads(board) if p[0] == f"U_{half[0]}1"]
+    if len(controller) != 24:
+        bad.append(f"expected 24 controller pads, found {len(controller)}")
+    for _, pin, x, y, *_ in controller:
+        # KiCad's Excellon exporter reverses the board file's Y coordinate.
+        if not any(abs(a[0] - b[0]) <= 0.01 and abs(math.dist(a, b) - 0.40) <= 0.01
+                   and math.dist((x, -y), ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)) <= 0.01
+                   for a, b in slots):
+            bad.append(f"controller pin {pin}: 0.90 × 1.30 plated slot missing")
     return bad
 
 
@@ -145,7 +159,7 @@ def export_half(half, outdir):
         [KICAD_CLI, "pcb", "export", "gerbers", "-l", LAYERS,
          "-o", outdir, pcb], check=True, capture_output=True)
     subprocess.run(
-        [KICAD_CLI, "pcb", "export", "drill", "-o", outdir, pcb],
+        [KICAD_CLI, "pcb", "export", "drill", "--excellon-separate-th", "-o", outdir, pcb],
         check=True, capture_output=True)
     # KiCad 10 writes Finish: "None"; stamp the decided board finish so
     # CAM readers don't get a hole (first-article decision: ENIG). The
@@ -179,10 +193,12 @@ def export_half(half, outdir):
         w = csv.DictWriter(f, fieldnames=rows[0].keys())
         w.writeheader()
         w.writerows(smt)
-    drill = os.path.join(outdir, f"Hojicha44-{half}.drl")
-    findings = choc_drill_findings(half, drill) + jack_drill_findings(half, drill)
+    from check_board import release_drills
+
+    drills = release_drills(outdir, half)
+    findings = choc_drill_findings(half, drills[-1]) + component_drill_findings(half, drills)
     if findings:
-        sys.exit(f"release cut refused: {half} Choc drill geometry: "
+        sys.exit(f"release cut refused: {half} component drill geometry: "
                  + "; ".join(findings[:3]))
     # ERC/DRC reports are produced FRESH here, on the exact board and
     # schematic that are exported below (audit round 2026-10-21: the cut
@@ -304,14 +320,20 @@ def verify_release(reldir, with_manifest=True):
             bad.append(f"{half}: want 9 gerbers, got {len(gerbers)}")
         if not any(f.endswith(".gbrjob") for f in files):
             bad.append(f"{half}: job file missing")
-        drill = os.path.join(d, f"Hojicha44-{half}.drl")
-        if not os.path.isfile(drill):
-            bad.append(f"{half}: drill file missing")
-        elif with_manifest:
-            findings = choc_drill_findings(half, drill) + jack_drill_findings(half, drill)
-            if findings:
-                bad.append(f"{half}: {len(findings)} component drill findings "
-                           f"(first: {findings[0]})")
+        from check_board import release_drills
+
+        try:
+            drills = release_drills(d, half)
+        except ValueError as err:
+            bad.append(str(err))
+        else:
+            if len(drills) != 2:
+                bad.append(f"{half}: current release requires separate PTH and NPTH drill files")
+            if with_manifest:
+                findings = choc_drill_findings(half, drills[-1]) + component_drill_findings(half, drills)
+                if findings:
+                    bad.append(f"{half}: {len(findings)} component drill findings "
+                               f"(first: {findings[0]})")
         for f in files:
             p = os.path.join(d, f)
             if os.path.getsize(p) == 0:
@@ -416,7 +438,7 @@ def main():
             raise
     print(f"release v{ver}: {reldir}")
     print(f"  spec {ver} boards @{bhead[:12]} router {router} cli {cli[:24]}")
-    print("  CLEAN: 9 gerbers + job + drill + pos + pos-smt + bom + erc + drc per half")
+    print("  CLEAN: 9 gerbers + job + split drills + pos + pos-smt + bom + erc + drc per half")
 
 
 def cut_release(reldir, ver, bhead, tree_stamp):

@@ -14,18 +14,18 @@ jobs:
     name: Spec/gate static checks (no KiCad)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # full history: board_commit() and the release-currency gate
           # read git log -- <paths>; on a depth-1 checkout every path
           # "changes" at the tip commit and the manifest stamp fails
           fetch-depth: 0
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
         with:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: npm test
@@ -35,13 +35,13 @@ jobs:
     name: Plate geometry gates (stdlib only)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # full history: board_commit() and the release-currency gate
           # read git log -- <paths>; on a depth-1 checkout every path
           # "changes" at the tip commit and the manifest stamp fails
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       # --check runs every build gate and writes nothing (outside the
@@ -52,13 +52,13 @@ jobs:
     name: PCB board gates (stdlib only)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # full history: board_commit() and the release-currency gate
           # read git log -- <paths>; on a depth-1 checkout every path
           # "changes" at the tip commit and the manifest stamp fails
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       # run against the COMMITTED boards — same gates as `npm test`'s
@@ -71,13 +71,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           # full history: board_commit() and the release-currency gate
           # read git log -- <paths>; on a depth-1 checkout every path
           # "changes" at the tip commit and the manifest stamp fails
           fetch-depth: 0
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
           cache: pip
@@ -90,7 +90,28 @@ jobs:
       # its pad-press / single-solid / passage gates must run in CI too
       - run: python3 case/gen_cover.py
       - run: python3 case/probe_bores.py
+      - name: Check recorded fabrication STEPs
+        run: |
+          python3 case/check_case_exports.py "$CASE_OUT"
+          CASE_OUT="$GITHUB_WORKSPACE/case/out" python3 case/probe_bores.py
       # H-7 left/right mirror gate — was manual-only (MANUFACTURING);
       # the negative control (0.5mm Right translation) must still fail
       # whenever the gate is touched
       - run: python3 case/mirror_gate.py
+      - name: Check component fit on recorded fabrication STEPs
+        env:
+          CASE_OUT: ${{ github.workspace }}/case/out
+        run: |
+          jst="$RUNNER_TEMP/jst-ph.step"
+          curl --fail --location --retry 3 --output "$jst" \
+            'https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/10.0.6/Connector_JST.3dshapes/JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step'
+          printf '%s  %s\n' 5343f72b9fe095ba999c44c2d42c2045032162dd11066bd4d36865caf3d1fba2 "$jst" | sha256sum --check
+          python3 case/check_component_fit.py "$jst" --switch-lead-mm 3.25
+          stock_log="$RUNNER_TEMP/hojicha-stock-switch.log"
+          status=0
+          python3 case/check_component_fit.py "$jst" --switch-lead-mm 5.00 > "$stock_log" || status=$?
+          cat "$stock_log"
+          test "$status" -eq 1
+          for half in Left Right; do
+            test "$(grep -Ec "^$half switch pin [123]: 0\.[0-9]*[1-9][0-9]* mm³ tub overlap, 0\.000 mm clearance$" "$stock_log")" -eq 3
+          done

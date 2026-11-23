@@ -854,6 +854,20 @@ def dxf_polylines(path):
     return out
 
 
+def release_drills(directory, half):
+    """Select one complete drill layout, retaining support for older cuts."""
+    stem = os.path.join(directory, f"Hojicha44-{half}")
+    combined = stem + ".drl"
+    pth, npth = stem + "-PTH.drl", stem + "-NPTH.drl"
+    if os.path.exists(pth) or os.path.exists(npth):
+        if os.path.exists(combined) or not all(os.path.isfile(p) for p in (pth, npth)):
+            raise ValueError(f"{half}: expected only one PTH and one NPTH drill file")
+        return pth, npth
+    if not os.path.isfile(combined):
+        raise ValueError(f"{half}: missing PCB drill files")
+    return (combined,)
+
+
 def parse_drill(path):
     """{tool_diameter: [(x, y), ...]} from a KiCad Excellon file."""
     tools, hits, cur = {}, {}, None
@@ -1105,7 +1119,10 @@ def check_frame(tag, pts, reldir=None):
     half = "Left" if tag == "L" else "Right"
     bad = []
     reldir = reldir or release_dir()
-    drill = os.path.join(reldir, half, f"Hojicha44-{half}.drl")
+    try:
+        drill = release_drills(os.path.join(reldir, half), half)[-1]
+    except ValueError as err:
+        return [str(err)]
     gerber = os.path.join(reldir, half,
                           f"Hojicha44-{half}-Edge_Cuts.gm1")
     plate = os.path.join(PLATE_DIR, f"Hojicha44-{half}-plate.dxf")
@@ -1250,8 +1267,7 @@ def frame_selftest(reldir=None):
     reldir = reldir or release_dir()
     for tag in ("L", "R"):
         half = "Left" if tag == "L" else "Right"
-        hits = parse_drill(os.path.join(
-            reldir, half, f"Hojicha44-{half}.drl"))
+        hits = parse_drill(release_drills(os.path.join(reldir, half), half)[-1])
         cutouts = dxf_polylines(os.path.join(
             PLATE_DIR, f"Hojicha44-{half}-plate.dxf"))
         t12, t10 = hits.get(3.45, []), hits.get(3.05, [])

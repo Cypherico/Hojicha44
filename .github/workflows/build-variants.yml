@@ -24,14 +24,14 @@ jobs:
     name: Compile ${{ matrix.variant }} (left/central)
     runs-on: ubuntu-latest
     container:
-      image: zmkfirmware/zmk-build-arm:stable
+      image: zmkfirmware/zmk-build-arm:stable@sha256:edb1c953438c6f720ddb79c3762f3972013b7fbbaf4fff3592fc869983e7afc5
     strategy:
       fail-fast: false
       matrix:
         variant: [mac_left, mac_right, win_left, win_right]
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
 
       - name: Select variant (the spec/keymap.md swap, done for the compiler)
         run: python3 config/gen_keymap.py --use ${{ matrix.variant }}
@@ -76,7 +76,7 @@ jobs:
             -DZMK_EXTRA_MODULES="$GITHUB_WORKSPACE"
 
       - name: Archive (${{ matrix.variant }})
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: variant-${{ matrix.variant }}-left
           path: ${{ env.build_dir }}/zephyr/zmk.uf2
