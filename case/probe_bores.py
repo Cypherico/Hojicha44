@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Bore shape audit for the current generated tub STEP files.
+"""Bore shape and mating clearance audit for the current case STEP files.
 
-Probe the exported tub STEP files in CASE_OUT (default: case/out).
-Checks the bore shape and slab sills against the current parameters.
-Component and plug mating need separate fit checks.
+CASE_OUT selects the exported tub and cover STEP files (default: case/out).
+Checks the wall shape, continuous floor, and plug envelopes throughout
+the modeled PCB travel.
 """
 import math
 import os
@@ -19,6 +19,7 @@ import gen_case as G
 import params
 
 fails = []
+VOLUME_TOL = 1e-6  # mm³, for numerical residue from CAD intersections
 
 
 def probe(tag, name, solid, o, u, v, b, t, z, want):
@@ -34,6 +35,38 @@ def probe(tag, name, solid, o, u, v, b, t, z, want):
               f"{'solid' if want else 'void'}")
 
 
+def check_plug_clearance(tag, ports, tub, cover):
+    travel = params.POWER_Z_TRAVEL
+    usb_x, usb_y = params.PORTS[tag]["usb"]
+    usb_width = params.USB_HOUSING_W
+    usb_bottom = params.USB_AXIS_MIN_Z - travel - params.USB_HOUSING_H / 2
+    usb_height = params.USB_AXIS_MAX_Z + travel + params.USB_HOUSING_H / 2 - usb_bottom
+    usb = cq.Solid.makeBox(usb_width, params.USB_HOUSING_REACH, usb_height,
+                           (usb_x - usb_width / 2, usb_y, usb_bottom))
+
+    jack = ports["trrs"]
+    x, y = params.PORTS[tag]["trrs"]
+    z = params.TRRS_JACK_AXIS_Z
+    radius = params.TRRS_BOOT_D / 2
+    reach = jack["out"] + 1.0
+    direction = (*jack["u"], 0.0)
+    lower = cq.Solid.makeCylinder(radius, reach, (x, y, z - travel), direction)
+    upper = cq.Solid.makeCylinder(radius, reach, (x, y, z + travel), direction)
+    # The span between the end circles completes the vertical sweep.
+    x_min = min(x, x + reach * direction[0])
+    span = cq.Solid.makeBox(reach, 2 * radius, 2 * travel,
+                            (x_min, y - radius, z - travel))
+    trrs = lower.fuse(upper, span)
+
+    for plug, envelope in (("USB-C", usb), ("TRRS", trrs)):
+        for part, shape in (("tub", tub), ("cover", cover)):
+            overlap = envelope.intersect(shape).Volume()
+            if overlap > VOLUME_TOL:
+                fails.append(f"{tag} {plug} plug sweep hits {part}: {overlap:.3f} mm³")
+            else:
+                print(f"  ok {tag} {plug} plug sweep clears {part}")
+
+
 for tag in ("Left", "Right"):
     print(f"{tag}:")
     board = os.path.join(G.REPO, "pcb", "kicad", f"Hojicha44-{tag}.kicad_pcb")
@@ -41,8 +74,11 @@ for tag in ("Left", "Right"):
     ring = G.resample_ring(rim, params.SKIN_STEP)
     skin = G.resample_ring(G.offset_pts(rim, params.CASE_OUTSET), params.SKIN_STEP)
     ports = G.compute_ports(tag, ring, G.outward_field(ring), skin, params)
-    step = os.path.join(G.OUT_DIR, f"Hojicha44-{tag}-tub.step")
-    solid = cq.importers.importStep(step).val()
+    solid, cover = (
+        cq.importers.importStep(os.path.join(G.OUT_DIR, f"Hojicha44-{tag}-{part}.step")).val()
+        for part in ("tub", "cover")
+    )
+    check_plug_clearance(tag, ports, solid, cover)
     for name in ("usb", "trrs", "pwrsw"):
         pr = ports[name]
         o, u, v = pr["o"], pr["u"], pr["v"]

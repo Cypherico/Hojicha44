@@ -12,8 +12,10 @@ generator output includes newer port and cover geometry.
   (STEP tracked since 2026-10-24; STL gitignored/regenerable; use
   `CASE_OUT=case/out-dev` for scratch builds).
 - `gen_cover.py` generates the cover using the tub's port, gasket and magnet positions.
-- `probe_bores.py` checks the USB-C and TRRS openings and the floor
-  beneath each port in the exported tubs. CI runs it on fresh CAD.
+- `probe_bores.py` checks the port profiles and the floor beneath them.
+  It also checks the full 12.35 × 6.50 mm USB-C overmold and Ø9.50 mm
+  TRRS boot envelopes against both case pieces across the modeled
+  socket stack and gasket travel. CI runs it on fresh STEP exports.
 - `requirements.txt` — pinned CadQuery (`case/.venv`, Python 3.12).
 
 ## Component fit
