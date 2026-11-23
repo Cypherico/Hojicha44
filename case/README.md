@@ -34,8 +34,9 @@ case/.venv/bin/python case/check_component_fit.py \
 
 The checker tests jack handedness, the USB-C and TRRS plug envelopes,
 the liner clearance from the suspended plate, the JST service envelope,
-power-switch fit and lead clearance, and the swept diode-to-tub clearance. For the finished assembly
-use `--switch-lead-mm 3.25` to model the finished assembly. Omit it to
+power-switch fit and lead clearance, the swept diode-to-tub clearance, and
+TRRS boot clearance at the routed PCB edge. Pass `--switch-lead-mm 3.25`
+to model the finished assembly. Omit it to
 model the nominal stock leads as a negative control. `CASE_OUT` selects
 an alternate STEP directory. CI checks both lead lengths against the
 orderable STEPs using the SHA-256-verified KiCad 10.0.6 JST model.
@@ -69,7 +70,8 @@ meshes can be generated locally for slicers.
 Older entries retain the measurements for their own builds.
 
 - v0.5.4. The case fits the underside diodes through the modeled gasket
-  travel. The switch plate uses through-cuts. See the
+  travel. The switch plate uses through-cuts. A routed PCB relief clears
+  the TRRS boot at the jack face. See the
   [v0.5.4 fit record](../audit.md#v054-underside-diodes).
 - v0.5.3. The 3.20mm cover roofs the component recesses and lowers the
   thumb lip to 5.20mm. The 14.0mm USB-C channel has a 1.25mm sill and

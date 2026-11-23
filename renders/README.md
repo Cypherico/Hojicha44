@@ -4,7 +4,44 @@ Keep selected README images in Git. For future published sets, attach the
 full-resolution images as release assets so they stay available without
 adding their full size to each clone.
 
-## Bright studio set, v0.5.2
+## Current v0.5.4 renders
+
+The [v0.5.4 gallery](../generated/renders/v0.5.4/README.md) indexes all studio,
+environment, play, artisan and PCB views. The presentation PNGs are
+4800 × 3000. The six KiCad PNGs are 1960 × 1400 and show the top, underside
+and populated isometric view of each board.
+
+The nice!nano USB end follows the socket orientation on both halves.
+The exploded view shows the two sets of PORON pads and the through-cut
+plate. Optional acoustic foam is a builder choice and has no release drawing.
+
+Rebuild from the repository root. Fetch the pinned keycaps with
+`bash renders/fetch_keycaps.sh`, or set `H44_KEYCAP_MESHES` to the
+`parts/` directory of an asset pack with keycap provenance. The
+default local asset cache is `generated/renders/assets/`.
+
+```sh
+case/.venv/bin/python renders/build_assets.py
+blender -b --python-exit-code 1 --python renders/scene.py -- \
+  --colourway bright --setups bright --shots hero,exploded,orbit,top \
+  --stack-colors --res 4800x3000 --samples 16
+blender -b --python-exit-code 1 --python renders/scene.py -- \
+  --colourway dark --setups dark --shots hero,orbit,top --res 4800x3000 --samples 16
+blender -b --python-exit-code 1 --python renders/scene.py -- \
+  --colourway play --setups bright --shots hero --res 4800x3000 --samples 24 \
+  --out generated/renders/v0.5.4/play
+blender -b --python-exit-code 1 --python renders/scene.py -- \
+  --colourway artisan --setups bright --shots artisan --res 4800x3000 --samples 24 \
+  --out generated/renders/v0.5.4/artisan
+blender -b --python-exit-code 1 --python renders/scene_env.py -- \
+  --shots mat --res 4800x3000 --samples 32
+python3 pcb/render.py all
+```
+
+## Historical pipeline notes — bright studio set, v0.5.2
+
+This section records the earlier v0.5.2 render set and its build commands.
+For the current v0.5.4 PCB and exploded views, use the section above.
 
 The [bright set](../generated/renders/v0.5.2/bright/) includes the hero,
 exploded, top, and two orbit views. The exploded view uses the front

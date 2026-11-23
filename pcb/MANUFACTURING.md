@@ -6,6 +6,10 @@
 > physical first-article checks before ordering a batch.
 > [First-article checklist](../spec/first-article.md) · [Audit](../audit.md)
 
+[View the v0.5.4 PCB renders](../generated/renders/v0.5.4/README.md#pcb).
+The underside views show the relocated matrix diodes. The routed relief
+behind each TRRS face is part of Edge.Cuts. Check it in the CAM preview.
+
 The exact answers for the JLCPCB Online PCB Quote, derived from the
 committed design + vendor research (2026-10; sources at the bottom).
 The live quote remains the only authority for anything price-shaped,

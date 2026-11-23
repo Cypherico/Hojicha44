@@ -60,9 +60,10 @@ batch; it never forbade coupons.
 
 ## 1. Paper fit test (before ordering the batch)
 
-- [ ] **Regenerate the fit PDFs first** — `out/fit` renders predate the
-  16 Oct boards (and the case v3.3-v3.5 port changes); rebuild prints
-  from the current tracked artifacts before any caliper check here.
+- [ ] **Check the fit PDFs against the current boards.** If the PDFs are
+  absent or predate the latest Edge.Cuts, export a 1:1 PDF per half with
+  `kicad-cli pcb export pdf --mode-single --scale 1 --layers Edge.Cuts,F.Silkscreen,F.Fab,F.Cu`
+  and provide the output PDF and input board paths.
 - [ ] **Choc cutout test coupon (PRE-ORDER, new in rev 2) — the support
   strategy hinges on this.**
   *What it is:* a **test piece** — one small offcut of the REAL plate
@@ -106,7 +107,8 @@ batch; it never forbade coupons.
   cover slice. Test the low and high module positions and the full
   measured gasket motion. If debug TRRS is populated, check both plugs.
   Measure shaft reach, boot clearance at both ends and cable bend at the
-  planned half spacing.
+  planned half spacing. Verify each routed PCB relief is behind the
+  jack face with the actual fitted jack.
 - [ ] **Power-switch aperture.** With the real switch installed, check that the
   cover seats against the tub without contacting the switch body and
   that the actuator is reachable across its full travel on both halves.

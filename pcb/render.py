@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Hojicha44 renders — the one canonical set. Pictures only.
 
-Per half, exactly three files in pcb/kicad/export/:
+Per half, exactly three files in generated/renders/v0.5.4/pcb/:
   Hojicha44-{half}-top.png       bare board, orthographic top
   Hojicha44-{half}-bottom.png    bare board, orthographic bottom
   Hojicha44-{half}-populated-iso.png  iso with everything
@@ -38,27 +38,26 @@ import urllib.request
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PCB_DIR = os.path.join(REPO, "pcb", "kicad")
-EXPORT_DIR = os.path.join(PCB_DIR, "export")
-TMP = tempfile.mkdtemp(prefix="hojicha-render-")
+EXPORT_DIR = os.environ.get(
+    "H44_PCB_RENDER_OUT", os.path.join(REPO, "generated", "renders", "v0.5.4", "pcb"))
 
 MODEL_URL = ("https://raw.githubusercontent.com/koktoh/keyswitch_model"
              "/master/choc/v1/KiCad/red.wrl")
-MODEL_PATH = os.path.join(TMP, "choc_red_v1.wrl")
 
 KICAD_CLI = (
-    __import__("shutil").which("kicad-cli")
+    shutil.which("kicad-cli")
     or "/Applications/KiCad/KiCad.app/Contents/MacOS/kicad-cli"
 )
 
 SIZE = ['--width', '1992', '--height', '1409', '--quality', 'high']
 
 
-def ensure_model():
-    if not os.path.exists(MODEL_PATH):
+def ensure_model(model_path):
+    if not os.path.exists(model_path):
         print(f'downloading {MODEL_URL}')
-        urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
-    assert os.path.getsize(MODEL_PATH) > 100000, \
-        f'switch model download failed ({MODEL_PATH})'
+        urllib.request.urlretrieve(MODEL_URL, model_path)
+    assert os.path.getsize(model_path) > 100000, \
+        f'switch model download failed ({model_path})'
 
 
 def sw_instances(pcb_path):
@@ -85,7 +84,7 @@ def sw_instances(pcb_path):
     return out
 
 
-def dummy_fp(ref, x, y, rot, n):
+def dummy_fp(ref, x, y, rot, n, model_path):
     return (
         f'(footprint "SWITCH_DUMMY" (layer "F.Cu") '
         f'(tstamp 00000000-0000-0000-0000-{n:012d})\n'
@@ -96,7 +95,7 @@ def dummy_fp(ref, x, y, rot, n):
         f'  (property "Value" "Kailh-Choc-V1-Red" (at 0 0 0) '
         f'(layer "F.Fab") '
         f'(tstamp 20000000-0000-0000-0000-{n:012d}))\n'
-        f'  (model "{MODEL_PATH}" (at (xyz 0 0 0)) '
+        f'  (model "{model_path}" (at (xyz 0 0 0)) '
         f'(scale (xyz 1 1 1)) (rotate (xyz 0 0 0)))\n'
         f')\n'
     )
@@ -111,48 +110,43 @@ def run(cmd, **kw):
 
 
 def main():
-    ensure_model()
-    os.makedirs(EXPORT_DIR, exist_ok=True)  # gitignored; kicad-cli -o fails
-    # if the parent dir is absent
+    os.makedirs(EXPORT_DIR, exist_ok=True)
     what = sys.argv[1] if len(sys.argv) > 1 else 'all'
     halves = (sys.argv[2],) if len(sys.argv) > 2 else ('Left', 'Right')
+    if what in ("all", "bare"):
+        for half in halves:
+            src = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
+            for side in ("top", "bottom"):
+                out = os.path.join(EXPORT_DIR, f"Hojicha44-{half}-{side}.png")
+                run([KICAD_CLI, "pcb", "render", "--side", side, *SIZE,
+                     "-o", out, src], cwd=REPO)
+                print(f"{half} {side}: {out}")
+    if what in ("all", "iso"):
+        with tempfile.TemporaryDirectory(prefix="hojicha-render-") as tmp_dir:
+            render_populated(halves, tmp_dir)
+
+
+def render_populated(halves, tmp_dir):
+    model_path = os.path.join(tmp_dir, "choc_red_v1.wrl")
+    ensure_model(model_path)
+    # Keep the project-relative STEP and VRML models beside the temporary board.
+    shutil.copytree(os.path.join(PCB_DIR, "Hojicha44.3dshapes"),
+                    os.path.join(tmp_dir, "Hojicha44.3dshapes"))
     for half in halves:
-        src = os.path.join(PCB_DIR, f'Hojicha44-{half}.kicad_pcb')
-        if what in ('all', 'bare'):
-            # bare orthos straight off the repo board
-            for side, flip in (('top', ['-f', 'vertical']),
-                               ('bottom', ['-f', 'vertical'])):
-                out = os.path.join(EXPORT_DIR, f'Hojicha44-{half}-{side}.png')
-                run([KICAD_CLI, 'pcb', 'render', '--side', side]
-                    + SIZE + ['-o', out, src], cwd=REPO)
-                if shutil.which("sips"):
-                    run(['sips'] + flip + [out], cwd=REPO)
-                else:
-                    print(f'warning: sips not found, leaving {out} unflipped')
-                print(f'{half} bare {side}: {out}')
-        if what in ('all', 'iso'):
-            # populated iso off a throwaway copy (repo untouched).
-            # ${KIPRJMOD} resolves to the BOARD's directory, so a /tmp copy
-            # would lose every project-relative model (encoder, sockets,
-            # TRRS, nano/switch envelopes) — mirror the 3dshapes dir next
-            # to it. Without this the iso silently renders with bodies
-            # missing.
-            shutil.copytree(os.path.join(PCB_DIR, 'Hojicha44.3dshapes'),
-                            os.path.join(TMP, 'Hojicha44.3dshapes'),
-                            dirs_exist_ok=True)
-            tmp = os.path.join(TMP, f'Hojicha44-{half}-populated.kicad_pcb')
-            s = open(src).read().rstrip()
-            assert s.endswith(')')
-            inst = sw_instances(src)
-            dummies = ''.join(dummy_fp(ref, x, y, rot, 1000 + k)
-                              for k, (ref, x, y, rot) in enumerate(inst))
-            open(tmp, 'w').write(s[:-1] + '\n' + dummies + ')\n')
-            out = os.path.join(EXPORT_DIR,
-                               f'Hojicha44-{half}-populated-iso.png')
-            run([KICAD_CLI, 'pcb', 'render', '--side', 'top']
-                + SIZE + ['--perspective', '--rotate', '-50,0,205',
-                          '--floor', '-o', out, tmp], cwd=REPO)
-            print(f'{half} populated iso: {out} ({len(inst)} switches)')
+        src = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
+        tmp = os.path.join(tmp_dir, f'Hojicha44-{half}-populated.kicad_pcb')
+        s = open(src).read().rstrip()
+        assert s.endswith(')')
+        inst = sw_instances(src)
+        dummies = ''.join(dummy_fp(ref, x, y, rot, 1000 + k, model_path)
+                          for k, (ref, x, y, rot) in enumerate(inst))
+        open(tmp, 'w').write(s[:-1] + '\n' + dummies + ')\n')
+        out = os.path.join(EXPORT_DIR,
+                           f'Hojicha44-{half}-populated-iso.png')
+        run([KICAD_CLI, 'pcb', 'render', '--side', 'top']
+            + SIZE + ['--perspective', '--rotate', '-50,0,205',
+                      '--floor', '-o', out, tmp], cwd=REPO)
+        print(f'{half} populated iso: {out} ({len(inst)} switches)')
 
 
 if __name__ == '__main__':

@@ -9,9 +9,9 @@ committed).
 Outputs:
   assets/board/Hojicha44-{L,R}.glb     PCB assembly, named nodes (kicad-cli
                                        STEP export -> OCCT CAF -> glTF)
-  assets/plate/Hojicha44-{L,R}.glb     plate solid extruded from the
-                                       tracked DXF (OUTLINE + CUTOUT through,
-                                       RELIEF 0.55 pockets in the underside)
+  assets/plate/Hojicha44-{L,R}.glb     v0.5.4 plate solid extruded from the
+                                       tracked DXF (OUTLINE + CUTOUT through;
+                                       underside diode reliefs removed)
   assets/case/Hojicha44-{half}-{piece}.glb  tessellated from the case STEPs
   assets/parts/{saddle,saddle_tilted,saddle_homing,normal_tilted,thumb}.glb
                                        KLP Lame keycaps (pinned download)
@@ -182,9 +182,8 @@ def step_to_named_glb(step_path, glb_path, tess_tol=0.12, weld=False):
 # ------------------------------------------------------------- plate -> glb
 
 def plate_glb(half, glb_path):
-    """Extrude the tracked DXF: OUTLINE 1.2mm, CUTOUT through,
-    RELIEF pockets 0.55 deep from the underside (z=0..0.55), PORON ignored
-    (it is a punch template, not a cut)."""
+    """Extrude the v0.5.4 DXF: OUTLINE 1.2mm and CUTOUT through.
+    The diode relief pockets were removed; PORON is a punch template."""
     import ezdxf
     import cadquery as cq
     import trimesh
@@ -212,15 +211,14 @@ def plate_glb(half, glb_path):
         elif e.dxf.layer == "RELIEF":
             reliefs.append(pts)
     assert outline, "no OUTLINE polyline"
+    assert not reliefs, (
+        f"{half} v0.5.4 plate DXF must not contain diode RELIEF pockets")
     plate = (cq.Workplane("XY")
              .polyline(outline).close()
              .extrude(1.2))
     for pts in cutouts:
         plate = plate.cut(cq.Workplane("XY").polyline(pts).close()
                           .extrude(1.3).translate((0, 0, -0.05)))
-    for pts in reliefs:
-        plate = plate.cut(cq.Workplane("XY").polyline(pts).close()
-                          .extrude(0.55))
     # The DXF is authored in the design frame (y up) — the same frame the
     # board STEP export and the case STLs use — so export the plate exactly
     # as written, with no flip.
@@ -777,7 +775,11 @@ def main():
               "Thumb"):
         dst = os.path.join(OUT, "parts", f"klp_{v.lower()}.glb")
         if cached_parts:
-            copy2(os.path.join(cached_parts, os.path.basename(dst)), dst)
+            src = os.path.join(cached_parts, os.path.basename(dst))
+            if os.path.realpath(src) != os.path.realpath(dst):
+                copy2(src, dst)
+            elif not os.path.isfile(src):
+                sys.exit(f"missing cached keycap mesh {src}")
             continue
         src = os.path.join(KEYCAP_DIR, f"klp_{v}.step")
         if not os.path.exists(src):

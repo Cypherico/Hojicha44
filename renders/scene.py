@@ -46,10 +46,12 @@ import os
 import re
 import argparse
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ASSETS = os.environ.get("H44_RENDER_ASSETS",
                         os.path.join(REPO, "generated", "renders", "assets"))
-OUTROOT = os.path.join(REPO, "generated", "renders", "v0.5.1")
+OUTROOT = os.path.join(REPO, "generated", "renders", "v0.5.4")
 
 SCALE = 0.001            # design-frame mm -> Blender meters
 PCB_TOP_IN_STEP = 1.60   # substrate top inside the kicad-cli STEP
@@ -60,7 +62,7 @@ CAP_STEM_Z = 1.5         # cap stem tip above the PCB top (inside switch)
 EXPLODE = {"knob": 117.0, "caps": 102.0, "cover": 77.0,
            "swbodies": 53.0, "gaskets": 42.0, "plate": 42.0,
            "encoder": 14.0, "jack": 12.0,
-           "foam": -25.0, "gaskets_b": -25.0, "tub": -50.0}
+           "gaskets_b": -25.0, "tub": -50.0}
 # nice!nano courtyard in the FOOTPRINT's local (file) frame, from the
 # embedded Socket_Strips_2x12_P2.54mm_NiceNano footprint (KiCad 10)
 NANO_COURT = (-17.07, -29.94, 2.85, 2.60)   # x0, y0, x1, y1
@@ -581,7 +583,7 @@ def build_keyboard(args):
     the desk-environment scene (scene_env.py)."""
     if REPO not in sys.path:
         sys.path.append(REPO)
-    from case.params import KNOB_COVER_GAP, PWRSW_ACTUATOR_REST
+    from case.params import KNOB_COVER_GAP, PORTS, PWRSW_ACTUATOR_REST
 
     # Share the four source meshes across all 44 switch positions.
     choc_glb_path = os.path.join(ASSETS, "parts", "choc.glb")
@@ -799,73 +801,8 @@ def build_keyboard(args):
                 assign([o], switch_materials[tag])
                 parts[h].setdefault("swbodies", []).append(o)
 
-        # ---- poron gaskets on every tab, compressed to the real
-        # assembly heights (bottom 3.0 -> 2.55, top 1.5 -> 1.28). They
-        # stick to the plate tabs, so the explode lifts them with the
-        # plate; the pad centre is the tab root + 2.0mm outward (the
-        # same rule plate/gen_plate.py uses for the PORON DXF layer).
-        # rounds 11-13: the foam layers are one soft SLAB each, and
-        # round 13 is decisive about the shape: "the keyboard is not
-        # rectangular, your layers of foam peak out like giant floating
-        # rectangles". A squashed DUPLICATE OF THE TUB MESH carries the
-        # exact case outline (rounded corners and all) — the tub's
-        # local-y axis maps to world -z under the -90deg X import
-        # rotation, so scaling local-y squashes the world height from
-        # the real 9.55 mm to the foam thickness, then the slab is
-        # recentred at the true compressed z.
-        def case_slab(name, thickness, z_center):
-            # round 18: the foam follows the case's EXACT silhouette —
-            # extracted from the tub's BOTTOM CAP (the one surface that
-            # is pure footprint: no magnet pockets, no ridges; local y
-            # = -design z, so the bottom is local ymax) and extruded
-            # into a smooth sheet, then inset 5% so it sits clearly
-            # inside the walls. Rounds 16-17 (bbox rectangle, then
-            # rounded-rect) both poked past the case's real curves.
-            import bmesh as _bm
-            tub = next(o for o in parts[h]["tub"] if o.type == "MESH")
-            bm = _bm.new()
-            bm.from_mesh(tub.data)
-            ymax = max(v.co.y for v in bm.verts)
-            bot = [f for f in bm.faces
-                   if all(v.co.y > ymax - 0.02 for v in f.verts)]
-            others = [f for f in bm.faces if f not in bot]
-            _bm.ops.delete(bm, geom=others, context="FACES")
-            for e in list(bm.edges):
-                if not e.link_faces:
-                    bm.edges.remove(e)
-            for v in list(bm.verts):
-                if not v.link_faces:
-                    bm.verts.remove(v)
-            ret = _bm.ops.extrude_face_region(bm, geom=bm.faces[:])
-            for g in ret["geom"]:
-                if isinstance(g, _bm.types.BMVert):
-                    g.co.y -= thickness   # local -y = design +z = up
-            me = bpy.data.meshes.new(name)
-            bm.to_mesh(me)
-            bm.free()
-            o = bpy.data.objects.new(name, me)
-            o.location = tub.location.copy()
-            o.rotation_euler = tub.rotation_euler.copy()
-            o.scale = tub.scale.copy()
-            bpy.context.collection.objects.link(o)
-            bpy.context.view_layer.update()
-            # inset 5% in plan (local x/z are the plan axes under the
-            # -90deg X import rotation) about the slab's own centre
-            (b0, b1) = bbox_mm([o])
-            cxy = ((b0[0] + b1[0]) / 2, (b0[1] + b1[1]) / 2)
-            o.scale = (o.scale[0] * 0.95, o.scale[1], o.scale[2] * 0.95)
-            bpy.context.view_layer.update()
-            (n0, n1) = bbox_mm([o])
-            o.location.x += cxy[0] - (n0[0] + n1[0]) / 2
-            o.location.y += cxy[1] - (n0[1] + n1[1]) / 2
-            o.location.z += (z_center * SCALE
-                             - (n0[2] + n1[2]) / 2)
-            bpy.context.view_layer.update()
-            assign([o], m_poron)
-            return o
-
-        parts[h].setdefault("foam", []).append(
-            case_slab(f"foam_b_{h}", 2.55, -0.275))
+        # The specified foam consists of individual pads above and below
+        # the gasket tabs. Optional acoustic fill has no released shape.
         # ---- TOP GASKETS: real PORON pads, not a slab (round 24c
         # review: "where are gaskets? should be small poron pads on the
         # plate tabs"). plate/<half>-lands.json carries the eight tab
@@ -898,8 +835,6 @@ def build_keyboard(args):
                 parts[h].setdefault(grp, []).append(o)
         print(f"[scene] {h}: {len(lands.get('tabs', []))} tab pads per "
               f"face (poron)", flush=True)
-        print(f"[scene] {half}: case-outline foam+gasket slabs at the "
-              f"compressed heights", flush=True)
 
         # ---- nice!nano v2 stand-in (the VRML model kicad-cli skips),
         # dimensioned from the committed footprint courtyard
@@ -928,12 +863,25 @@ def build_keyboard(args):
                       f"y {ny0:.2f}..{ny1:.2f} inside MCU window", flush=True)
             _, nano_roots, nano_meshes = import_glb(
                 os.path.join(ASSETS, "parts", "nano.glb"), f"nano_{h}")
+            # The model's USB end is +Y. Match that axis to the socket
+            # row from the antenna end to pin 1 at the USB end.
+            antenna_x, antenna_y = fp_to_design(
+                p["x_file"], p["y_file"], p["rot"], 0, -27.94)
+            angle = math.atan2(p["y"] - antenna_y, p["x"] - antenna_x) - math.pi / 2
             for obj in nano_roots:
+                obj.rotation_euler.z += angle
                 obj.location.x += ncx * SCALE
                 obj.location.y += ncy * SCALE
             for obj in nano_meshes:
                 part = obj.name.split(".")[0].removeprefix("nano_")
                 assign([obj], nano_materials[part])
+            shell = next(obj for obj in nano_meshes
+                         if obj.name.split(".")[0] == "nano_shell")
+            (sx0, _, _), (sx1, sy1, _) = bbox_mm([shell])
+            usb_x, usb_y = PORTS[half]["usb"]
+            if (abs((sx0 + sx1) / (2 * SCALE) - usb_x) > 0.1
+                    or abs(sy1 / SCALE - usb_y) > 0.75):
+                raise RuntimeError(f"{half} nice!nano USB shell misses the case channel")
             parts[h]["nano"] = nano_meshes
 
         enc = next((o for o in parts[h]["board"] if o.name == f"ENC_{h}1"), None)
@@ -1517,7 +1465,6 @@ def main():
         os.makedirs(sdir, exist_ok=True)
         if "exploded" in shots:
             stack_materials = {
-                "foam": porous_foam("open_cell_foam", (0.41, 0.34, 0.26)),
                 "gaskets": porous_foam("open_cell_gaskets", (0.31, 0.25, 0.18)),
                 "tub": pbr("stack_tub", (0.12, 0.12, 0.12), rough=0.53),
                 "cover": pbr("stack_cover", (0.15, 0.15, 0.15), rough=0.45),
@@ -1528,7 +1475,7 @@ def main():
             changes = []
             for groups in parts.values():
                 for group, mat in stack_materials.items():
-                    if not args.stack_colors and group not in ("foam", "gaskets", "gaskets_b"):
+                    if not args.stack_colors and group not in ("gaskets", "gaskets_b"):
                         continue
                     for obj in groups.get(group, []):
                         changes.append((obj, list(obj.data.materials)))

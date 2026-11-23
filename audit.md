@@ -2,6 +2,17 @@
 
 **21–22 November 2026** · Reviewed the working tree at `9c192e8`, PCB release **v0.5.1** from `3d016fc`, and the checked-in case STEP files from the **v0.5.0 print manifest**. Dimensions are in mm. XY coordinates use the plate/Excellon frame and z=0 is the nominal carrier PCB top. The findings describe the reviewed baseline. Sections 6 and 7 record the edits and their verification.
 
+## v0.5.4 TRRS plug clearance
+
+The PCB extended into the 9.50 mm boot gauge by 11.326 mm³ per half.
+The updated routed profiles recess the board edge 0.50 mm behind each
+jack face across the plug path. The boot gauge now clears the PCB and
+plate. It also clears the tub and cover at nominal height and both limits
+of the modeled ±0.40 mm gasket travel. The plate DXF and case STEP files
+match their generators. Both KiCad boards pass the documented DRC gate
+and the PCB release includes the revised Edge.Cuts. Test actual plug
+seating on the first article.
+
 ## v0.5.4 underside diodes
 
 All 22 SOD-123 diodes per half now mount beside the Choc sockets on the
@@ -187,7 +198,7 @@ The gasket seats have material under and above each pad. Nine points per face sp
 ## 7. Verification record
 
 - `npm test`, `python3 pcb/make_release.py --check`, `python3 pcb/generators/check_board.py --self-test` and `python3 plate/gen_plate.py --check` passed. The YAML specs and firmware manifests parsed successfully, and the changed files passed `git diff --check`.
-- Fresh KiCad and independent netlist comparison results are summarized in §2. Local reports and scratch checks are under `out/audit/`.
+- Fresh KiCad and independent netlist comparison results are summarized in §2.
 - The component checker reports the mirrored jack and both JST intersections with either lead length. At 5.00 the stock switch interferes at all six pins. At 3.65 the leads have zero intersection and each clears the tub by 1.000. The hardware verdict stays open for the connectors.
 - Both tubs and covers regenerated in the scratch directory using the pinned CadQuery 2.5.2. The exported STEP file bytes differed from the checked-in files. Each solid matched its checked-in counterpart's bounding box, face and vertex counts, and volume to six decimal places. The revised bore probes passed on the checked-in and regenerated tub pairs.
 - Bidirectional mirror checks on both STEP sets gave a maximum sampled vertex-to-opposite-surface distance of 0.0094 for the tubs and 0.0010 for the covers, within the 0.05 limit. A deliberate 0.50 offset was detected in both pairs. The component interference numbers use the checked-in plate and case at nominal seating.
