@@ -118,6 +118,10 @@ POCKET_TOP = TOP_LIP_Z     # open to the top (cover presses upper foam)
 USB_MOUTH_W = 14.0
 USB_MOUTH_Z0 = 1.25
 USB_MOUTH_R = 1.2
+USB_LINER_HALF_W = 8.10    # outside the 14 mm plug passage
+USB_LINER_BOTTOM_Z = 0.65 # clears the carrier at full gasket rise
+USB_LINER_INSET = 1.80    # fills the recess behind the plug seating face
+USB_PLATE_GAP = 0.60      # plate-to-liner distance on each side
 
 # The plug boot enters an open bay. The case floor stays continuous.
 TRRS_BAY_W = 10.5
@@ -133,15 +137,9 @@ TRRS_BODY_WIN = (119.70, -25.60, 135.30, -18.40)
 # 10x2.5x6.4): body 10 x 2.5, body top z 5.0 above the PCB, red
 # actuator 1.4 tall on top (z 5.0..6.4), slide travel 0.8/side along
 # the 10mm axis, flick = fingernail entering the aperture from above.
-# Placement: footprint at (106.3,51) Left / (185.2,51) Right (M3:
-# origin centred on this window; the M2 "2mm WEST" shift ran the wrong
-# way and left the blade band wholly behind the wall); the north rim
-# runs a STRAIGHT plateau y=58 across x 97.5..110.5 (frozen in the
-# ergogen outline — does not follow the switch), so the whole switch
-# (its most outboard point y=52.25) sits >=6.25mm INSIDE the cavity — no bodyor
-# pin ever crosses the wall band. The mouth is therefore only the
-# actuator aperture, and it must NOT span the 7.0 wall band fully: a
-# full-width cut breaks the ring into two disconnected arcs (2 solids).
+# v0.5.3 moves the footprint and cover slot together, 2 mm away from
+# USB-C. The lower tub keeps its original reserved strip around the
+# north rim to preserve the gasket and magnet positions.
 PWRSW_MOUTH_W = 5.0    # lever (~3 swept with throw) + nail entry; ALSO
 #   the ring-safety cap: (7.0 band - w)/2 >= 1.0 web.
 PWRSW_MOUTH_Z0 = 4.3   # 0.7 below the body top for nail entry angle.
@@ -214,29 +212,21 @@ MAG_MIN_STATIONS = 8   # retention gate on station count (audit: the doc
 #         (130.5/-22) via the PCB placement chain: anchor ± 2.05
 #         (gen_pcb.py TRRS rot-90 dX) + physical mouth at native y=-2.0
 #         -> 134.55 (L) / 156.95 (R), rounded.
-# pwrsw = the ACTUATOR MOUTH centre on the north rim plateau, NOT the
-#         switch footprint (SW_LPWR1/SW_RPWR1 sit at 106.3/185.2, 51 after
-#         M3 — origins centred on this fixed window, band = origin +/-1.8
-#         vs the 5.0-wide mouth = 0.70/side; M2's "2mm WEST" shift had run
-#         the WRONG way and left the band wholly behind the west/east
-#         wall). The mouth itself cannot move: SAT-constrained,
-#         pocket >=3.2 / USB ~1.8 margins. The plateau is the raw
-#         Edge.Cuts line y=58.0 across x 97.5..110.5 (mirror 181..194,
-#         frozen in the ergogen outline), so the frame is axis-aligned
-#         EXACT (no resample-phase wobble): a wobbly +/-.5 anchor x
-#         swings the slot into tab-4's pocket (east edge x=100.59; SAT
-#         floor 3 wants west edge >= 103.6) or onto the notch shoulder
-#         (110.5). The mouth centre 106.3 clears both; blade/throw stays
-#         exposed (body spans x 101.3..111.3 / 180.2..190.2).
+# pwrsw = switch x with the north-rim reference y, 7 mm outboard of the
+#         PCB footprint. The lower tub reserves its historical strip.
 # Slots are explicit rects whose outer extent is measured to actually
 # breach the skin.
 # The trrs pair is mirror-exact to 0.01 (the 2026-10-21 audit found the
 # 1-decimal rounding had broken the mirror by 0.1mm: 134.6 <-> 156.9,
 # not 157.0 — the derived pair is 134.55 / 156.95).
 PORTS = {"Left": {"usb": (118.0, 49.95), "trrs": (134.55, -22.0),
-                  "pwrsw": (106.3, 58.0)},
+                  "pwrsw": (104.3, 58.0)},
          "Right": {"usb": (173.5, 49.95), "trrs": (156.95, -22.0),
-                   "pwrsw": (185.2, 58.0)}}
+                   "pwrsw": (187.2, 58.0)}}
+
+# Reserved strip in the lower tub. The switch is accessed from the lid,
+# so moving its actuator does not move the existing gasket/magnet keepout.
+PWRSW_TUB_KEEPOUT_X = {"Left": 106.3, "Right": 185.2}
 
 # ---- ring cover (v3.5: flush bezel ring on the lip) ----
 # The underside presses the top Poron at TOP_LIP_Z. The flat top stays
@@ -285,9 +275,17 @@ ENC_WIN = (111.5, -14.35, 124.5, -1.65)   # x0, y0, x1, y1: EC11
                        # old 17.2x13.2 window exposed the whole part;
                        # this one covers the rectangular terminal base
                        # and leaves only the body top + bushing/shaft.
-PWRSW_WIN = (100.9, 49.25, 111.7, 52.75)  # underside pocket for housing
+PWRSW_CENTER = {half: (ports["pwrsw"][0], ports["pwrsw"][1] - 7.0)
+               for half, ports in PORTS.items()}
+PWRSW_WIN = (98.9, 49.25, 109.7, 52.75)  # underside pocket for housing
 PWRSW_POCKET_CEILING = 5.60
-PWRSW_ACTUATOR_WIN = (103.80, 49.5, 108.80, 52.5)
+PWRSW_ACTUATOR_WIN = (101.80, 49.5, 106.80, 52.5)
+PWRSW_ACTUATOR_REST = 0.80 # half of the slide travel from the centre
+
+# Lower the wrist-facing cover lip beside the thumbs. Minimum height
+# leaves the original 1.3 mm of cover over the recessed magnets.
+THUMB_APRON_Z = 5.20
+THUMB_APRON_RUN = 5.5
 
 SLOT_PAST_TOP = 0.5    # bore cut extends past the case top plane so the
 #   mouth's top face is the solid's own face, not a coincident-face seam

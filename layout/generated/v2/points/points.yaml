@@ -1175,7 +1175,7 @@ jst:
       - 0
       - 0
 pwrsw:
-  x: 106.3
+  x: 104.3
   'y': 51
   r: 0
   meta:
@@ -3427,7 +3427,7 @@ mirror_jst:
       - 0
       - 0
 mirror_pwrsw:
-  x: 185.2
+  x: 187.2
   'y': 51
   r: -0.0
   meta:

@@ -728,24 +728,9 @@ def build_half(tag):
     else:
         w_trrs = rect_poly(edge_x, ty - bay_half_width,
                            tx + tb[2] + tpad, ty + bay_half_width)
-    # USB-plug bay (post-audit H1): the plug is 12.35 wide over an 11.0
-    # notch, so its shoulders cut residual plate strips beside the notch
-    # walls that neither the switch strip (stops at its own courtyard) nor
-    # the pulled-in core edges cover.  (The bay was sized for the rev-1
-    # plate band z 2.0..3.5; in rev 2 the plate band is z 1.00..2.20 and
-    # the plug's overmold bottom ~2.8 now sits ABOVE the plate, so the bay
-    # is vestigial clearance — kept because the plate's material beside
-    # the notch is still cut by the plug's shoulders in the assembled
-    # stack, and removing it is a separate change.) The mouth anchor is
-    # the config usb point (notch referee in check_board); the notch floor
-    # is the highest outline point strictly inside the mouth window that
-    # sits below the anchor (an open bite dips under it). The floor flat
-    # spans mouth wall to wall, so subdivide()'s internodes keep its run
-    # contiguous and its x extent IS the notch span. (A fixed-depth
-    # band-min scan grabs the west/east outline edges instead — dead end.)
-    # The bay runs 1.4 past each wall and north of the outline (its top
-    # corners land outside the loop — benign in the window-web gate; the
-    # case-side USB bore is 14.0 wide over the same span by construction).
+    # The plate bay clears the fixed case liner and the USB-C overmold
+    # throughout plate motion. Take the depth from the PCB notch floor,
+    # and size the shoulders from the shared case dimensions.
     ux, uy = usb_anchor(tag)
     ymax = max(p[1] for p in loop)
     win = 5.5  # the config notch subtract is 11.0 wide
@@ -768,7 +753,8 @@ def build_half(tag):
     fx0, fx1 = cluster[0][0], cluster[-1][0]
     assert 9.0 <= fx1 - fx0 <= 13.0, \
         f'{tag}: notch floor span {fx0}..{fx1} unrecognised'
-    bay = rect_poly(fx0 - 1.4, yfloor, fx1 + 1.4, ymax + 2.0)
+    shell_half = case_params.USB_LINER_HALF_W + case_params.USB_PLATE_GAP
+    bay = rect_poly(ux - shell_half, yfloor, ux + shell_half, ymax + 2.0)
     # switch strip + core overlap by design (shared tall-part zone): emit
     # ONE union loop instead of two overlapping rects, so the CAD shows a
     # single L opening and no phantom double-cut line. (Laser cuts the

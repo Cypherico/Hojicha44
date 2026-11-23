@@ -137,26 +137,16 @@ points:
       anchor:
         ref: mcu
         shift: [0, -25]
-    # WS-SLTV slide SPDT on the north edge, west of the USB notch; the case
-    # needs a slot over the actuator (CAD phase). Datasheet-measured (M3,
-    # 2026-10-18, vector-extracted 450301014042 drawing): the actuator is a
-    # 2.0mm blade on 1.6mm travel CENTRED on the COM pin, and the COM pin IS
-    # the footprint origin — the drawn nub is one travel extreme, not the
-    # neutral; the +/-4.2mm "offset" an earlier read chased is the pin-3
-    # end cell's ~Ø1.0 flush indicator dot (centre ~+4.27 local, no
-    # silhouette bump in the front view), NOT the lever. Consequence: the
-    # swept band = origin +/-1.8, rotation-invariant; the M2 "2mm WEST"
-    # shift moved the band OUT of reach (window sat at origin+4.3) and both
-    # halves had zero visible blade. Fix per SAT-ready window plan: put the
-    # origin on the window centre (Left 106.3, mirror follows to 185.2) —
-    # shift 11.3 = 7 + 4.3. Windows immovable: tab-4 pocket >=3.2 / USB ~1.8.
+    # Slide-switch housing sits 2 mm farther from USB-C. The switch
+    # retains its board orientation and the actuator travels ±0.8 mm
+    # about the common pin. The mirrored case has the same clearance.
     pwrsw:
       key:
         tags:
           - helper
       anchor:
         ref: matrix_inner_top
-        shift: [11.3, 14]
+        shift: [9.3, 14]
     # PJ-320A anchor used by the PCB placement generator. The v0.5.2
     # jack opens on native local -Y. Its assembled mouth faces the split
     # gap at x=134.55 / 156.95 (22.40 mm between the two mouths).

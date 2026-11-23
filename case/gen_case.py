@@ -368,9 +368,9 @@ def compute_ports(tag, rim_ring, rnorm, skin, P):
     for name in ("usb", "trrs", "pwrsw"):
         anchor = PORTS[tag][name]
         if name == "pwrsw":
-            # exact axis-aligned plateau frame (see PORTS comment) —
-            # the raw rim line is y=58.0 there, so no resample phase
-            o = anchor
+            # Reserve the original lower-tub strip for the suspension.
+            # The cover carries the separate, PCB-aligned actuator.
+            o = (P.PWRSW_TUB_KEEPOUT_X[tag], anchor[1])
             u = (0.0, 1.0)
         elif name == "trrs":
             o, u = anchor, (1.0 if tag == "Left" else -1.0, 0.0)
@@ -674,6 +674,15 @@ def build_half(tag):
     # finished solid (mouth probes at two z planes, air beyond, slab
     # solid under each bore).
     ports = compute_ports(tag, rim_ring, rnorm, skin, P)
+    # The interrupted wall at the USB notch is bridged by a U-shaped
+    # sill and cheeks above the floating PCB. The slot cut below forms
+    # one continuous molded surface from the receptacle to the edge.
+    usb_x, usb_y = P.PORTS[tag]["usb"]
+    liner = rect_in_frame((usb_x, usb_y), (0.0, 1.0), (-1.0, 0.0),
+                         -P.USB_LINER_INSET, ports["usb"]["out"],
+                         -P.USB_LINER_HALF_W, P.USB_LINER_HALF_W)
+    liner = prism(liner, P.USB_LINER_BOTTOM_Z, P.TOP_LIP_Z)
+    solid = solid.fuse(liner.intersect(prism(skin, z_bot, P.TOP_LIP_Z)))
     for name in ("usb", "trrs", "pwrsw"):
         cut = ports[name].pop("cut")
         if cut is not None:

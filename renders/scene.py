@@ -581,7 +581,7 @@ def build_keyboard(args):
     the desk-environment scene (scene_env.py)."""
     if REPO not in sys.path:
         sys.path.append(REPO)
-    from case.params import KNOB_COVER_GAP
+    from case.params import KNOB_COVER_GAP, PWRSW_ACTUATOR_REST
 
     # Share the four source meshes across all 44 switch positions.
     choc_glb_path = os.path.join(ASSETS, "parts", "choc.glb")
@@ -713,7 +713,7 @@ def build_keyboard(args):
             x, y = power["x"] * SCALE, power["y"] * SCALE
             parts[h]["board"].extend((
                 add_cube(power["ref"], (x, y, 2.75 * SCALE), (10, 2.5, 4.5), power_frame),
-                add_cube(f"{power['ref']}_lever", (x, y, 5.70 * SCALE),
+                add_cube(f"{power['ref']}_lever", (x + PWRSW_ACTUATOR_REST * SCALE, y, 5.70 * SCALE),
                          (2.0, 1.4, 1.40), power_lever),
             ))
         cuts = cutouts[half]

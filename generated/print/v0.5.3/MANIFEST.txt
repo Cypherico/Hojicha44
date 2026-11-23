@@ -1,0 +1,16 @@
+# Hojicha44 v0.5.3 plate and case first-article candidate
+# Pair with the v0.5.3 PCB files and confirm fit on a first article.
+636dc405dcd42b3473de1208c82293fc939bcce0b06880fdbfc1fef510fcb544  plate/Hojicha44-Left-lands.json
+4ac6a9a5700181f512b21f351c69a5ad79700d1eb160c250674a16a6eb4040ab  plate/Hojicha44-Right-lands.json
+72685a5f43123a3750565e5309b921a285450ff4db0b744e7b476a03d25f320c  plate/Hojicha44-Left-plate.dxf
+cd330adc6beeaa3043839c731ab73d7b3ec4cc6be5de57def31e8e98326f4920  plate/Hojicha44-Right-plate.dxf
+3b9d3cd386675f17fb44c7d9416e96960dd01ec7b2ebb8b9153dccf6865601c9  plate/Hojicha44-Left-plate.svg
+80506aebd91c2f59f3f7496a69365c8c4fe456e8f1a34e86804930b41b7aa575  plate/Hojicha44-Right-plate.svg
+9c3b50148a6536ce604b8561b9d8c1e555c39b1eebd46a4b3daeeab9dc903f5d  case/out/Hojicha44-Left-cover.step
+c05a1948e236a5150ea49c1c5c27e7e148659225bbc02e45f02c0b1e532828f4  case/out/Hojicha44-Left-tub.step
+2e4d8840dae84ee98d9a816ce06951be04ca270f53d645a8beea4d8d3ee5b9d7  case/out/Hojicha44-Right-cover.step
+6ecc8d7d5eee8503eb9eaf9a1de634c298ea0d2a121c4d13f0e0320b1ec6bdd5  case/out/Hojicha44-Right-tub.step
+231719c0b7687733ad1fb1bf23f3737faeb8c3b1cec441a8b54dae1179480784  case/out/Hojicha44-Left-cover.stl
+9f3302507f246b7b09dba3ca52fdef74cff5fc0316980e1fa4db73c15cac048a  case/out/Hojicha44-Left-tub.stl
+aba7499d264e196b88e431ed18a92236d0e8fed9f0fcfe65cfe02b2edaa3dcf7  case/out/Hojicha44-Right-cover.stl
+421766e07356df296611287d9890156b1e6d6b16034ed9e896a7ec72bfe5a0e9  case/out/Hojicha44-Right-tub.stl

@@ -18,9 +18,12 @@ encoder and jack lift along the board normal above their pads.
 Build a fresh asset pack and render the five views from the repo root.
 Fetch the pinned KLP keycap sources with `bash renders/fetch_keycaps.sh`
 first, or point `H44_KEYCAP_MESHES` at the `parts/` directory of an
-existing asset pack with keycap provenance. The asset builder uses the
-case STL files from `case/out` by default. Generate them in a scratch
-directory if they are missing.
+existing asset pack with keycap provenance. The asset builder
+tessellates the same case STEP files used for fabrication and records
+their SHA-256 hashes in `PROVENANCE.json`. By default it reads from
+`case/out`. To render a review candidate from the current source, build
+its STEPs in a scratch directory and use the same `CASE_OUT` for the
+asset build. The released v0.5.2 print files are a separate snapshot.
 
 ```sh
 export CASE_OUT="$PWD/out/render-v051/case"

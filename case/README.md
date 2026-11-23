@@ -1,8 +1,8 @@
 # Hojicha44 — case CAD (CadQuery, parametric)
 
 Each half has a tub and cover derived from the PCB and plate geometry.
-`case/out/` holds the recorded v0.5.2 fabrication candidate. Current
-generator output includes newer port and cover geometry.
+`case/out/` holds the v0.5.3 first-article candidate, with a lined
+USB-C channel, a separate power-switch recess and a lowered thumb lip.
 [Product audit](../audit.md)
 
 ## Layout
@@ -29,8 +29,9 @@ case/.venv/bin/python case/check_component_fit.py \
   "$KICAD10_3DMODEL_DIR/Connector_JST.3dshapes/JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step"
 ```
 
-The checker tests jack handedness, TRRS body and boot clearance, the JST
-header and a service envelope, and power-switch lead clearance. For v0.5.2
+The checker tests jack handedness, the USB-C and TRRS plug envelopes,
+the liner clearance from the suspended plate, the JST service envelope,
+and power-switch fit and lead clearance. For the finished assembly
 use `--switch-lead-mm 3.25` to model the finished assembly. Omit it to
 model the nominal stock leads as a negative control. `CASE_OUT` selects
 an alternate STEP directory.
@@ -52,8 +53,8 @@ case/.venv/bin/python case/probe_bores.py
 case/.venv/bin/python case/mirror_gate.py
 ```
 
-For a v0.5.2 order, use the matched PCB, plate, and case files
-listed in the [print manifest](../generated/print/v0.5.2/MANIFEST.txt).
+For a v0.5.3 first article, use the matched PCB, plate, and case files
+listed in the [print manifest](../generated/print/v0.5.3/MANIFEST.txt).
 The static job verifies those hashes. The case job builds and verifies
 the current generator output in a temporary directory.
 

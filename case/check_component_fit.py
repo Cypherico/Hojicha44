@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check PJ-320A handedness, top-side JST fit and Würth switch lead clearance.
+"""Check USB-C and PJ-320A plug paths, top-side JST and Würth switch fit.
 
 Pass the KiCad JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step as the first
 argument. CASE_OUT selects the tub and cover STEP directory. The stock
@@ -101,6 +101,30 @@ def check_half(half, header_model, lead_length):
                            usb_top - usb_bottom,
                            (usb_x - params.USB_HOUSING_W / 2, usb_y, usb_bottom))
     interfaces.append(("USB-C 12.35 x 6.50 overmold insertion sweep", usb, True))
+    switch_x, switch_y = pins[f"SW_{side}PWR1", "1"]
+    travel_z = params.POWER_Z_TRAVEL
+    # Würth 450301014042 drawing, with body and mounting allowance.
+    # The actuator gauge includes its full lateral slide.
+    switch_body = cq.Solid.makeBox(10.4, 2.9, 4.6 + 2 * travel_z,
+                                   (switch_x - 5.2, switch_y - 1.45, 0.5 - travel_z))
+    switch_lever = cq.Solid.makeBox(4.1, 1.8, 1.7 + 2 * travel_z,
+                                    (switch_x - 2.05, switch_y - 0.9, 4.8 - travel_z))
+    interfaces.extend((("power switch body", switch_body, True),
+                       ("power switch actuator sweep", switch_lever, True)))
+    switch_gap = min(switch_body.distance(usb), switch_lever.distance(usb))
+    print(f"{half} power switch to USB-C overmold sweep: {switch_gap:.3f} mm clearance")
+    liner_zone = cq.Solid.makeBox(2 * params.USB_LINER_HALF_W,
+                                 params.USB_HOUSING_REACH + params.USB_LINER_INSET,
+                                 params.TOP_LIP_Z - params.USB_LINER_BOTTOM_Z,
+                                 (usb_x - params.USB_LINER_HALF_W, usb_y - params.USB_LINER_INSET,
+                                  params.USB_LINER_BOTTOM_Z))
+    liner = tub.intersect(liner_zone)
+    # The rim is fixed and the PCB/plate assembly floats. Move the liner
+    # in the opposite direction to check both vertical travel limits.
+    liner_plate = max(plate_overlap(liner.translate((dx, 0, dz)), half)
+                      for dx in (-travel_z, 0.0, travel_z)
+                      for dz in (-travel_z, 0.0, travel_z))
+    print(f"{half} USB liner to suspended plate: {liner_plate:.3f} mm³ max interference")
     # Gauge the entire boot path from its seating face out of the case.
     for dz in (-params.POWER_Z_TRAVEL, 0, params.POWER_Z_TRAVEL):
         boot = cq.Solid.makeCylinder(params.TRRS_BOOT_D / 2, 16,
@@ -122,7 +146,7 @@ def check_half(half, header_model, lead_length):
                            plug.translate((0, 0, dz)), dz == 0))
         interfaces.append((f"JST header at dz={dz:+.2f}",
                            header.translate((0, 0, dz)), False))
-    fits = True
+    fits = switch_gap > 0.0 and liner_plate < 1e-6
     for name, envelope, check_plate in interfaces:
         overlaps = (plate_overlap(envelope, half) if check_plate else 0.0,
                     envelope.intersect(cover).Volume(), envelope.intersect(tub).Volume())

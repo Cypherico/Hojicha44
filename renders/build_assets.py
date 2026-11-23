@@ -12,7 +12,7 @@ Outputs:
   assets/plate/Hojicha44-{L,R}.glb     plate solid extruded from the
                                        tracked DXF (OUTLINE + CUTOUT through,
                                        RELIEF 0.55 pockets in the underside)
-  assets/case/{L,R}-{tub,cover}.glb    converted from case/out/ STEPs
+  assets/case/Hojicha44-{half}-{piece}.glb  tessellated from the case STEPs
   assets/parts/{saddle,saddle_tilted,saddle_homing,normal_tilted,thumb}.glb
                                        KLP Lame keycaps (pinned download)
   assets/parts/knob.glb                procedural EC11 knob (13x13, knurl)
@@ -745,16 +745,21 @@ def main():
         plate_glb(half, os.path.join(OUT, "plate", f"Hojicha44-{half}.glb"))
 
     case_dir = os.environ.get("CASE_OUT", os.path.join(REPO, "case", "out"))
-    print(f"== 4. case solids (convert from {os.path.relpath(case_dir, REPO)})")
+    print(f"== 4. case STEP solids (convert from {os.path.relpath(case_dir, REPO)})")
+    import cadquery as cq
     import trimesh
+    case_steps = {}
     for half in ("Left", "Right"):
         for part in ("tub", "cover"):
-            src = os.path.join(case_dir, f"Hojicha44-{half}-{part}.stl")
-            mesh = trimesh.load(src, force="mesh")
-            scene = trimesh.Scene({f"{part}_{half}": mesh})
-            dst = os.path.join(OUT, "case", f"Hojicha44-{half}-{part}.glb")
+            stem = f"Hojicha44-{half}-{part}"
+            src = os.path.join(case_dir, f"{stem}.step")
+            case_steps[f"{stem}.step"] = sha256(src)
+            solid = cq.importers.importStep(src)
+            scene = trimesh.Scene()
+            add_cad_mesh(scene, f"{part}_{half}", solid)
+            dst = os.path.join(OUT, "case", f"{stem}.glb")
             scene.export(dst)
-            bb = mesh.bounds
+            bb = scene.bounds
             print(f"  {half}-{part}: bbox x {bb[0][0]:.1f}..{bb[1][0]:.1f} "
                   f"y {bb[0][1]:.1f}..{bb[1][1]:.1f} z {bb[0][2]:.1f}..{bb[1][2]:.1f}")
 
@@ -794,6 +799,7 @@ def main():
 
     print("== 8. provenance")
     prov = {
+        "case_steps": case_steps,
         "boards": {
             half: sha256(os.path.join(REPO, "pcb", "kicad", f"Hojicha44-{half}.kicad_pcb"))
             for half in ("Left", "Right")

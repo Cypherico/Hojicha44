@@ -102,6 +102,37 @@ def key_openings(holes, cap_height):
         yield x, (start + previous) / 2, 0, previous - start + cap_height
 
 
+def thumb_apron(tag, top):
+    """Single sloped wrist-side surface along the staggered thumb row."""
+    lip = [(-30, -80), (33, -58), (49, -26), (62, -24), (81, -26),
+           (104, -33), (123, -43), (160, -49)]
+    axis = 2 * params.MIRROR_AX
+    if tag == "Right":
+        lip = [(axis - x, y) for x, y in lip]
+    wires = []
+    for z, run in ((params.THUMB_APRON_Z, params.THUMB_APRON_RUN),
+                   (top, 0.0), (top + 1.0, 0.0)):
+        profile = [(x, y - run) for x, y in lip]
+        profile += [(lip[-1][0], -100), (lip[0][0], -100)]
+        wires.append(G.wire_of(profile).translate((0, 0, z)))
+    return cq.Solid.makeLoft(wires, ruled=True)
+
+
+def port_rim_relief(port, sections):
+    """Loft the bevel above a port while leaving its lower gauge intact."""
+    ox, oy = port["o"]
+    ux, uy = port["u"]
+    angle = math.degrees(math.atan2(uy, ux))
+    end = port["out"] + 1.0
+    wires = []
+    for z, start, half_width, corner in sections:
+        center = (start + end) / 2
+        prism = rrect(end - start, half_width * 2, corner,
+                      ox + ux * center, oy + uy * center, angle, z - 0.1, z)
+        wires.append(max(prism.Faces(), key=lambda face: face.Center().z).outerWire())
+    return cq.Solid.makeLoft(wires, ruled=True)
+
+
 def build_cover(tag):
     P = params
     dxf = os.path.join(G.PLATE_DIR, f"Hojicha44-{tag}-plate.dxf")
@@ -162,6 +193,12 @@ def build_cover(tag):
     base = (ox - ux * (P.SLOT_IN + 1.0), oy - uy * (P.SLOT_IN + 1.0))
     solid = solid.cut(G.fillet_slot(base, pr["v"], pr["u"], pr["w"],
                                     pr["z0"], z1 + 0.5, pr["r"], travel))
+    usb_half = pr["w"] / 2
+    solid = solid.cut(port_rim_relief(pr, (
+        (z1 - 0.70, 0.0, usb_half, 0.45),
+        (z1, 0.0, usb_half + 0.65, 1.1),
+        (z1 + 1.0, 0.0, usb_half + 0.65, 1.1),
+    )))
     # Follow the circular boot from the jack face outwards. The rounded
     # profile leaves more cover over the sides of the bay.
     pr = ports["trrs"]
@@ -169,6 +206,13 @@ def build_cover(tag):
     passage = cq.Solid.makeCylinder(relief_radius, pr["out"] + 1.0,
                                    (*pr["o"], P.TRRS_JACK_AXIS_Z), (*pr["u"], 0.0))
     solid = solid.cut(passage)
+    relief_base = z1 - 0.80
+    relief_half = math.sqrt(relief_radius**2 - (relief_base - P.TRRS_JACK_AXIS_Z)**2)
+    solid = solid.cut(port_rim_relief(pr, (
+        (relief_base, 0.18, relief_half, 0.55),
+        (z1, -0.42, relief_half + 0.12, 1.30),
+        (z1 + 1.0, -0.42, relief_half + 0.12, 1.30),
+    )))
     # ---- magnets: cut UP from the underside (faces flush at z0) --------
     for (cx, cy) in stations:
         solid = solid.cut(cq.Solid.makeCylinder(
@@ -192,6 +236,7 @@ def build_cover(tag):
     if near:
         solid = (cq.Workplane("XY").newObject([solid])
                  .newObject(near).chamfer(0.4).val())
+    solid = solid.cut(thumb_apron(tag, z1))
 
     solid, scrap = drop_scrap(solid)
 
@@ -273,15 +318,24 @@ def check_cover(tag, solid, info):
         x0, y0, x1, y1 = win2(tag, base)
         expect(f"{nm} window open", (x0 + x1) / 2, (y0 + y1) / 2, mid,
                False)
-    pox = info["ports"]["pwrsw"]["o"][0]
+    pox, poy = P.PWRSW_CENTER[tag]
     expect("north rim above power switch solid", pox, 63.0, mid, True)
     # The nominal switch body is 10 × 2.5 mm on the PCB, centered 7 mm
     # inboard of the port anchor. Probe the body and its corners.
-    poy = info["ports"]["pwrsw"]["o"][1] - 7.0
     for dx in (-5.0, 0.0, 5.0):
         for dy in (-1.25, 0.0, 1.25):
             expect("pwrsw body clearance", pox + dx, poy + dy, 5.50, False)
     expect("pwrsw body roof", pox - 3.4, poy, z1 - 0.35, True)
+    ux = P.PORTS[tag]["usb"][0]
+    pocket_x0, _, pocket_x1, _ = win2(tag, P.PWRSW_WIN)
+    pocket_edge = pocket_x1 if tag == "Left" else pocket_x0
+    channel_edge = ux + math.copysign(P.USB_MOUTH_W / 2, pox - ux)
+    web_mid = (pocket_edge + channel_edge) / 2
+    if abs(channel_edge - pocket_edge) < 1.0:
+        bad.append("power switch wall beside USB-C is under 1.0 mm")
+    for dy in (-1.35, 0.0, 1.35):
+        for web_z in (z0 + 0.2, 5.50):
+            expect("web separating the switch from USB-C", web_mid, poy + dy, web_z, True)
     for base, ceiling, name in ((P.JST_WIN, P.JST_POCKET_CEILING, "battery header"),
                                 (P.TRRS_BODY_WIN, P.TRRS_POCKET_CEILING, "audio jack")):
         x0, y0, x1, y1 = win2(tag, base)
