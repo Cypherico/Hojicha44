@@ -375,7 +375,10 @@ def compute_ports(tag, rim_ring, rnorm, skin, P):
         elif name == "trrs":
             o, u = anchor, (1.0 if tag == "Left" else -1.0, 0.0)
         else:
-            o, u, v = slot_frame(rim_ring, rnorm, anchor)
+            rim_center, _, _ = slot_frame(rim_ring, rnorm, anchor)
+            # The receptacle is aligned with the socket pin rows; the
+            # sampled rim supplies depth but must not shift the channel.
+            o, u = (anchor[0], rim_center[1]), (0.0, 1.0)
         v = (-u[1], u[0])
         if name == "usb":
             w = P.USB_MOUTH_W
@@ -1002,10 +1005,11 @@ def check_half(tag, solid, info):
         sep = min(rect_sep_gap(info["ports"][name]["rect"], rect)
                   for rect in info["pocket_rects"])
         if name == "usb":
-            shape = (f"slot {P.USB_MOUTH_W:.1f}w z{P.USB_MOUTH_Z0:+.1f}"
+            plug_bottom = P.USB_AXIS_MIN_Z - P.POWER_Z_TRAVEL - P.USB_HOUSING_H / 2
+            shape = (f"slot {P.USB_MOUTH_W:.1f}w z{P.USB_MOUTH_Z0:+.2f}"
                      f"..lip vs housing {P.USB_HOUSING_W} "
                      f"({(P.USB_MOUTH_W - P.USB_HOUSING_W) / 2:.2f}/side),"
-                     f" plug bottom 2.8 ({2.8 - P.USB_MOUTH_Z0:+.1f} "
+                     f" plug bottom {plug_bottom:.2f} ({plug_bottom - P.USB_MOUTH_Z0:+.2f} "
                      f"to z0)")
         elif name == "trrs":
             shape = f"open plug bay {P.TRRS_BAY_W:.1f}w, sill z={P.TRRS_BAY_Z0:.2f}"

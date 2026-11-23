@@ -579,6 +579,10 @@ def build_keyboard(args):
     the presentation-pose empties. Returns (parts, all_objs); every
     object is parented to pose_L/pose_R. Shared by the studio scene and
     the desk-environment scene (scene_env.py)."""
+    if REPO not in sys.path:
+        sys.path.append(REPO)
+    from case.params import KNOB_COVER_GAP
+
     # Share the four source meshes across all 44 switch positions.
     choc_glb_path = os.path.join(ASSETS, "parts", "choc.glb")
     if not os.path.exists(choc_glb_path):
@@ -654,6 +658,8 @@ def build_keyboard(args):
         "smd_ends": pbr("nano_solder", (0.47, 0.48, 0.50), rough=0.34, metal=0.82),
         "socket": pbr("nano_socket", (0.027, 0.028, 0.030), rough=0.49),
     }
+    power_frame = pbr("power_switch_frame", (0.16, 0.16, 0.17), rough=0.53)
+    power_lever = pbr("power_switch_lever", (0.40, 0.04, 0.025), rough=0.54)
     micro_texture(nano_materials["mask"], 160, 0.15, 0.00002, 0.48, 0.59)
     micro_texture(nano_materials["packages"], 140, 0.18, 0.00003, 0.42, 0.55)
     micro_texture(m_cap, 42, 0.28, 0.00022, 0.36, 0.48, detail=5.0)
@@ -701,6 +707,15 @@ def build_keyboard(args):
 
         # ---- registration: plate holes are the physical master
         pl = placements[half]
+        power = next(p for p in pl if p["ref"] == f"SW_{h}PWR1")
+        if not any(o.name == power["ref"] for o in parts[h]["board"]):
+            # KiCad's STEP export omits the switch's VRML model.
+            x, y = power["x"] * SCALE, power["y"] * SCALE
+            parts[h]["board"].extend((
+                add_cube(power["ref"], (x, y, 2.75 * SCALE), (10, 2.5, 4.5), power_frame),
+                add_cube(f"{power['ref']}_lever", (x, y, 5.70 * SCALE),
+                         (2.0, 1.4, 1.40), power_lever),
+            ))
         cuts = cutouts[half]
         sw = [p for p in pl if re.fullmatch(r"SW_[LR]\d\d", p["ref"])]
         holes = {}
@@ -898,7 +913,9 @@ def build_keyboard(args):
             nx1 = max(q[0] for q in corners)
             ny0 = min(q[1] for q in corners)
             ny1 = max(q[1] for q in corners)
-            ncx, ncy = (nx0 + nx1) / 2, (ny0 + ny1) / 2
+            # Position the GLB at the center of the 2x12 socket grid.
+            # The courtyard is asymmetric around the actual pin rows.
+            ncx, ncy = fp_to_design(p["x_file"], p["y_file"], p["rot"], -7.62, -13.97)
             if big:
                 w = big[0]
                 if not (w["x"] - w["w"] / 2 <= nx0 and nx1 <= w["x"] + w["w"] / 2
@@ -938,8 +955,9 @@ def build_keyboard(args):
         ky = (min(v.y for v in shaft) + max(v.y for v in shaft)) / 2
         _, knob_roots, knob_objs = import_glb(
             os.path.join(ASSETS, "parts", "knob.glb"), f"knob_{h}")
+        cover_top = bbox_mm(parts[h]["cover"])[1][2]
         for knob in knob_roots:
-            knob.location = (kx, ky, 6.1 * SCALE)
+            knob.location = (kx, ky, cover_top + KNOB_COVER_GAP * SCALE)
         assign(knob_objs, m_knob)
         parts[h]["knob"] = knob_objs
         if "exploded" in args.shots.split(","):

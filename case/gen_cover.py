@@ -2,18 +2,15 @@
 """Hojicha44 thin top cover — v4.0 (CadQuery, parametric).
 
 The user review called the v3.5 rim ring "extraordinarily thick" and
-asked for a top case that follows the components: a 2.5mm top PLATE on
+asked for a top case that follows the components: a flat top plate on
 the lip that
 
   * opens the key field using straight-sided column cutouts for the
     matrix and rotated cutouts for the thumb keys,
   * covers the MCU/encoder wiring strip between the key field and the
-    inner skin, with windows for the nio module, the EC11 and the
-    pwrsw body,
-  * reuses the tub's port passages so USB and TRRS align (the TRRS
-    cylinder is now an EDGE NOTCH: the lip 3.48 sits below the bore top
-    7.25, so the wall band above the jack is open and a straight plug's
-    head clears the case),
+    inner skin, with openings for the nice!nano, EC11 and slide actuator,
+  * roofs over the battery header and TRRS housing and leaves the USB-C
+    and TRRS plug passages open,
   * keeps the 8 recessed magnet pockets (Ø4x1.0 in a 1.2 pocket, 1.3
     floor) whose faces still meet the tub's at the lip plane.
 
@@ -139,14 +136,21 @@ def build_cover(tag):
     for cx, cy, ang, height in key_openings(holes, kh):
         s = rrect(kw, height, P.CAP_ROUND, cx, cy, ang, z0 - 1.0, z1 + 1.0)
         cutter = s if cutter is None else cutter.fuse(s)
-    # ---- component windows (MCU / encoder / pwrsw body; mirrored) ------
+    # ---- component windows and blind underside pockets -----------------
     for bounds, radius in ((P.MCU_WIN, 0.75), (P.ENC_WIN, 2.0),
-                           (P.PWRSW_WIN, 0.5), (P.TRRS_BODY_WIN, 0.5), (P.JST_WIN, 0.5)):
+                           (P.PWRSW_ACTUATOR_WIN, 0.65)):
         x0, y0, x1, y1 = win2(tag, bounds)
         s = rrect(x1 - x0, y1 - y0, radius, (x0 + x1) / 2, (y0 + y1) / 2,
                   0.0, z0 - 1.0, z1 + 1.0)
         cutter = cutter.fuse(s)
     solid = solid.cut(cutter)
+    for bounds, ceiling in ((P.JST_WIN, P.JST_POCKET_CEILING),
+                            (P.TRRS_BODY_WIN, P.TRRS_POCKET_CEILING),
+                            (P.PWRSW_WIN, P.PWRSW_POCKET_CEILING)):
+        x0, y0, x1, y1 = win2(tag, bounds)
+        pocket = rrect(x1 - x0, y1 - y0, 0.35, (x0 + x1) / 2, (y0 + y1) / 2,
+                       0.0, z0 - 1.0, ceiling)
+        solid = solid.cut(pocket)
 
     from OCP.gp import gp_Dir, gp_Pnt
 
@@ -157,14 +161,14 @@ def build_cover(tag):
     travel = P.SLOT_IN + 1.0 + pr["out"] + 1.0
     base = (ox - ux * (P.SLOT_IN + 1.0), oy - uy * (P.SLOT_IN + 1.0))
     solid = solid.cut(G.fillet_slot(base, pr["v"], pr["u"], pr["w"],
-                                    z0 - 0.5, z1 + 0.5, pr["r"], travel))
+                                    pr["z0"], z1 + 0.5, pr["r"], travel))
+    # Follow the circular boot from the jack face outwards. The rounded
+    # profile leaves more cover over the sides of the bay.
     pr = ports["trrs"]
-    ox, oy = pr["o"]
-    ux, uy = pr["u"]
-    base = (ox - ux * (P.SLOT_IN + 1.0), oy - uy * (P.SLOT_IN + 1.0))
-    travel = P.SLOT_IN + 1.0 + pr["out"] + 1.0
-    solid = solid.cut(G.fillet_slot(base, pr["v"], pr["u"], pr["w"],
-                                    z0 - 1.0, z1 + 1.0, pr["r"], travel))
+    relief_radius = P.TRRS_BOOT_D / 2 + P.POWER_Z_TRAVEL + P.TRRS_COVER_CLEARANCE
+    passage = cq.Solid.makeCylinder(relief_radius, pr["out"] + 1.0,
+                                   (*pr["o"], P.TRRS_JACK_AXIS_Z), (*pr["u"], 0.0))
+    solid = solid.cut(passage)
     # ---- magnets: cut UP from the underside (faces flush at z0) --------
     for (cx, cy) in stations:
         solid = solid.cut(cq.Solid.makeCylinder(
@@ -265,18 +269,25 @@ def check_cover(tag, solid, info):
 
     # 3. component windows are open, and the strip around them is solid
     for base, nm in ((P.MCU_WIN, "mcu"), (P.ENC_WIN, "enc"),
-                     (P.PWRSW_WIN, "pwrsw")):
+                     (P.PWRSW_ACTUATOR_WIN, "power actuator")):
         x0, y0, x1, y1 = win2(tag, base)
         expect(f"{nm} window open", (x0 + x1) / 2, (y0 + y1) / 2, mid,
                False)
     pox = info["ports"]["pwrsw"]["o"][0]
-    expect("pwrsw window open to the north skin", pox, 66.0, mid, False)
+    expect("north rim above power switch solid", pox, 63.0, mid, True)
     # The nominal switch body is 10 × 2.5 mm on the PCB, centered 7 mm
     # inboard of the port anchor. Probe the body and its corners.
     poy = info["ports"]["pwrsw"]["o"][1] - 7.0
     for dx in (-5.0, 0.0, 5.0):
         for dy in (-1.25, 0.0, 1.25):
-            expect("pwrsw body clearance", pox + dx, poy + dy, mid, False)
+            expect("pwrsw body clearance", pox + dx, poy + dy, 5.50, False)
+    expect("pwrsw body roof", pox - 3.4, poy, z1 - 0.35, True)
+    for base, ceiling, name in ((P.JST_WIN, P.JST_POCKET_CEILING, "battery header"),
+                                (P.TRRS_BODY_WIN, P.TRRS_POCKET_CEILING, "audio jack")):
+        x0, y0, x1, y1 = win2(tag, base)
+        px, py = (x0 + x1) / 2, (y0 + y1) / 2
+        expect(f"{name} pocket", px, py, ceiling - 0.15, False)
+        expect(f"{name} roof", px, py, z1 - 0.35, True)
     # cover material between the component windows and the key field
     # (probe just outside each window edge; void here means an opening
     # merged the window into the key field — the plate must keep the

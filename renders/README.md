@@ -11,7 +11,9 @@ the [nice!nano product reference](https://nicekeyboards.com/nice-nano/).
 The traces are an illustrative layout on the module. The carrier PCBs in
 the exploded view use their KiCad routing data.
 The assembled studio views use one molded Blender foot per half. The
-exploded encoder and jack lift along the board normal above their pads.
+cover hides the battery header and audio jack body in underside
+recesses. The TRRS plug bay remains open at the edge. The exploded
+encoder and jack lift along the board normal above their pads.
 
 Build a fresh asset pack and render the five views from the repo root.
 Fetch the pinned KLP keycap sources with `bash renders/fetch_keycaps.sh`

@@ -112,16 +112,11 @@ POCKET_TOP = TOP_LIP_Z     # open to the top (cover presses upper foam)
 # clears the skin ring across the whole width + margin). v3.3 closed
 # the same contract with full-wall 14x11.6 / 9.5x11.6 rectangles the
 # user rightly called "gaping"; v3.4 shapes each mouth to the plug:
-#   USB  = 14.0-wide port with 1.2 fillets UNDER it only (flat top,
-#          z band 2.0..lip). Plug stack math: sockets ~4.5 (measured —
-#          the old ~3.0 figure was wrong) -> module 4.5..7.7 ->
-#          receptacle mid ~6.1 = the plug AXIS rides AT the lip plane;
-#          overmold tops ~3.2 ABOVE
-#          the lip (~9.2 abs), bottom ~2.8, so only 2.8..lip of the
-#          plug crosses the wall band — its neck above the lip rides
-#          through the open top plane, which the future COVER carries.
+#   USB = 14.0-wide port with lower corner fillets. The sill clears
+#         the full USB-C overmold at the low end of the mated socket
+#         stack. The rest of the plug passes through the cover channel.
 USB_MOUTH_W = 14.0
-USB_MOUTH_Z0 = 2.0
+USB_MOUTH_Z0 = 1.25
 USB_MOUTH_R = 1.2
 
 # The plug boot enters an open bay. The case floor stays continuous.
@@ -129,6 +124,8 @@ TRRS_BAY_W = 10.5
 TRRS_BAY_Z0 = -2.85
 TRRS_BAY_R = 0.60
 TRRS_JACK_AXIS_Z = 2.50
+TRRS_BOOT_D = 9.50
+TRRS_COVER_CLEARANCE = 0.10
 TRRS_BODY_WIN = (119.70, -25.60, 135.30, -18.40)
 
 # ---- power-switch actuator window (v3.5, north rim) ----
@@ -150,7 +147,7 @@ PWRSW_MOUTH_W = 5.0    # lever (~3 swept with throw) + nail entry; ALSO
 PWRSW_MOUTH_Z0 = 4.3   # 0.7 below the body top for nail entry angle.
 #   With the thin-cover lip at 3.48 this is ABOVE the tub, so the tub
 #   has no pwrsw bore at all (compute_ports marks it skipped); the
-#   COVER carries the body window + nail slot (PWRSW_WIN/PWRSW_NAIL_W).
+#   COVER carries the underside pocket and actuator slot.
 PWRSW_COVER_IN = 1.6   # cover slot starts this far outboard of the port
                        # anchor, leaving the 1.1mm inner web next to the
                        # cavity edge (W1 must stay the ring's ONLY full
@@ -162,6 +159,10 @@ PWRSW_MOUTH_R = 0.8    # bottom fillets (molded look, matches USB)
 # stack math, boot/face from the vendored PJ-320A STEP, lever from the
 # Wuerth WS-SLTV datasheet (blade ~2.0 + travel 1.6; verify first art.)
 USB_HOUSING_W = 12.35       # overmold body widest around the axis
+USB_HOUSING_H = 6.50
+USB_AXIS_MIN_Z = 5.30       # 4.50 mm stack + 0.80 mm substrate center
+USB_AXIS_MAX_Z = 6.60       # upper estimate for the 5.00 mm socket stack
+USB_HOUSING_REACH = 25.0    # from seating face to beyond the case skin
 PWRSW_LEVER_SWEEP = 3.6     # actuator blade ~2.0 + travel 1.6 (verify)
 
 # ---- retention magnets (v3.5 tub + ring cover, recessed both sides) ----
@@ -238,19 +239,11 @@ PORTS = {"Left": {"usb": (118.0, 49.95), "trrs": (134.55, -22.0),
                    "pwrsw": (185.2, 58.0)}}
 
 # ---- ring cover (v3.5: flush bezel ring on the lip) ----
-# Underside = TOP_LIP_Z (presses the top poron), top = +COVER_T (stays
-# below the keycap field ~9.5-10.5). Openings: W1 = USB plug
-# neck/housing band to its top ~9.2 (full-depth pass), W2 = TRRS boot
-# swing past the lip (top ~6.75: the Ø9.5 cylinder cut reaches 7.25 and
-# its chord in the 6..9 slice stays <=6.42 at the lip plane so the ring is
-# NOT split),
-# the pwrsw flick slot, and the magnet pockets. Outer face = the skin
-# face FLUSH (an intentional lid seam).
-COVER_T = 2.0          # 3.20..5.20 (TOP_LIP_Z + 2.0): a thin top
-                    # plate that also covers the MCU/encoder strip and
-                    # the key field between caps (key-field opening +
-                    # component windows), instead of a bare rim ring.
-                    # 1.3 floor over the 0.7 magnet pockets
+# The underside presses the top Poron at TOP_LIP_Z. The flat top stays
+# below the raised caps. USB-C and TRRS plug envelopes cross the top
+# plane, and the underside recesses clear the bodies behind them.
+COVER_T = 3.20          # 3.20..6.40, including the roofs over the recesses
+KNOB_COVER_GAP = 0.90  # includes the full encoder push travel
 # ---- top-cover openings (thin top plate, gen_cover.py) ----
 # The cover is no longer a bare rim ring: it also spans the key field,
 # so it hides the plate/switch bodies between caps and covers the
@@ -265,7 +258,7 @@ COVER_T = 2.0          # 3.20..5.20 (TOP_LIP_Z + 2.0): a thin top
 #   USB/TRRS  = the SAME compute_ports passages as the tub (shared
 #               anchors; TRRS is now an edge notch because the lip is
 #               below the bore top)
-#   pwrsw     = body window + nail slot to the north skin
+#   pwrsw     = underside body pocket and a small top actuator slot
 CAP_FOOT_W = 17.48     # KLP Saddle / Thumb plan footprint (measured)
 CAP_FOOT_H = 16.48
 CAP_CLEAR = 1.5        # key-field opening clearance per side. gen_cover
@@ -282,18 +275,19 @@ CAP_ROUND = 2.0        # cutter corner radius (molded look)
 JST_SERVICE_W = 4.50
 JST_SERVICE_L = 7.00  # plug, wires and straight withdrawal beyond header face
 JST_PLATE_WIN = (115.85, 4.30, 131.65, 9.65)
-JST_WIN = (116.15, 3.55, 131.85, 10.45)  # header and straight plug withdrawal
-MCU_WIN = (107.05, 12.25, 127.95, 48.6)    # courtyard, antenna and USB access
+JST_WIN = (116.15, 3.55, 131.85, 10.45)  # underside header and wire pocket
+JST_POCKET_CEILING = 5.40  # service envelope at upper travel reaches 5.25
+TRRS_POCKET_CEILING = 5.55  # body reaches 5.40 at upper travel
+MCU_WIN = (107.05, 12.25, 127.95, 48.6)  # courtyard, antenna and USB access
 ENC_WIN = (111.5, -14.35, 124.5, -1.65)   # x0, y0, x1, y1: EC11
                        # BODY at the cover band (measured 12.0x11.7 at
                        # z 3.2..5.2, centred (118,-8)) + 0.5/side. The
                        # old 17.2x13.2 window exposed the whole part;
                        # this one covers the rectangular terminal base
                        # and leaves only the body top + bushing/shaft.
-PWRSW_WIN = (101.0, 49.2, 111.6, 70.0)    # clears the 10×2.5 body at (106.3, 51)
-                       # extended through the north skin in ONE clean
-                       # notch (a 5mm nail slot beside the USB slot left
-                       # an enclosed 3x7mm cover island between them).
+PWRSW_WIN = (100.9, 49.25, 111.7, 52.75)  # underside pocket for housing
+PWRSW_POCKET_CEILING = 5.60
+PWRSW_ACTUATOR_WIN = (103.80, 49.5, 108.80, 52.5)
 
 SLOT_PAST_TOP = 0.5    # bore cut extends past the case top plane so the
 #   mouth's top face is the solid's own face, not a coincident-face seam

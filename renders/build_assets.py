@@ -316,11 +316,9 @@ def knob_glb(glb_path):
     find a shorter shafted encoder, add a knob to it — not too tall, not
     too thin, not too fat"; the previous 13x13 sat high on the 20mm
     shaft and read as visually too tall). Sized for the short-shaft
-    EC11-class BOM primary on a 5.2mm case rim:
-      - OD 16.8, height 9.2: skirt bottom lands rim+0.9 = 6.1 abs
-        (EC11 push travel 0.5 +/- 0.3: the skirt must clear the 5.2mm
-        cover even at full press), the crown reaches ~15.3 — a touch
-        above the 11.14 cap tops
+    EC11-class BOM primary:
+      - OD 16.8, height 9.2: the scene positions the skirt above the
+        cover with clearance for the EC11's full push travel
       - 18 vertical grip ridges (0.9 grooves on the OD, 0.45 deep)
       - 0.5 chamfer at the skirt base, 1.0 chamfer on the crown
       - z=0 is the skirt bottom, centred on the shaft axis
@@ -489,6 +487,9 @@ def nano_glb(glb_path):
     import numpy as np
     import trimesh
 
+    socket_height = 4.50
+    board_lift = socket_height - 2.40
+
     def block(w, d, h, x=0, y=0, z=0):
         return cq.Workplane("XY").box(w, d, h).translate((x, y, z))
 
@@ -502,14 +503,14 @@ def nano_glb(glb_path):
                     .circle(0.91).circle(0.54).extrude(1.64, combine=False))
 
     # Round-ended mid-mount USB-C shell and a recessed contact tongue.
-    shell = block(8.85, 5.30, 3.15, y=14.4, z=3.2).edges("|Y").fillet(0.71)
-    cavity = block(7.95, 4.3, 2.34, y=15.3, z=3.2).edges("|Y").fillet(0.61)
+    shell = block(8.85, 7.22, 3.15, y=15.36, z=3.2).edges("|Y").fillet(0.71)
+    cavity = block(7.95, 6.22, 2.34, y=16.26, z=3.2).edges("|Y").fillet(0.61)
     shell = shell.cut(cavity)
-    tongue = block(6.5, 3.5, 0.67, y=14.9, z=3.2).edges("|Y").fillet(0.19)
+    tongue = block(6.5, 5.42, 0.67, y=15.86, z=3.2).edges("|Y").fillet(0.19)
     shell_contacts = cq.Workplane("XY")
     for i in range(12):
         shell_contacts = shell_contacts.add(
-            block(0.29, 1.65, 0.035, x=(i - 5.5) * 0.50, y=15.35, z=3.55).val())
+            block(0.29, 1.65, 0.035, x=(i - 5.5) * 0.50, y=17.27, z=3.55).val())
     pads = plated_holes.add(shell_contacts.vals())
 
     # Photo-matched component types and proportions. Keep the mask clean.
@@ -531,8 +532,9 @@ def nano_glb(glb_path):
     packages = packages.cut(block(0.48, 0.48, 0.11, x=-2.75, y=0.98, z=4.77))
     for x in (-4.85, -2.84, -0.83):
         pads = pads.add(block(1.02, 1.12, 0.028, x=x, y=-11.9, z=4.015).val())
-    socket = block(2.45, 29.7, 2.40, x=-7.62, z=1.20).edges("|Z").fillet(0.18)
-    socket = socket.add(block(2.45, 29.7, 2.40, x=7.62, z=1.20).edges("|Z").fillet(0.18).val())
+    socket = block(2.45, 29.7, socket_height, x=-7.62, z=socket_height / 2).edges("|Z").fillet(0.18)
+    socket = socket.add(block(2.45, 29.7, socket_height, x=7.62, z=socket_height / 2)
+                        .edges("|Z").fillet(0.18).val())
 
     # Render layout following the component-side reference. Top-layer
     # routes run from lands to parts or disappear at vias; the antenna
@@ -593,9 +595,12 @@ def nano_glb(glb_path):
     for name, part in (("mask", body), ("gold", pads), ("shell", shell),
                        ("tongue", tongue), ("packages", packages),
                        ("crystal", crystal), ("ceramic", ceramic),
-                       ("smd_ends", smd_ends), ("socket", socket), ("vias", vias)):
-        add_cad_mesh(scene, "nano_" + name, part)
-    scene.add_geometry(trimesh.util.concatenate(trace_meshes),
+                       ("smd_ends", smd_ends), ("vias", vias)):
+        add_cad_mesh(scene, "nano_" + name, part.translate((0, 0, board_lift)))
+    add_cad_mesh(scene, "nano_socket", socket)
+    traces = trimesh.util.concatenate(trace_meshes)
+    traces.apply_translation((0, 0, board_lift))
+    scene.add_geometry(traces,
                        node_name="nano_traces", geom_name="nano_traces")
     scene.export(glb_path)
 

@@ -32,6 +32,8 @@ def plate_overlap(header, half):
     depths = {"CUTOUT": params.PLATE_T, "RELIEF": lands["diode_relief"]["depth"]}
     bounds = header.BoundingBox()
     for layer, points in layers:
+        if overlap.Volume() == 0.0:
+            break
         if layer not in depths:
             continue
         xs, ys = zip(*points)
@@ -90,9 +92,18 @@ def check_half(half, header_model, lead_length):
                  .rotate((0, 0, 0), (0, 0, 1), 0 if facing > 0 else 180)
                  .translate((mouth_x - 2 * facing, mouth_y, 0)))
     interfaces = []
+    usb_x, usb_y = params.PORTS[half]["usb"]
+    # A rectangular swept gauge includes the plastic overmold over the
+    # full insertion path and the range of installed receptacle heights.
+    usb_bottom = params.USB_AXIS_MIN_Z - params.POWER_Z_TRAVEL - params.USB_HOUSING_H / 2
+    usb_top = params.USB_AXIS_MAX_Z + params.POWER_Z_TRAVEL + params.USB_HOUSING_H / 2
+    usb = cq.Solid.makeBox(params.USB_HOUSING_W, params.USB_HOUSING_REACH,
+                           usb_top - usb_bottom,
+                           (usb_x - params.USB_HOUSING_W / 2, usb_y, usb_bottom))
+    interfaces.append(("USB-C 12.35 x 6.50 overmold insertion sweep", usb, True))
     # Gauge the entire boot path from its seating face out of the case.
     for dz in (-params.POWER_Z_TRAVEL, 0, params.POWER_Z_TRAVEL):
-        boot = cq.Solid.makeCylinder(4.75, 16,
+        boot = cq.Solid.makeCylinder(params.TRRS_BOOT_D / 2, 16,
                                      (mouth_x, mouth_y, params.TRRS_JACK_AXIS_Z + dz),
                                      (facing, 0, 0))
         interfaces.append((f"TRRS Ø9.50 boot gauge at dz={dz:+.2f}",
