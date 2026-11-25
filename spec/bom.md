@@ -57,8 +57,10 @@ other part is identified by exact `MPN` text — no guessed vendor links.
   20mm fouls the socket pins), 3.7V, ≥100mAh, protection PCM (reject any
   unprotected pouch on arrival), JST-PH 2.0mm pigtail with red=pack+.
 - Pack+ (red) → PPTC fuse → switch common, pack− (black) → GND; charges
-  only with the switch ON. Meter the pigtail polarity against JST pin 1
-  BEFORE the first plug-in (reverse polarity kills board and cell).
+  only with the switch ON. Measure DC voltage at the disconnected pack
+  pigtail before connecting it. The contact mating with PCB JST pin 1
+  must be positive relative to pin 2. Follow the
+  [first-article polarity check](first-article.md#2-bare-board-dmm-before-soldering-modules).
 - Select the exact series PPTC in the pack-positive lead and record its
   ratings, trip curve and installed placement. The earlier generic
   0.5–1A hold range was a placeholder. Qualify the pack PCM and charging

@@ -1,0 +1,1 @@
+The front and back of the current left PCB. The little diodes now sit on the underside, next to the Choc socket positions. Moving them there cleared the space beneath the plate and let me use a flat cut.

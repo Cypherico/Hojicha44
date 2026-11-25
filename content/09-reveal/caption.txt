@@ -1,0 +1,3 @@
+This is the version of Hojicha44 I’m taking into the first physical build. It’s a low-profile wireless split with 44 keys, four under each thumb, and a dial on each half.
+
+The hardware is still at the drawing-and-render stage. I’ll share what changes once I’ve assembled a pair and checked the fit. The current design files are linked in my bio.

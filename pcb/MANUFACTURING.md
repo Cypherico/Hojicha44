@@ -45,7 +45,7 @@ but every design-shaped field below has exactly one right answer.
 | Via Covering | **Tented** | sealed vias can't wick solder while hand-soldering near sockets; mask openings in the gerbers rule regardless of this toggle |
 | Via Plating Method | **Not Specified** | the standard plating is implicit; the other two are filled-via/HDI-class options |
 | Min via hole size/diameter | **0.3mm/(0.4/0.45mm)** tier | smallest finished hole = 0.30 with 0.65 pads — comfortably inside the free tier |
-| Board Outline Tolerance | **±0.2mm (Regular)** | case clearances were designed ≥0.5mm; ±0.1 buys nothing (and thickness ±10% dominates any fit conversation) |
+| Board Outline Tolerance | **±0.2mm (Regular), subject to CAM approval** | The nearest track is 0.582mm from the nominal routed profile on both halves. Have CAM confirm clearances for all copper, tooling and tab locations, especially at the USB-C and TRRS reliefs. |
 | Confirm Production file | **Yes** | Review both drill layers. Ask CAM to confirm plating and routing of the short slots in writing if the preview cannot show them. |
 | Mark on PCB | **Remove Mark** | no fab barcodes on a finished keyboard half (~$1.50); the free 2D barcode is the cosmetic alternative |
 | Electrical Test | **Flying Probe Fully Test** | trivial adder at qty 5; catches what the eye won't |
@@ -76,10 +76,10 @@ but every design-shaped field below has exactly one right answer.
   G85** and the four PJ-320A contact slots are **0.90 × 1.80mm plated
   G85**. Confirm both types are milled end to end. Check the Choc holes
   and PJ-320A locating holes are non-plated.
-- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** Review current copper-to-edge spacing with the fabricator. CNC
-  routing tolerance ±0.1mm precision / ±0.2mm regular (capabilities
-  page) — prefer the precision tier at quote if offered. Put this in
-  the fab order verbatim:
+- **Concave outline — TAB-ROUTE ONLY, NO V-CUT / V-SCORE.** Keep tabs out
+  of the connector reliefs and mating paths. Confirm the routed profile
+  and tab locations with CAM before approving the production files. Put
+  this in the fab order verbatim:
   `CONCAVE OUTLINE — TAB-ROUTE ONLY, NO V-CUT / V-SCORE`
 - The ENIG pick in the **gbrjob is informational only** — the form's
   Surface Finish choice is what the fab actually executes. Pick ENIG
@@ -91,10 +91,9 @@ but every design-shaped field below has exactly one right answer.
 
 ## Assembly
 
-- **Intent is hand-solder**: bottom-side diodes (D_L*/D_R*), the **44 Choc v1
-  hotswap sockets** (soldered on B.Cu under each switch — they are
-  footprint-only parts, so they carry no MPN and never appear in the
-  released `bom.csv`; order them from `pcb/BOM_ORDER.md`), the 2
+- **Intent is hand-solder**: bottom-side diodes (D_L*/D_R*), the **44 Kailh
+  CPG135001S30 Choc v1 hotswap sockets** (order separately from the
+  schematic BOM using [BOM_ORDER.md](BOM_ORDER.md)), the 2
   **EC11E15244G1 encoders**, the Nice!Nano socket headers, TRRS THT,
   and the pwrsw/JST. The SWITCHES themselves are never soldered (they
   plug into the hotswap sockets). ENIG is the friendly finish for
@@ -103,8 +102,12 @@ but every design-shaped field below has exactly one right answer.
   parts list per half. Confirm diode orientation in the assembly preview
   and have the assembler omit the hand-soldered socket apertures from
   its paste stencil. The full `bom.csv` is schematic reference data.
-  For a complete assembly quote, reconcile it with [BOM_ORDER.md](BOM_ORDER.md)
-  and explicitly include 22 underside Choc sockets per half.
+  For a quote that includes sockets, give the assembler a separate line
+  for **22 CPG135001S30 per half** on the bottom side. Use `SW_L00–SW_L21`
+  for Left and `SW_R00–SW_R21` for Right. The `SW_*` rows in `bom.csv`
+  specify the plug-in PG1350 switches. Agree on socket orientation against
+  the actual bottom-side lands and confirm the placement and stencil
+  in CAM before approving assembly.
 
 ## Non-PCB orders (case, plate, magnets)
 

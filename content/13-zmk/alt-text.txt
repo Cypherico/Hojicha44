@@ -1,0 +1,8 @@
+01-base.jpg
+Base keymap for macOS with Space on the left and the home-row modifier positions in teal.
+
+02-numbers.jpg
+Layer one map showing 1 through 0 across the top, symbols below, and F1 through F12 on the bottom row.
+
+03-navigation.jpg
+Layer two map with media and Bluetooth controls on the left and the highlighted inverted-T arrow cluster on the right.

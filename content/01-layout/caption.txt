@@ -1,0 +1,3 @@
+The earliest draft had the thumb keys in straight rows. The current layout fans four keys out under each thumb. The middle slide strips the legends away so you can see how far those positions moved.
+
+The last slide shows my current keymap, with Space on the left and Enter on the right. If you use a split, what lives under your other thumb?

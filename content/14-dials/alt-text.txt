@@ -1,0 +1,8 @@
+01-dial.jpg
+Close-up render of the two silver dials and surrounding cream keycaps.
+
+02-controls.jpg
+A dial close-up with its three layer functions listed: volume, scroll, and previous or next track. Press either dial to mute.
+
+03-connection.jpg
+Overhead render with text explaining Bluetooth between halves and the host connection via Bluetooth or the left USB-C port.

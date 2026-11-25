@@ -1,6 +1,241 @@
 # Hojicha44 product audit
 
-**21–22 November 2026** · Reviewed the working tree at `9c192e8`, PCB release **v0.5.1** from `3d016fc`, and the checked-in case STEP files from the **v0.5.0 print manifest**. Dimensions are in mm. XY coordinates use the plate/Excellon frame and z=0 is the nominal carrier PCB top. The findings describe the reviewed baseline. Sections 6 and 7 record the edits and their verification.
+## v0.5.4 audit review
+
+The matched v0.5.4 files are suitable for an engineering sample. The
+[first-article checklist](spec/first-article.md) gates the pilot batch.
+The submitted findings below are retained for reference. Use this review
+for their current disposition.
+
+| Finding | Disposition |
+|---|---|
+| H-01 · Switch leads | Confirmed. The exported tub interferes with all three stock-length leads on each half. The existing 3.25 mm maximum, measured to the lowest lead or solder point from the PCB top, clears by 1.40 mm at nominal seating and leaves 1.00 mm after the 0.40 mm travel allowance. Keep this area free of foam. |
+| H-02 · Cover retention | The flat magnetic seat has no positive lateral locator. Shear, peel and the effect of preload depend on the actual foam, magnets, adhesive and print. The quoted forces and slip under light touch remain unverified. The loaded pull and slip checks now record the assembled result on each half. |
+| H-03 · Sockets | Confirmed purchasing gap in the schematic CSV. Each half has 22 PG1350 switch rows and 22 bottom diode placements. Order 22 CPG135001S30 sockets per half separately. The [order guide](pcb/MANUFACTURING.md) now gives the socket reference ranges and placement approval steps. |
+| H-04 / M-04 · Battery polarity and charging | The carrier has no reverse-polarity protection. The switch disconnects the pack from the charger when OFF. The checklist now requires a positive DC voltage reading at the actual disconnected harness contacts before every first plug-in or replacement. Charge with the switch ON and verify actual current and termination on the qualified pack. |
+| M-01 · Routed edge | The closest track is **0.582 mm on both halves**. Measured from the committed track segments to the routed Edge.Cuts line segments, less half the track width. The 0.330 mm right TRRS trace claim is incorrect. CAM still needs to approve all copper, the reliefs and tab placement. JLCPCB publishes a 0.20 mm routed-edge copper requirement and lists outline tolerances separately. [JLCPCB capabilities](https://jlcpcb.com/capabilities/pcb-capabilities/) |
+| M-02 / M-03 · Encoder and knob | The stock shaft projects about 18.15 mm above the cover in the model. The render uses a shorter shaft and a Ø16.8 mm knob. Ø16.8 mm is a reference size. The claimed collision above Ø18 mm does not follow from the stated radial gap. Fit a knob to the actual shaft and verify skirt and cap clearance through full push and rotation before choosing a shaft modification or a replacement encoder. [Alps drawing and specifications](https://tech.alpsalpine.com/e/products/detail/EC11E15244G1/) |
+| M-05 · Standby | Deep sleep is disabled in the current build. The quoted 3.7 days assumes constant 1.2 mA and 110 mAh usable capacity. Measure each role and compare against a 15-minute sleep trial, including wake and BLE reconnection, before changing the shared firmware default. [ZMK low-power states](https://zmk.dev/docs/features/low-power-states) |
+| M-06 · Pack fit | Measure the complete insulated pack, including seam, PCM and wire exit, against the actual mated sockets. Reject a pack that needs compression to fit. Nominal 301230 dimensions describe only a starting envelope. |
+| L-01 / L-02 / L-03 · Feet, tenting and reset | These are usability trade-offs. Qualify desk grip and typing comfort with the first pair. The Adjust bindings, RST/GND access and settings-reset build cover recovery on the current revision. Verify recovery for each half on the bench. |
+| L-04 · TRRS relief | The revised cover uses a rounded relief open at the top along the boot axis. The 0.70 mm roof claim does not describe the current plug path. The Ø9.50 mm modeled boot clears both halves through the travel range. Test real cable seating and inspect the printed relief after mating. The jack is optional debug hardware. BLE carries the split link. |
+
+The rerun passed `npm test`, the release, board and plate checks,
+and the exported-solid component and bore checks with the trimmed
+switch. The stock-lead run failed at all six leads as expected. The
+USB-C and TRRS gauge passes establish geometric clearance for those
+gauges. Cable fit, clip retention, charge behavior, standby runtime,
+magnetic retention, encoder feel and typing behavior remain physical
+checks.
+
+---
+
+### Scope of the submitted audit
+
+**23 November 2026** · Systematic pre-production scrutiny and hardware audit of **Hojicha44 (v0.5.4)** at git revision `c3efb50`. Evaluated across mechanical geometry, stack-up, materials, component specifications, physical clearances, PCB layout, electrical/power architecture, fabricator constraints (JLCPCB and PCBWay), enclosure DFM, aesthetics, ergonomics, and ZMK firmware keymap.
+
+---
+
+## Comprehensive Pre-Production Scrutiny (v0.5.4 Release Baseline)
+
+### 1. Executive Readiness Verdict
+
+| Subsystem | Readiness | Critical Finding / Status |
+|---|---|---|
+| **Static Verification Gates** | **PASS** | `npm test`, `check_board.py --self-test`, `gen_plate.py --check`, `gen_keymap.py --check`, and `make_release.py --check` all pass clean with zero errors. |
+| **PCB Layout & DRC** | **CONDITIONAL PASS** | Zero unrouted nets. 47 documented footprint mismatch warnings per side waived under W1-gate. Right board TRRS tip trace has **0.330 mm copper-to-edge distance** (near the 0.30 mm regular fab threshold). |
+| **BOM & PCBA Assembly** | **ACTION REQUIRED** | All 44 Kailh Choc hotswap sockets (`CPG135001S30`) are footprint-only and **omitted from KiCad `bom.csv`**. SMT placement (`pos-smt.csv`) places bottom-side diodes only. |
+| **Enclosure Clearances** | **CRITICAL TRAP** | **Würth power switch leads (5.00 mm stock) hit the tub floor by 0.35 mm** unless manually trimmed to $\le 3.25\text{ mm}$ from PCB top before seating. |
+| **Cover Retention & Stability** | **HIGH RISK** | Cover held exclusively by 8× $\varnothing 4 \times 0.5\text{ mm}$ magnets ($\approx 10\text{ N}$ total pull) opposed by $\approx 11\text{ N}$ Poron gasket preload. **Zero lateral registration** (no perimeter lip, tongue-and-groove, or dowels) permits lateral shear slip under light touch. |
+| **Power & Electrical Architecture** | **SERIOUS CAUTION** | **No reverse-polarity protection circuit** on PCB (reversed JST destroys board). Battery **charges only when power switch is ON**. Standby current drains cell in $<4$ days if deep sleep is omitted. |
+| **Rotary Encoder & Knob** | **AESTHETIC / FIT MISMATCH** | Alps EC11E stock 20 mm shaft projects $\approx 18.15\text{ mm}$ above the top cover ($Z = 24.55\text{ mm}$). Requires custom knob or manual shaft trim. Knob outer diameter **must not exceed 16.8 mm** to clear keycap `SW_17`. |
+| **Firmware & Keymap** | **PASS** | 4-layer ZMK matrix, composite encoder push scan, timeless home-row mods, and physical column inversion on the right hand are fully verified and match the layout specification. |
+
+---
+
+### 2. Geometry & Mechanical Stack-Up
+
+Refer to [spec/case.md](spec/case.md) and [case/params.py](case/params.py). All vertical dimensions use $Z = 0.00\text{ mm}$ at the nominal carrier PCB top surface.
+
+```
++6.40 mm ── Top of Cover (thumb apron drops to +5.20 mm)
++3.20 mm ── Top Lip Plane / Tub Rim / Cover Underside Seat
++2.20 mm ── Plate Top Surface (1.20 mm plate)
++1.00 mm ── Plate Underside (Choc v1 latch engagement band)
+ 0.00 mm ── PCB Top Surface
+-1.60 mm ── PCB Bottom Surface (nominal 1.60 mm FR-4; max 1.76 mm at +10%)
+-4.65 mm ── Tub Floor Top Surface (Cavity depth below PCB bottom = 3.05 mm)
+-6.35 mm ── Tub Bottom External Surface (1.70 mm floor slab)
+```
+
+1. **Plate Gap & Switch Latch Engagement:**
+   - Kailh Choc v1 (PG1350) switch clips require a **1.20 mm plate thickness** with a **1.00 mm plate-to-PCB gap**. The retaining latches engage between 0.90 mm and 1.30 mm above the PCB, while the switch flange ears seat between 2.20 mm and 3.00 mm.
+   - *Tolerance Rule:* A 1.20 mm plate positioned across the $Z = 1.00\text{ to }2.20\text{ mm}$ band locks switches firmly. If machined from nominal 1.50 mm or 1.60 mm stock, the lower switch catches will **fail to engage**, leaving switches retained purely by socket friction. Plate thickness must remain strictly $1.20\text{ mm} (-0.00 / +0.05\text{ mm})$.
+2. **Switch Cutouts:**
+   - Designed at nominal $14.00 \times 14.00\text{ mm}$ in [plate/gen_plate.py](plate/gen_plate.py). Accounting for laser/CNC kerf, as-built cutouts must stay within $13.80\text{ mm}$ to $14.10\text{ mm}$. Any cutout exceeding $14.20\text{ mm}$ results in switch wobble and latch disengagement.
+3. **Under-PCB Component Clearances (in the 3.05 mm floor cavity):**
+   - **Choc Hotswap Sockets:** Project $1.80 \pm 0.10\text{ mm}$ below PCB bottom ($Z = -3.40\text{ to }-3.50\text{ mm}$). Nominal floor clearance is **1.15 to 1.25 mm** (0.75 mm at 0.40 mm maximum gasket travel). Clearance is verified.
+   - **SOD-123 Matrix Diodes (relocated to B.Cu in v0.5.4):** Package envelope is $1.35\text{ mm} + 0.05\text{ mm}$ solder ($Z = -3.00\text{ to }-3.16\text{ mm}$). Nominal floor clearance is **1.49 mm** (1.09 mm at 0.40 mm maximum gasket travel). Clearance is verified.
+   - **Alps EC11E Terminal Pins:** Project $\approx 1.90\text{ mm}$ below PCB ($Z = -3.50\text{ to }-3.65\text{ mm}$). Nominal floor clearance is **1.00 mm** (0.60 mm at travel). Leads must be clipped flush after soldering.
+   - **JST S2B-PH-K-S Header Pins:** Project $\approx 1.80\text{ mm}$ below PCB ($Z = -3.40\text{ mm}$). Nominal floor clearance is **1.25 mm**. Clearance is verified.
+   - **Würth 450301014042 Power Switch:** Stock leads are $5.00 +0.10/-0.30\text{ mm}$ long from the seating plane ($Z = 0.00\text{ mm}$). Untrimmed leads reach **$Z = -5.00\text{ mm}$**, penetrating the floor ($Z = -4.65\text{ mm}$) by **0.35 mm**.
+
+---
+
+### 3. Clearances & Component Envelopes
+
+1. **USB-C Port Overmold Clearance:**
+   - Located at Left $(118.00, 49.95)$ and Right $(173.50, 49.95)$ in [case/params.py](case/params.py).
+   - The opening is a $14.00\text{ mm}$ wide slot with $R = 1.20\text{ mm}$ corner fillets and a $Z = 1.25\text{ mm}$ sill.
+   - Modeled against a $12.35 \times 6.50\text{ mm}$ overmold gauge. Lateral clearance is $0.825\text{ mm}$ per side. The $Z = 1.25\text{ mm}$ sill and open cover channel clear the full $4.50\text{ to }5.00\text{ mm}$ controller socket stack variation.
+2. **TRRS Debug Port & Edge Relief:**
+   - Located at Left $(134.55, -22.00)$ and Right $(156.95, -22.00)$.
+   - Modeled for $\varnothing 9.50\text{ mm}$ plug boots. In v0.5.4, Edge.Cuts is recessed $0.50\text{ mm}$ behind the jack mouth to prevent plug boot interference.
+   - The cover roof over the TRRS bore has a residual wall thickness of only **0.70 mm**. Adequate in MJF PA12, but fragile if printed in PETG.
+3. **Rotary Encoder (Alps EC11E15244G1):**
+   - The plate window is $16.20 \times 12.40\text{ mm}$ in [plate/gen_plate.py](plate/gen_plate.py). The EC11 terminal base measures $14.95 \times 11.70\text{ mm}$ at the plate band, leaving $0.625\text{ mm}$ clearance in $X$ and $0.35\text{ mm}$ in $Y$.
+   - The encoder shaft center sits at $(118.00, -8.00)$ on Left. The nearest switch center is `SW_L17` at $(95.00, 1.00)$ with a 1u cap footprint ($17.5 \times 16.5\text{ mm}$). Net diagonal clearance from shaft center to keycap corner is **12.70 mm**.
+   - A knob with $\varnothing 16.8\text{ mm}$ outer diameter leaves $4.30\text{ mm}$ radial clearance. Knobs with $\varnothing > 18.0\text{ mm}$ will collide with `SW_17`.
+   - The stock $20.0\text{ mm}$ shaft extends to $Z \approx 24.55\text{ mm}$, protruding **18.15 mm above the cover**. The shaft must be shortened or paired with a custom deep-skirt knob to achieve the low-profile render aesthetic.
+4. **Battery Cavity Clearance:**
+   - Designed for a 301230 LiPo cell ($3.0 \times 12.0 \times 30.0\text{ mm}$).
+   - The clear width between the nice!nano machine-pin socket rows is $\approx 12.70\text{ mm}$. A $12.0\text{ mm}$ pouch leaves **0.35 mm clearance per side**. Cell seam margins exceeding $12.5\text{ mm}$ will foul header pins unless taped down tightly with Kapton tape.
+   - Vertical clearance under the module ($4.50\text{ to }5.00\text{ mm}$ socket stack) provides $1.50\text{ to }2.00\text{ mm}$ of free space above a $3.0\text{ mm}$ cell for wiring and expansion.
+
+---
+
+### 4. Materials & Manufacturing Requirements
+
+1. **Case (MJF PA12 vs. PETG):**
+   - *MJF PA12 (Production Reference):* Floor slab 1.70 mm, walls 2.00 to 2.62 mm. Meets HP's $\ge 1.50\text{ mm}$ recommendation. Susceptible to slight cooling bow ($\pm 0.3\text{ mm}$) across the 167 mm span; confirm bed flatness on arrival.
+   - *PETG (Self-Print):* All thin features are $\ge 1.20\text{ mm}$. Requires 100% infill for rigidity. Must be printed open-face-up for the tub and underside-up for the cover to eliminate internal support structures.
+2. **Plate (Polycarbonate vs. POM vs. Aluminum):**
+   - Polycarbonate (1.20 mm) is through-cut with zero blind machining.
+   - POM offers higher stiffness but poor adhesive bonding for Poron pads without chemical surface treatment.
+   - Aluminum plates require Kapton insulation over top-side exposed traces/pins and reduce Bluetooth RF range by $10\text{–}25\%$.
+3. **Suspension Gaskets (PORON 4701-30):**
+   - 8 tabs per half ($10.0 \times 5.0\text{ mm}$ with $R = 2.0\text{ mm}$ fillets).
+   - 8 pairs of $7.0 \times 4.0\text{ mm}$ Poron pads per half: Bottom pad 3.0 mm (15% preload to 2.55 mm), Top pad 1.5 mm (33% preload to 1.00 mm). Combined squeeze is 0.95 mm (21.1% nominal strain).
+   - Commercial supply verification: Rogers standard unsupported thicknesses are typically 1.57 mm and 3.18 mm (1/8"). Caliper raw stock on arrival.
+4. **Cover Retention Magnets & Shear Risk:**
+   - Tub: 8× $\varnothing 4.0 \times 2.0\text{ mm}$ N52 magnets in $\varnothing 4.3 \times 2.2\text{ mm}$ pockets.
+   - Cover: 8× $\varnothing 4.0 \times 0.5\text{ mm}$ N52 magnets in $\varnothing 4.3 \times 0.7\text{ mm}$ pockets.
+   - An N52 $\varnothing 4 \times 0.5\text{ mm}$ disc paired with $\varnothing 4 \times 2.0\text{ mm}$ produces $\approx 1.2\text{–}1.5\text{ N}$ pull per station ($\approx 9.6\text{–}12.0\text{ N}$ total).
+   - The 8 compressed top Poron pads push upward with $\approx 10\text{–}12\text{ N}$.
+   - The cover has **no perimeter lip, rebate, or alignment pins**. Lateral shear resistance is negligible. Light lateral bumps can slide the cover, causing key openings to rub switch stems and keycaps.
+
+---
+
+### 5. PCB Layout, Routing & Fabricator Compliance (JLCPCB & PCBWay)
+
+| Fabrication Parameter | Hojicha44 v0.5.4 | JLCPCB Standard | PCBWay Standard | Evaluation |
+|---|---|---|---|---|
+| **Board Dimensions** | $150.5 \times 114.6\text{ mm}$ | Max $400 \times 500\text{ mm}$ | Max $500 \times 500\text{ mm}$ | Within capability. Exceeds $100\times 100$ economy tier. |
+| **Layer Count & Stack** | 2-Layer FR-4, 1.60 mm | 1.60 mm $\pm 10\%$ | 1.60 mm $\pm 10\%$ | Standard. |
+| **Min Trace / Spacing** | $0.25\text{ mm} / 0.20\text{ mm}$ | $0.127\text{ mm} / 0.127\text{ mm}$ | $0.15\text{ mm} / 0.15\text{ mm}$ | Complies with margin. |
+| **Min Via Hole / Pad** | $0.30\text{ mm} / 0.65\text{ mm}$ | $0.30\text{ mm} / 0.60\text{ mm}$ | $0.30\text{ mm} / 0.60\text{ mm}$ | Complies with standard tier. |
+| **Plated Slots (G85)** | 0.90 mm & 1.00 mm wide | Min width 0.50 mm | Min width 0.60 mm | 24 controller slots + 4 jack slots per half pass rules. |
+| **Copper to Board Edge** | Left: 0.582 mm, **Right: 0.330 mm** | Min 0.30 mm | Min 0.30 mm (0.20 mm prec.) | **Margin Warning:** Right TRRS trace is within 0.03 mm of fab limit. |
+| **Board Outline** | Concave contour | Tab-route only (NO V-CUT) | Tab-route only (NO V-CUT) | Mandatory order note: `CONCAVE OUTLINE — TAB-ROUTE ONLY`. |
+| **Silkscreen Resolution** | 1.00 mm height / 0.15 mm stroke | Min 0.80 mm / 0.15 mm | Min 0.80 mm / 0.15 mm | At fab resolution floor. Do not scale down. |
+| **Surface Finish** | **ENIG** | Supported | Supported | **Mandatory** for flat coplanarity on hotswap pads. |
+| **Multi-Design Ordering** | Left & Right are distinct designs | 2 design fee applies | 2 design fee applies | Order as 2 distinct line items or select 2 designs. |
+
+**PCBA Assembly Notice:**
+The generated KiCad `bom.csv` lists only parts with an MPN. The **44 Kailh Choc hotswap sockets are completely missing from `bom.csv`**. SMT placement (`pos-smt.csv`) includes only the 22 SOD-123 diodes. Sockets, pin headers, switches, encoder, and connectors require hand soldering or manual inclusion in the assembly quote.
+
+---
+
+### 6. Electrical, Wiring & Power Architecture
+
+1. **Power Path Topology:**
+   - `Pack+` $\rightarrow$ in-line PPTC fuse $\rightarrow$ `SW_PWR1` Pin 1 (common) $\rightarrow$ Pin 2 (throw) $\rightarrow$ nice!nano `RAW`.
+   - `Pack-` $\rightarrow$ `GND`.
+2. **Reverse Polarity Vulnerability:**
+   - There is **no reverse-polarity protection diode or P-channel MOSFET** on the board.
+   - JST-PH 2.0 mm pigtails from battery vendors often have inverted wire colors.
+   - Inverting battery polarity destroys the nice!nano onboard charger and nRF52840 SoC immediately. Verification with a DMM prior to connection is mandatory.
+3. **Charging Interlock ("Charge Only When ON"):**
+   - The slide switch isolates the battery from `RAW`.
+   - The nice!nano internal charger output connects to `RAW`.
+   - **The battery will not charge when the power switch is OFF**. Placed on USB with switch OFF, the board runs on USB 5V, but the battery remains disconnected and uncharged.
+4. **No Hardware Reset Switch:**
+   - Double-tapping `RST` to `GND` enters the bootloader.
+   - The PCB has no tactile reset button. Firmware recovery requires removing the magnetic cover and shorting header pins with tweezers.
+5. **TRRS Interconnect:**
+   - Connects TX (Tip), RX (Ring 1), and GND (Sleeve). Ring 2 is disconnected (`NC`).
+   - Power (`RAW`/`VCC`) is excluded from TRRS to eliminate 3.5 mm jack insertion shorts. Both halves must run on independent battery power even when cabled.
+6. **Standby Power Consumption:**
+   - `CONFIG_ZMK_SLEEP=y` is **omitted** from [config/hojicha44.conf](config/hojicha44.conf).
+   - Without deep sleep, idle current is $\approx 1.0\text{–}1.5\text{ mA}$. A 110 mAh cell depletes in $\approx \mathbf{90\text{ hours (3.7 days)}}$ of untouched standby if the power switch is left ON.
+
+---
+
+### 7. Ergonomics & Physical Usability
+
+1. **Column Stagger Offset:**
+   - Offsets: Outer $-8\text{ mm}$, Pinky $+4\text{ mm}$, Ring $+5\text{ mm}$, Middle $+7\text{ mm}$, Index $-3\text{ mm}$, Inner $-6\text{ mm}$.
+   - The vertical drop from Pinky to Outer is **12.0 mm**. This is a steep step down; typists with smaller hands will need to reposition their hands to reach top-outer keys ($Q$ and $P$).
+2. **Thumb Cluster Geometry:**
+   - Four 1u keys per thumb along an arc of radius $R = 91.2\text{ mm}$.
+   - Total travel span from innermost thumb key (`SW_21`) to outermost key (`SW_18`) is **65.6 mm**.
+   - The natural resting position centers on the middle two keys (`SW_19` and `SW_20`). Outer keys are best reserved for momentary or infrequent commands.
+3. **Desk Grip & Tenting Provisions:**
+   - The tub floor underside is completely flat.
+   - **No molded recesses or locator pockets for rubber bumpons**.
+   - **No threaded inserts (e.g. 1/4"-20 or M2/M3) for tenting pucks or legs**. Tenting requires external adhesive wedges or custom mats.
+
+---
+
+### 8. Keymap & Firmware Verification
+
+1. **Right-Hand Matrix Inversion:**
+   - Right-half columns are placed from outer ($X = 291.5\text{ mm}$) to inner ($X = 196.5\text{ mm}$).
+   - `hojicha44.dtsi` applies `col-offset = <6>`.
+   - `hojicha44.keymap` binds positions from outer to inner: $P, O, I, U, Y, \backslash$ on row 0; $;, L, K, J, H, ]$ on row 1; $/, ., ,, M, N, '$ on row 2.
+   - Physical layout is standard QWERTY with inner brackets and quotes facing across the split gap.
+2. **Layer Layouts:**
+   - *Base (L0):* Standard QWERTY + inner punctuation + thumb cluster.
+   - *Lower (L1):* Numbers $1\text{–}6$ on left, $7\text{–}0, -, =$ on right; symbols on home row; F1–F12 on bottom row.
+   - *Raise (L2):* Media/Bluetooth controls on left; standard inverted-T arrow cluster on right index/middle/ring keys.
+   - *Adjust (L3):* Reached via L1+L2 chord; provides `&bootloader` and `&sys_reset` on keys W and E.
+3. **Home-Row Mod Timing:**
+   - Timeless home-row mods configured with `balanced` flavor, 150 ms prior idle, 280 ms tapping term, opposite-hand trigger lists, and `hold-trigger-on-release`. Verified free of roll-misfires.
+
+---
+
+### 9. Systematic Pre-Production Blocker & Risk Matrix
+
+#### High Severity: Must Address Prior to Assembly / Order
+
+| Ref | Domain | Defect / Condition | Physical Failure Mode | Required Action |
+|---|---|---|---|---|
+| **H-01** | Clearance | Würth switch stock leads are 5.00 mm long; floor cavity is 3.05 mm. | Leads penetrate tub floor by 0.35 mm, preventing board from seating flat. | Snip switch leads flush to $\le 3.25\text{ mm}$ from PCB top before installing. |
+| **H-02** | Mechanics | 8× $\varnothing 4 \times 0.5\text{ mm}$ magnets ($\approx 10\text{ N}$) oppose $\approx 11\text{ N}$ gasket preload. Zero lateral registration features. | Cover slides laterally under touch, causing key openings to bind against keycaps. | Test first article retention; add internal perimeter locator tabs to cover CAD if slip occurs. |
+| **H-03** | BOM / PCBA | 44 Kailh Choc hotswap sockets omitted from KiCad `bom.csv`. | PCBA fab will ship bare boards without hotswap sockets. | Manually add 44× `CPG135001S30` sockets to order cart and assembly instructions. |
+| **H-04** | Electrical | No reverse polarity protection circuit on LiPo rail. | Inverted battery pigtail instantly destroys nice!nano and battery. | Mandatory DMM polarity verification before plugging in any battery. |
+
+#### Medium Severity: Production Risks & Usability Constraints
+
+| Ref | Domain | Condition | Risk / Operational Impact | Recommended Action |
+|---|---|---|---|---|
+| **M-01** | PCB Fab | Right TRRS tip trace copper-to-edge distance is 0.330 mm. | Near the 0.30 mm regular routing tolerance limit; risk of trace exposure. | Specify precision CNC routing tier in PCB order notes. |
+| **M-02** | Mechanics | Stock Alps EC11E shaft projects 18.15 mm above top cover. | Low-profile knob will sit unnaturally high above keycaps. | Trim encoder shaft to $\approx 10\text{–}12\text{ mm}$ or source custom short-shaft variant. |
+| **M-03** | Mechanics | Encoder center to `SW_17` cap corner distance is 12.70 mm. | Knobs with $\varnothing > 18.0\text{ mm}$ collide with the adjacent keycap. | Restrict knob outer diameter strictly to $\le 16.8\text{ mm}$. |
+| **M-04** | Usability | Power switch isolates battery from charger output. | Battery will not charge when keyboard is turned OFF. | Document charging protocol: "Power switch must be ON to charge." |
+| **M-05** | Power | `CONFIG_ZMK_SLEEP=y` is disabled in firmware configuration. | Quiescent current of $\approx 1.2\text{ mA}$ depletes 110 mAh cell in 3.7 days. | Enable `CONFIG_ZMK_SLEEP=y` with a 15-minute timeout in `hojicha44.conf`. |
+| **M-06** | Assembly | Clear width between controller socket rows is $\approx 12.70\text{ mm}$. | Wide LiPo pouch seam margins ($> 12.5\text{ mm}$) foul socket pin tails. | Insulate and wrap pouch side seams tightly with Kapton tape. |
+
+#### Low Severity: Enhancements for Rev 2
+
+| Ref | Domain | Observation | Improvement Recommendation |
+|---|---|---|---|
+| **L-01** | Case | Tub floor underside is completely smooth. | Add four shallow molded $\varnothing 8 \times 0.6\text{ mm}$ bumpon recesses. |
+| **L-02** | Ergonomics | Case provides only a flat $0^\circ$ typing angle. | Add threaded inserts or tenting leg provisions in rev 2. |
+| **L-03** | UX | No hardware reset tactile button on PCB. | Add an SMD push button bridging `RST` and `GND` for easier flashing. |
+| **L-04** | DFM | Cover roof thickness over TRRS bore is 0.70 mm. | Acceptable in MJF PA12; avoid thin bridging stress if printing in PETG. |
+
+---
 
 ## v0.5.4 TRRS plug clearance
 

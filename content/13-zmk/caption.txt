@@ -1,0 +1,3 @@
+Here’s the ZMK map I’m starting with. Tap F for the letter or hold it for Shift. Hold the left layer key for numbers and symbols, and the right one for arrows and media.
+
+I put the arrow keys together on the right because I use them constantly when editing. What’s the one shortcut you’d make room for?

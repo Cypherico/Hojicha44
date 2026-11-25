@@ -1,0 +1,8 @@
+01-schematic.jpg
+Early schematic for the left half, with the controller above a grid of switches and diodes.
+
+02-matrix.jpg
+A close-up of the switch and diode matrix from the left-half schematic.
+
+03-tomorrow.jpg
+Close-up of the PCB pads, with the text “PCB tomorrow.”

@@ -1,0 +1,8 @@
+01-layout.jpg
+Top-down layout of Hojicha44 showing the staggered columns and four teal thumb keys on each half.
+
+02-iterations.jpg
+An early layout draft above the current spacing. Teal keys show the change from straight thumb rows to two fanned clusters.
+
+03-keymap.jpg
+Current macOS base keymap. Space is highlighted on the left thumb and Enter on the right.

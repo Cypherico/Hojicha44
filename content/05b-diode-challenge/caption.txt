@@ -1,0 +1,3 @@
+See the little recess between the switch openings? That was for one diode. We had 1 mm between the PCB and the plate, and the diode stood a little taller. Our first drawing called for machining that recess 22 times per half.
+
+We ended up moving the diodes round to the back of the PCB. In the second slide you can see one beside a hotswap socket. That move lets us cut the whole plate from flat 1.2 mm polycarbonate.

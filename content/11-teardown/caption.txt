@@ -1,0 +1,3 @@
+Here’s the stack with the covers lifted off. The Choc switches clip into a polycarbonate plate. The plate sits between PORON pads, and the PCB has hotswap sockets underneath. Magnets hold the covers down.
+
+I’m looking forward to finding out how that plate feels on the first build.

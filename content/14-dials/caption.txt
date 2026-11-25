@@ -1,0 +1,5 @@
+Both dials start on volume. Hold the number layer and they scroll. Hold the navigation layer and they skip tracks. Press either one to mute.
+
+The halves talk over Bluetooth. For the computer connection, you can use Bluetooth or plug USB-C into the left half.
+
+What would you actually use a dial for most?

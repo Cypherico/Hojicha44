@@ -134,8 +134,14 @@ batch; it never forbade coupons.
   movement under a keypress. With the magnets fitted, check for rocking,
   sideways slip and corner peel. The foam should release from both case
   surfaces when opened. **Pull test (M4 gate): with the plate
-  installed, a straight lift must hold ≥1.5 kg before the cover lifts**
-  with the specified 0.5mm cover magnets and the actual adhesive.
+  installed, a straight lift must hold ≥1.5 kgf (14.7 N) before the cover
+  lifts** with the specified 0.5mm cover magnets and the actual adhesive.
+  Record peak pull on each half with the tub restrained, first with the
+  cover alone and then with the loaded gasket stack. Mark the closed
+  cover position and check for residual shift or cap rub after cable
+  insertion/removal and sideways pressure in both axes. A cover that
+  lifts, shifts or binds in service needs revised retention or locating
+  features and another loaded test before the pilot.
 - [ ] **Cover dry-fit.** Close the cover flush with the tub without
   rocking. Check that all top pads make contact and the keycaps travel
   freely. With the cover closed, confirm both plugs seat and both power
@@ -154,7 +160,10 @@ batch; it never forbade coupons.
   assumes a shorter shaft than the reference part. If the calipered terminal blocks
   do not protrude above ~1.5mm, the window may return to 12.7 square —
   but only with that measurement in hand (see the coupon bullet above).
-- [ ] 301230 cell outline (12×30mm) fits between the socket rows on print.
+- [ ] Use the installed socket rows to check the maximum finished pack
+  dimensions, including seam, PCM, insulation and wire exit. Dry-fit a
+  gauge to that envelope before fitting the qualified pack. Reject a
+  pack that needs force, seam compression or contact with pin tails to fit.
 - [ ] Dry-fit each EC11E15244G1 in the production-thickness board. Verify
   the tabs drop into the round Ø2.60mm holes without force and the
   encoder sits flush. The Alps drawing specifies oblong openings. If
@@ -182,15 +191,17 @@ batch; it never forbade coupons.
 
 ## 2. Bare-board DMM (before soldering modules)
 
-- [ ] ×2 JST pigtail red → JST pin 1 (`+` mark), black → pin 2. Meter on
-  continuity beep AND record the readings — this board has NO
-  reverse-polarity protection. Any doubt: STOP, do not plug the cell in.
-  Reverse polarity kills board and cell.
-- [ ] ×2Pack+ to RAW with switch ON (<1Ω); switch OFF open. Record which
-  slider end is ON (either is fine, just label it).
+- [ ] ×2 **Polarity before first plug-in.** With the pigtail disconnected
+  from the PCB, meter DC voltage on the finished pack harness. Put the
+  positive probe on the contact that mates with PCB JST pin 1 (`+` mark)
+  and the negative probe on the contact that mates with pin 2. Record
+  a positive reading within the pack's specified voltage range. Check
+  the unpowered board continuity from pin 2 to GND separately. Stop
+  on an unexpected reading. The carrier has no reverse-polarity
+  protection. Repeat for every replacement pack or harness.
 - [ ] Solder the slide switch FIRST, before any other part, and re-verify:
-  JST-1 → RAW <1Ω with switch ON, open with OFF. The switch is the only
-  charge/safety disconnect — a dry joint here defeats it silently.
+  on the unpowered PCB, JST pin 1 → RAW must measure <1Ω with the switch
+  ON and open with it OFF. Record and label the ON position on each half.
 - [ ] On a real nice!nano (not yet soldered), meter on continuity beep:
   RAW↔B+ short (<1Ω), GND↔B− short (<1Ω), RAW↔VCC open (OL, no beep).
   Power must enter via RAW; B+/B− holes stay open.
@@ -285,7 +296,9 @@ batch; it never forbade coupons.
   cable. Left TIP→right TIP, left RING1→right RING1 and sleeve→sleeve
   must measure <1Ω each. RING2 must remain open on both ends.
 - [ ] Inspect solder, mask and edge registration at the USB notch
-  shoulders. Compare the physical boards with the v0.5.4 CAM preview.
+  shoulders and TRRS reliefs. Compare the physical boards with the
+  v0.5.4 CAM preview. On printed covers, inspect the TRRS relief for
+  cracking or permanent distortion after cable mating.
 - [ ] ×2 Encoder: spin both directions + push click register; knob
   clears the cover rim and the nearest cap through full rotation +
   full push (skirt ≥0.9mm off the cover at max travel).
@@ -314,6 +327,14 @@ batch; it never forbade coupons.
   pushes send Mute to the host over BLE.
 - [ ] Record each half's battery report, idle current and wake behavior
   with the exact firmware build and hardware used for the first article.
+- [ ] To qualify deep sleep, build a trial pair with `CONFIG_ZMK_SLEEP=y`
+  and `CONFIG_ZMK_IDLE_SLEEP_TIMEOUT=900000` in the shared shield config.
+  On battery power, measure both halves before and after the timeout.
+  Wake each half in both orders using a matrix key, measure reconnection
+  time, and check the first keystroke and split input after wake. Repeat
+  with encoder push and verify USB operation after wake. Adopt the
+  setting only after the measured runtime and wake behavior are acceptable.
+  [ZMK low-power states](https://zmk.dev/docs/features/low-power-states)
 - [ ] D10/P0.09 is spare and the keyboard assigns it no pull or behavior.
   If needed, check continuity at its unpowered header contact. Exercise
   the populated D16 inputs with both encoder pushes after the stock UF2 flash.

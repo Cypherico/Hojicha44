@@ -1,0 +1,1 @@
+This was the left half before I routed it. Zoom in and you can see a switch and a diode repeated across the matrix. The controller scans that grid to work out which key you pressed.

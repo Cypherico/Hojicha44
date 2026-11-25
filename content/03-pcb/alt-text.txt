@@ -1,0 +1,5 @@
+01-top.jpg
+Top of the green left PCB, showing the switch footprints and controller at the inner edge.
+
+02-underside.jpg
+Underside of the same PCB, showing the small surface-mounted diodes beside the switch footprints.

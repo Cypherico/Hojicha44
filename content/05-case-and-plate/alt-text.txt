@@ -1,0 +1,8 @@
+01-revision.jpg
+Earlier and current left case CAD views stacked at the same angle, with the thumb-side edge facing down.
+
+02-port-side.jpg
+Oblique view of the current CAD model from the connector side of the case.
+
+03-plate.jpg
+Top-down plate drawing showing the switch openings and eight gasket tabs around the edge.

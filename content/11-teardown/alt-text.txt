@@ -1,0 +1,5 @@
+01-exploded.jpg
+Exploded render of both halves, showing keycaps, covers, switches and plates, PCBs, and tubs.
+
+02-sockets.jpg
+Close-up of the left PCB underside showing several Choc hotswap sockets, their solder pads and the nearby diodes.

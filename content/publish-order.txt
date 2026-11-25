@@ -1,0 +1,37 @@
+HOJICHA44 / INSTAGRAM
+
+Upload each numbered folder's images in filename order and paste its
+caption.txt. The alt-text file follows the same order. Feed and ad images
+are 4:5, with 2160 × 2700 JPEGs for the revised technical and outline
+cards and 1080 × 1350 for the other cards. Story images are 1080 × 1920 (9:16).
+
+Suggested order
+01–04  Layout, schematic, PCB and the first case pass
+05     Case revision and plate
+05b    Diode challenge (early plate underside and revised socket-side PCB, both CAD close-ups)
+06–07  Colour studies and artisan cap
+08–10  Case outlines, current design and desk render
+11–14  Teardown, layout details, ZMK and dial behaviour
+
+If 02 and 03 run a day apart, use the “PCB tomorrow” card. If the timing
+changes, post the first two schematic cards. Schedule 08 the day before 09 to match its reveal text. Share renders as build
+updates whenever they make sense in the sequence. Post 09 introduces
+the design going into the first physical build. Add the project URL to
+the profile before it goes live.
+
+Stories
+01 with the artisan post. Add an Instagram question sticker below the photo.
+02 and 03 share the plan and rear case outlines from 08.
+
+Ads
+The studio and overhead images use the v0.5.4 design. Use a live project
+or build-updates page and the same Learn more button on both. Compare
+landing-page visits. The desk scene includes a short debug cable.
+
+Image provenance
+01 compares the archived v1 layout with current PCB switch positions. The
+spacing comparison omits legends and encoders. 02 uses the archived left KiCad schematic at
+7fc33b2. 04 and 05 are Blender renders of the archived and current case
+STEPs, with the current plate export. 06 uses palette swatches. 08 uses orthographic outlines from the v0.5.4 case solids. 12 includes a Blender view of the assembly. 13
+uses the macOS left-Space keymap. The artisan cap and tented scenes are
+render studies. The first physical build is still pending.

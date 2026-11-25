@@ -1,0 +1,5 @@
+01-the-pocket.jpg
+Angled CAD close-up of the early plate underside. Between the large switch openings, a small rectangular recess has a visible floor. It gave the diode above the PCB room under the plate.
+
+02-the-flip.jpg
+Macro render of the revised green PCB underside. The small black component with a pale stripe is the diode. The larger black part beside it, with exposed metal contacts at both ends, is the switch socket.

@@ -1,0 +1,3 @@
+Same angle on the early case and the current one. Look at the thumb edge and the openings around the connectors.
+
+The last slide is the plate drawing. Those little tabs around the perimeter sit between pads of PORON foam. The next step is trying that stack with real parts.
