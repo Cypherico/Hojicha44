@@ -14,7 +14,6 @@ layout/generated/, *-erc.rpt, *-drc.rpt, pcb/kicad/export/, out/ are).
 out/release/ remains scratch.
 """
 import csv
-import glob
 import json
 import hashlib
 import math
@@ -159,6 +158,25 @@ def component_drill_findings(half, drills):
     return bad
 
 
+def normalize_job(path, version):
+    """Publish the release revision and remove KiCad's placeholder values."""
+    with open(path) as f:
+        job = json.load(f)
+    specs = job["GeneralSpecs"]
+    specs["ProjectId"]["Revision"] = version
+    specs["Finish"] = "ENIG"
+    for rule in job.get("DesignRules", []):
+        for key in ("PadToPad", "PadToTrack"):
+            if rule.get(key) == 0:
+                del rule[key]
+    for layer in job.get("MaterialStackup", []):
+        if layer.get("Type") == "SolderMask":
+            layer.pop("Color", None)  # Enter the selected color on the fab quote.
+    with open(path, "w") as f:
+        json.dump(job, f, indent=2)
+        f.write("\n")
+
+
 def export_half(half, outdir):
     pcb = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_pcb")
     sch = os.path.join(PCB_DIR, f"Hojicha44-{half}.kicad_sch")
@@ -169,20 +187,7 @@ def export_half(half, outdir):
     subprocess.run(
         [KICAD_CLI, "pcb", "export", "drill", "--excellon-separate-th", "-o", outdir, pcb],
         check=True, capture_output=True)
-    # KiCad 10 writes Finish: "None"; stamp the decided board finish so
-    # CAM readers don't get a hole (first-article decision: ENIG). The
-    # reader-visible field is GeneralSpecs.Finish — a top-level Finish is
-    # off-spec noise that fab parsers ignore (the point of the stamp).
-    for jb in glob.glob(os.path.join(outdir, "*.gbrjob")):
-        with open(jb) as f:
-            job = json.load(f)
-        gs = job.get("GeneralSpecs") or {}
-        if gs.get("Finish") in (None, "", "None"):
-            gs["Finish"] = "ENIG"
-            job["GeneralSpecs"] = gs
-            with open(jb, "w") as f:
-                json.dump(job, f, indent=2)
-                f.write("\n")
+    normalize_job(os.path.join(outdir, f"Hojicha44-{half}-job.gbrjob"), spec_version())
     subprocess.run(
         [KICAD_CLI, "pcb", "export", "pos", "--format", "csv",
          "--units", "mm", "-o", os.path.join(outdir, "pos.csv"), pcb],

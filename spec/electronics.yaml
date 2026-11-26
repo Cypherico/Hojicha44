@@ -4,7 +4,7 @@
 version: 0.5.4
 status: provisional
     # schematic rev 0.3 regenerated (must-fix review applied), PCB placed+routed
-  # with DRC clean modulo waiver W1 (exact 28 asserted) + W2 predicate armed
+  # with DRC clean modulo waiver W1 (exact 47 asserted per half) + W2 predicate armed
   # (0 on routed boards); still provisional pending the
   # hardware pinout check against a physical module.
 
@@ -303,7 +303,7 @@ pcb:
     via containment, the antenna-keepout re-measure, the TRRS crossover
     pin-map, W1 pad-content equality vs the vendored stock, and a
     silk-to-edge clearance floor) + DRC clean modulo documented waiver W1
-    (rotated-part lib_footprint_mismatch quirk, exact 28 asserted, each
+    (rotated-part lib_footprint_mismatch quirk, exact 47 asserted per half, each
     waived ref's pads content-checked) / W2 predicate armed but
     0 on routed boards (Choc B.SilkS-vs-own-pad2 vendor marginality). gen_schematic.py never clobbers a placed board.
   stackup: 2-layer, 1.6mm, ENIG or HASL lead-free  # status: provisional
