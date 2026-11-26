@@ -5,7 +5,7 @@
 The matched v0.5.4 files are suitable for an engineering sample. The
 [first-article checklist](spec/first-article.md) gates the pilot batch.
 The submitted findings below are retained for reference. Use this review
-for their current disposition.
+for their current disposition. The follow-up [audit2 review](audit2.md#review-of-the-submitted-findings) covers the later firmware, fabrication metadata and fit-sheet changes.
 
 | Finding | Disposition |
 |---|---|

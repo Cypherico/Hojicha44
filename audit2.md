@@ -5,6 +5,36 @@
 
 ---
 
+## Review of the submitted findings
+
+The report below records the submitted baseline. The following table
+supersedes its severity ratings for the current engineering sample.
+
+| Finding | Disposition |
+|---|---|
+| 1.1 JST | The two headers face opposite directions. The fit checker orients the vendor STEP by the actual pad 1 to pad 2 vector. The header and plug gauges clear both halves. The silkscreen check passes the battery mark and edge gates. Verify visibility and polarity on the bare boards. |
+| 1.2 Cover | The flat cover has no positive lateral locator. Calculated pull estimates do not establish an M4 result. The bench gate measures loaded pull, shear and peel with the chosen pads. Add locating features or revise the magnet system if it fails. |
+| 1.3 Power | OFF intentionally isolates the pack and prevents charging. Reverse-polarity protection is absent. The harness PPTC is separate from the PCB and does not qualify the cell or protect against reversed wiring. Meter the actual mated polarity and qualify the exact pack, protection and charging current before assembly. |
+| 1.4 Foam | Corrected the nominal stock candidates to 4701-30, 320 kg/m³, in 3.18 and 1.57 mm. The CAD allocation is a design target. Measure the loaded stack with actual backing and adhesive. The plate files describe the shared pad footprint for both faces. |
+| 1.5 Plate | The switch ear fit has no nominal margin at the specified stack. Retain the existing same-stock clip coupon. The diode pocket is obsolete. All 44 diodes are underside-mounted and clear the tub by 1.09 mm in the modeled travel envelope. |
+| 1.6 Service | The cover roofs the JST. The checklist now calls for removing it during service and rechecking wire clearance after refitting. Tool access and cable bend are physical checks. |
+| 1.7–1.8 Encoder, cover and switch | The short shaft and feet are render studies. The purchase part has a longer shaft. Qualify a real knob and dry-fit the Alps tabs in the Ø2.60 mm holes before ordering a batch. Both encoders are identically oriented and wired, so there is no reason to invert one in software without bench evidence. Confirm fingertip access to the power switch and keep the existing 3.25 mm lead trim. The MCU is intentionally visible. The modeled USB overmold clears the 14 mm case passage, plate and switch despite the smaller PCB notch. |
+| 1.9 Fit sheets | Fixed the clipped export by plotting board-sized SVGs and centering them at actual size on A4. The first-article checklist records the reproducible SVG export. |
+| 2.1, 5.4 Sleep | Confirmed disabled by default. Runtime estimates depend on measured current and pack capacity. Compare a sleep-enabled build with the baseline, including wake and reconnection. |
+| 2.2, 5.5 Keymap | Layer 1 uses vertical HID mouse-wheel events, media uses Play/Pause, and clearing a Bluetooth profile requires the Adjust chord. Verify on the actual hosts. Peripheral bootloader recovery still uses its USB/reset access. |
+| 2.3, 5.1 UART and encoder | Disabled UART in the standard left build. Copper crossover remains intentional for debug. Keep the cable power-off rule and qualify the encoder contact load and direction on the bench. |
+| 2.4, 5.3 CI | The variant job intentionally builds the shared keymaps on the central. The main workflow builds both roles. The image is pinned by digest and the upstream workflow by commit. Local UF2 names are not evidence of missing jobs. |
+| 3.1, 4.7, 5.6 Release | Corrected the DRC waiver count and published CAM job revision. Omitted zero placeholder clearances and default mask color. Both separate Excellon files still ship and must be reviewed in CAM. The prior checked-in ERC report was already dated 23 November. |
+| 3.2 Visuals | Marked the published-content queue's older keymap images as historical. Use the generated firmware and current keymap documentation for control claims. Render feet, shaft and finish are presentation details. |
+| 3.3 Compliance and hygiene | The current compliance record identifies nice!nano-specific evidence as open. The XIAO is a historical research candidate. Licensing and production compliance remain separate gates. Lock and Finder metadata are ignored and untracked. |
+| 4.2–4.5 Copper and drills | Vias are 0.65/0.30 mm or 1.00/0.50 mm, with 0.175 and 0.25 mm radial rings. R1 is a 1.60×2.50 mm oval over a 0.90×1.80 mm slot, leaving 0.35 mm per axis from copper edge to hole edge. The reported negative ring compares mismatched axes. The fabrication clearance gates pass. |
+
+The refreshed package passed KiCad ERC/DRC and the release and static
+gates. The component fit check passed on both exported cases with
+3.25 mm switch leads. Both standard UF2 builds compiled against the
+pinned ZMK version. Host behavior and mechanical acceptance remain
+first-article checks.
+
 ## 1. Critical / High-Severity Blockers
 
 ### 1.1 [PCB / Mechanical] Right-Half Battery Header (`J_R2`) Orientation & Silkscreen Collision

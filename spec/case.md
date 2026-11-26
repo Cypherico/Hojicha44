@@ -81,47 +81,20 @@ Encoder push over the window zone stays soft by design.
   The v0.5.4 thumb lip lowers the wrist-facing cover beside the thumb
   caps. Check thumb access and cap travel on the assembled first article.
 
-## Sources (suppliers, verified)
+## Gasket stock and preload
 
-- **Rogers PORON** small sheets (4701-30-15, 3.18–6.35 mm):
-  McMaster-Carr (search "Rogers 4701-30"), silicone-foams.com
-  resogoo.com, h-oproducts. Min order is usually a 300×300 mm sheet
-  — ≫ what 16×7×4 mm pads need.
-- **Drop-in keyboard strips** (4701-40 stiffer fallback, 3×90×4 mm
-  self-adhesive, ≈$8–12): Keebox (AliExpress), ThockKing universal pad,
-  eBay 20-packs, Amazon BTNCL/GMMK. No Rogers part number on listings,
-  CFD unstated — treat as ≈41 kPa / 134 g per pad worst case, splice 2
-  strips per half.
-- **Adhesive**: supported grade has PET film; keep strip adhesive
-  surface toward the tab. Store sheets below 40 °C / 80 % RH or the
-  adhesive bonds permanently to PET release liner.
-- **Shear / punch**: 7×4 pads cut cleanly with a sharp craft knife or
-  a 4/8 mm punch on a mat (no hot knife — poron tears). 1:1 paper print
-  = cut template.
-- Spec: PORON **4701-30 Very Soft, 240 kg/m³ (15 pcf)** — the least-dense
-  -30 sub-grade — 3mm thick, single-sided adhesive-backed. CFD ~24 kPa
-  (~3.5 psi) @ 25% → **~68 gf per 7×4mm pad at 25% compression** (28 mm² —
-  the force scales with pad area; the old 8×4 pad's 78 gf was the
-  pre-audit figure, corrected 2026-10-21).
-- Static load ~25 g/pad (≈200 g half-assembly / 8 bottom gaskets) →
-  ≈8–10% self-compression (≈0.2–0.3 mm on 3 mm), leaving ≈2.5–3× of
-  force headroom before 25% compression.
-  Softest stock grade ⇒ lowest mount resonance (deepest sound, most
-  high-frequency isolation) and most travel per unit force (bounciest of
-  the options). Every higher rung (-40 ≈ 41 kPa / 134 g/pad; denser
-  -20/-30 suffixes) moves brighter and firmer — the wrong way for thock.
-- Swap ladder (all drop-in, no CAD change): **-30-15** (default, thock-max;
-  cut from sheet/strip stock) → **-40 stiffer-fallback off-the-shelf strips**
-  (e.g. Keebox 32-pack, ~41 kPa / ~134 g/pad, static ≈ 5%) → **-50** only
-  if the build feels mushy.
-- Assembly preload: design the case cavity for 15–20% foam compression —
-  never near 0% (rattle, pads can't damp unloaded) and never past ~50%
-  (cell densification = accidental hard mount, harsh sound). Per half:
-  cavity = 1.2 + 6×(1−c), c ∈ [0.15, 0.20] → **6.0–6.3 mm** sandwich
-  for a pair of 3mm pads. The thin-top revision deliberately runs the
-  top foam harder: **4.75 mm** (shelf −1.55 → lip 3.20 = 2.55 bottom +
-  1.2 plate + 1.00 top), i.e. 3.0mm bottom at 15% and 1.5mm top at 33%
-  — inside the ≤50% ceiling, and the cover face is the rigid stop.
+- Use eight 7×4 mm pads of each thickness per half. Target 3.00 mm
+  below the plate and 1.50 mm above it, including adhesive and backing.
+- Rogers lists unsupported 4701-30 at 320 kg/m³ in 3.18 and 1.57 mm
+  nominal thicknesses. These are sample candidates. The 240 kg/m³
+  grade starts at 4.78 mm. Obtain the exact material and thickness
+  tolerances from the supplier before ordering assembled parts.
+  [Rogers 4701-30 data sheet](https://rogerscorp.com/-/media/project/rogerscorp/documents/elastomeric-material-solutions/poron/english/data-sheets/17-316-poron-4701-30-very-soft-global-standards-data-sheet.pdf)
+- The 4.75 mm shelf-to-lip stack leaves 3.55 mm total for compressed
+  foam once the 1.20 mm plate is in place. The CAD allocates 2.55 mm
+  below the plate and 1.00 mm above it. Actual PCB height depends on
+  pad force, backing, adhesive and assembly load. Check seating,
+  loaded travel, cable fit and cover retention with the chosen pads.
 - Plate note: foam spec is plate-agnostic; recommended **PC 1.2 mm**
   (softest, most flex, deepest sound) or **POM 1.2 mm** (balanced,
   good feel, stable). Bounce comes from plate span between tabs; foam

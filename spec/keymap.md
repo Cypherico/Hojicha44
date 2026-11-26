@@ -132,13 +132,13 @@ them against the layout.
 ```
 Read each row from left to right across the deck. Minus/equal fill the
 last two positions after 0, and shifted symbols sit directly below
-their unshifted counterparts. The encoder uses `C_AC_SCROLL_*`.
+their unshifted counterparts. The encoder sends vertical HID mouse-wheel events.
 
 ## 5. L2 (raise, layer 2) — navigation, media, BT
 
 ```
- BT CLR  P0  P1  P2  P3  P4 |   ·   End  Home  Caps  Ins  PrtSc
- MUTE  PREV  PLAY NEXT V+ V- |   ·    ·    ·     ↑     ·    PgUp
+    ·    P0  P1  P2  P3  P4 |   ·   End  Home  Caps  Ins  PrtSc
+ MUTE  PREV PLAY/PAUSE NEXT V+ V- |   ·    ·    ·     ↑     ·    PgUp
  UNDO  CUT   COPY PAST  ·  · |  Bksp Del   ←     ↓     →    PgDn
  thumbs: transparent; L2 encoder = prev/next track
 ```
@@ -152,11 +152,9 @@ the editing trio lives under one thumb-hand reach.
 
 ```
 conditional_layers: if-layers = <1 2>, then-layer = <3>
-- &bootloader at the keycap-W position, &sys_reset at the keycap-E
-  position (left top row, directly above the ring- and middle-finger home
-  mods; both thumbs are busy holding the chord, and everything else is
-  &none — there is nothing safe to type mid-chord)
-- every other key &none (there is nothing safe to type mid-chord)
+- Bootloader at W and system reset at E.
+- Clear the active Bluetooth profile at R while holding both layers.
+- All other key positions are unused.
 - encoder = volume (harmless while reaching for boot)
 ```
 

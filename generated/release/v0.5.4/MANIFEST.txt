@@ -1,7 +1,7 @@
 Hojicha44 release manifest
 spec version: 0.5.4
-git commit: 0283de8ca2a8a93af6be59897636340af93abf9f
-git tag: pcb-baseline-r10-156-g0283de8
+git commit: 3f83c4c98c2580dde804fd0a837b95bbc5afdbcd
+git tag: pcb-baseline-r10-160-g3f83c4c
 router: gen_route.py r16
 kicad-cli: 10.0.6
 board sha256: Left 370de2939e0b30a75e2a8e9d5c184ceb6b741baa60052615155d4559e7dea983  Right 749daeb687571374c25d0504a777903792bc042cd4fe132ddce5d4132214d8af
@@ -10,38 +10,38 @@ DRC: 0 non-waived (exact W1 set of 47/half asserted); unconnected NOT waived; PT
 reports: ERC on the exported schematic; DRC on the design-frame reflection of the exported y-negated board (same physical geometry, same project rules) at cut time
 
 [Left] 17 files
-  a39e8b264b06d723cd29da4eb18deb4c8c8fb0fe0e69933356729cf0105af200  Hojicha44-Left-B_Cu.gbl
-  46b0b6f5d7e8bab811e934329143183ace9d050edbfc19fd075d8c24f09e3ca9  Hojicha44-Left-B_Mask.gbs
-  cd16fd6a479942b1f9efcbbae99662a6119e1d896eb05e832d41df485f4bdec3  Hojicha44-Left-B_Paste.gbp
-  f8fa50dcffc04d91458e305f78087445633964d685f848819d4cf6a97975a912  Hojicha44-Left-B_Silkscreen.gbo
-  3d7a1fea8ad2216fe60258e28990f61cd5ddf1a466e4e22f078cda9259589331  Hojicha44-Left-Edge_Cuts.gm1
-  1f1b8caefdc272f5a15ecf36a869eac7fd9b6ea14d59aaf2324a1a832f6b3538  Hojicha44-Left-F_Cu.gtl
-  13de2265123349038a9886a347205fda5b385a4039f70869aec1af7dcd078587  Hojicha44-Left-F_Mask.gts
-  102e1cdaa11b0459ee7e3396c7a0bfef44127ceab1779d8bc0200d5b0d75937b  Hojicha44-Left-F_Paste.gtp
-  68dcf074fe3627cfab7d1929db2a2b87237ce47c11a86f67818d8789a387c70c  Hojicha44-Left-F_Silkscreen.gto
-  ffaa21eb747bb074880c5de72165ad7c3e2688bf01d5c297beba57733dbc2abc  Hojicha44-Left-NPTH.drl
-  4e5e3b2153111619bc91a5eb8a599fc97cbcef88598cef207ed6e5c5552b03b2  Hojicha44-Left-PTH.drl
-  a01f1c9cc6e0594e77c50829a8cd7c17c05358932c8fc8705fb787b86f6d261c  Hojicha44-Left-drc.rpt
-  b229572dfe5a71c26282068889d168a1a0b437e0ff8fa304b5bf68db24e4abb1  Hojicha44-Left-erc.rpt
-  9adf3be50499b6900126f8a0b71331e988fde84497153e608647c3c4472435dd  Hojicha44-Left-job.gbrjob
+  a8417eda984ebf87840ad25177d44d2037f57aac73254310a09b7ee51a895008  Hojicha44-Left-B_Cu.gbl
+  0703d36d2312b1394810b5983036ee956f8f4236a38ac31135d82ff451d4d7f3  Hojicha44-Left-B_Mask.gbs
+  b15b0f7ef6e04d2fa8a23d94b719d956671b7047de2f9c3d30ad0a0983050c25  Hojicha44-Left-B_Paste.gbp
+  990ec808418287c6df7cf605b51ea09571d1011784a9728d32e76ba16f2d4335  Hojicha44-Left-B_Silkscreen.gbo
+  dc907117426e626a775855908241b1d88d0380c50bab5096b501cfbf61305cee  Hojicha44-Left-Edge_Cuts.gm1
+  7f5cb6f29d078c6c97180cac19aa0483bd1e28827a0e407895824378ab3e8c59  Hojicha44-Left-F_Cu.gtl
+  100845a822e046d13795ddcc7d6b04617dca7c4f9dce0e048e3121e03035d4be  Hojicha44-Left-F_Mask.gts
+  8b396d14d50c8b7a6fe854129f3b27d9a60ca1d03bbbeeb4c9c85b06e7a53386  Hojicha44-Left-F_Paste.gtp
+  9d989ed30178b87188dd782f7eb8d31e4a24fd6ef36b73f8f375aa8ffd7efcf7  Hojicha44-Left-F_Silkscreen.gto
+  430faa6d1f99af11f0eaae0e3582c4f61ec1e9f8538f17ae9ce02fd8778a0d3e  Hojicha44-Left-NPTH.drl
+  1868d93e3ca4f4978fb671691d35efeab38cf48782dd7ad2be4be62333a92a4e  Hojicha44-Left-PTH.drl
+  6d378aaef95d93079796e5cc91147293c7e7a6673c533e0e98971b7002999350  Hojicha44-Left-drc.rpt
+  41ddbabf1cf8719366e3c943e9341b8795f6e210aab950fd1b8c4a7c45c2b21e  Hojicha44-Left-erc.rpt
+  b1850dd14c36fa4843cb033fe019c9888e5f207429ae8791b4ee2a3ede538888  Hojicha44-Left-job.gbrjob
   9688cbb777f01aab07dd5c84bbbdcb70f015293df58db00cd430406d13f9d4c8  bom.csv
   705f55b7bc013bb8600ab20e267f55bdcc5b346131798b077a97c9e1d035cb65  pos-smt.csv
   c4e2f04fcb2fc02a0e0e89cb1b087bc2c4d99bd6317a3c15d25c24be80cd98ad  pos.csv
 [Right] 17 files
-  adab1b8d6e761871518dbe6f6e6893c1c2641b12dce979566eff11d25a20910a  Hojicha44-Right-B_Cu.gbl
-  0b1ef92282bd4cf4af019d713fab1deb182c84eef2e9ebdfa71767c5a21d60ad  Hojicha44-Right-B_Mask.gbs
-  25f00161075c1f9961de5776cf11b711d7f4ad74c2fa9faf292ca8c1cf2444a8  Hojicha44-Right-B_Paste.gbp
-  c91dfcf7b3d0cde9ab64ccfb9062d8c20d05b5c4ae090a953f4b2cfbcfa96379  Hojicha44-Right-B_Silkscreen.gbo
-  ce4020e12a7493b930a56c4d135c84e813effd7d85b57f87d50232df174a767d  Hojicha44-Right-Edge_Cuts.gm1
-  d8065bb2b68bbc412c6a1232a9396544ab9ac72c778bafaa3d4bf199c5c83c8b  Hojicha44-Right-F_Cu.gtl
-  7f182bb3ee0df2ba302089bf83043339497fa94a637d87732fa4d6ad1ba872e7  Hojicha44-Right-F_Mask.gts
-  e6e52a9fd1121a0b03e1283510e7f024a6d0f94fa1d4b2a20ef9570beca02811  Hojicha44-Right-F_Paste.gtp
-  0944eeaca95ca246050cbd2f90fbbd46d843df78de8e83b61dce6d5a140cb709  Hojicha44-Right-F_Silkscreen.gto
-  7d38672b8a757b34a1b7c5b7e81698d38be429cd159947956887c4858e183f1e  Hojicha44-Right-NPTH.drl
-  6fafebc1fa704b682847b5aedbbed2a55bf4778743f77bd42677923a2a93a937  Hojicha44-Right-PTH.drl
-  17cf1d151498bec7a84c58d21c45d9b10991c1ef9bda585fc5fe990cef2e5dee  Hojicha44-Right-drc.rpt
-  01abe136a7b671687eefa3b8c1699dcd0b5ce26d4f6cbe51489f4a7cf19f3159  Hojicha44-Right-erc.rpt
-  a82899c715814a604e6b1e17c9335d14661d63eaff3e7ceb180e916ab5aa1750  Hojicha44-Right-job.gbrjob
+  e3fef33b2f489f362bfa3a36da6950e02871b1660a4295306f95fbd16920811b  Hojicha44-Right-B_Cu.gbl
+  28b6124d643b8918648d1f03c7b74956d1baf6e7f7ab52b2acfa4c1341f2d638  Hojicha44-Right-B_Mask.gbs
+  277ee2a716e8c0f24a6861defa9eee2cad82bde35976b14fddbbe5a4e4e64442  Hojicha44-Right-B_Paste.gbp
+  a8c47c741038c3fae4630e84e527c07e35620650a9b23b3c196793844a46f824  Hojicha44-Right-B_Silkscreen.gbo
+  a8fd1835f9b19f594a200183c037bafd5eae4eb0b867d820e7d67d59709b5977  Hojicha44-Right-Edge_Cuts.gm1
+  0c3fdb4d066d279defa10a16cb783ba26fccadc519b3cc492ae6f4898c120959  Hojicha44-Right-F_Cu.gtl
+  3f686f26f461c067ee2f346991dfc3b29a0ac4b488e26d75937befc8eea616c0  Hojicha44-Right-F_Mask.gts
+  6128a763dc4a7d8d99c563f24753457a4c81c33de6d4fea969c780313788b7f0  Hojicha44-Right-F_Paste.gtp
+  e7ae97ac34a5461c262313f21858e4ff5b7e3b195f2631358201c49043b3ea3a  Hojicha44-Right-F_Silkscreen.gto
+  767d52f65167c51984e53beac61435c5108f7ef793e1fd1356f9bfb89f25b430  Hojicha44-Right-NPTH.drl
+  c0fecef1ac128c59356eade0f47da8d17be1ab069737bf83edb48cbb22ef9c34  Hojicha44-Right-PTH.drl
+  4d91168591e76e5699b8afad97920a0b0187ff3a2309a9050db2cddf5034aa52  Hojicha44-Right-drc.rpt
+  b97464d45ac667c3f4ffd793c829afb36647f0697b6d0ea103ae8b2190bec0d5  Hojicha44-Right-erc.rpt
+  719973d8b66dfa811a2bd2a85d0fb356a584f82010cbebcb3dbcf796e6aeffec  Hojicha44-Right-job.gbrjob
   f34d2926ee1ca8182e73e1b9c0db0ae868afbba863eeb9085049fabec0965e16  bom.csv
   496b474d4ea5440c5c6830a194533549e07d0626064e4414004a53f55c7d6446  pos-smt.csv
   da702fa28b5df52dcb76462009b0a58c4f568fafe77edca513d603f9d0b4fcbe  pos.csv

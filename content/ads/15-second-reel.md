@@ -1,14 +1,11 @@
 # Hojicha44 · 15-second Instagram Reel
 
-Four camera moves through four finishes and settings. The colour changes land on cuts.
+| Time | Picture | Sound |
+|---|---|---|
+| 0–3.6 s | Track across the charcoal keycaps as individual keys depress and return. Light from the side catches the curved tops and the gaps between rows. | Five short press-and-release sounds over a sparse electric-piano phrase. |
+| 3.6–9.8 s | Cut to the multicolour left half against petrol green. As the camera travels around it, the caps, cover, switches, plate, PCB and lower shell separate vertically. Hold the open stack long enough to see through the plate, then bring it together. | Higher notes follow the opening motion. A low tap lands as the stack seats. |
+| 9.8–15 s | Cut from the assembled half to the cream pair on a walnut desk. Pull back along the grain until both thumb arcs are in view. Fade in “Hojicha44” and “44-key wireless split” above the pair. | The phrase resolves and decays under the name. |
 
-| Time | Picture and edit | On-screen copy | Sound |
-|---|---|---|---|
-| 0–3 s | Cream keys on sage. Pull back and tilt as the two halves slide apart and splay slightly. Keep the desk clear so the gap reads. | None. | A short desk slide into a spare instrumental groove. |
-| 3–6 s | Match cut to the multicolour keys on a felt mat and timber desk. Sweep sideways and rise, with the monitor behind the board giving the shot depth and a sense of scale. | None. | Keep the groove running across the cut. |
-| 6–9.5 s | Glide in at case height across the brass dial on dark stone. The dial turns under a strip of light, then presses down. | None. | Dial ticks over the music, then the press cuts it to silence. |
-| 9.5–15 s | Start close on the sculpted accent cap. Pull back and lift to reveal both halves on a warm limestone platform. Fade the title in as both halves come into frame. | **Hojicha44** and “44-key wireless split”. Use the ad’s **Learn more** button to link to the project. | A quiet closing chord after the pause. |
+**Export** · 1080 × 1920, 30 fps, 15 seconds. H.264 video and stereo AAC.
 
-**Export** · 1080 × 1920, 30 fps, 450 frames. H.264 video and stereo AAC. Check the case edges, dial press and title at phone size.
-
-**Ad caption** · Cream, charcoal with brass, a set of multicolour caps, and one sculpted accent. These are the finishes I’ve been exploring for Hojicha44, a 44-key wireless split.
+**Ad caption** · I wanted four keys to follow the arc of each thumb. Here’s the layout, what’s underneath it, and the pair I’m taking into the first build.

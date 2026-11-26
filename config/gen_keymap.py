@@ -99,14 +99,14 @@ L1_ROWS = [
     ["F1", "F2", "F3", "F4", "F5", "F6",
      "F7", "F8", "F9", "F10", "F11", "F12"],
 ]
-L1_SENSOR = "&inc_dec_kp C_AC_SCROLL_UP C_AC_SCROLL_DOWN"
+L1_SENSOR = "&dial_scroll"
 
 # ---- L2 (raise): rows in matrix order, outer-to-inner on both halves ----
 L2_ROWS = [
-    ["&bt BT_CLR", "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2",
+    ["&none", "&bt BT_SEL 0", "&bt BT_SEL 1", "&bt BT_SEL 2",
      "&bt BT_SEL 3", "&bt BT_SEL 4",
      "&kp PSCRN", "&kp INS", "&kp CLCK", "&kp HOME", "&kp END", "&none"],
-    ["&kp C_MUTE", "&kp C_PREV", "&kp C_PLAY", "&kp C_NEXT",
+    ["&kp C_MUTE", "&kp C_PREV", "&kp C_PP", "&kp C_NEXT",
      "&kp C_VOL_UP", "&kp C_VOL_DN",
      "&kp PG_UP", "&none", "&kp UP", "&none", "&none", "&none"],
     ["Z", "X", "C", "V",
@@ -119,6 +119,7 @@ L2_SENSOR = "&inc_dec_kp C_PREV C_NEXT"
 # ---- Adjust (the L1+L2 chord, via conditional_layers) ----
 ADJUST_BOOT_POS = 1        # keycap W — above the ring-finger home mod (S)
 ADJUST_RESET_POS = 2       # keycap E — above the middle-finger mod (D)
+ADJUST_BT_CLEAR_POS = 3    # keycap R, reachable only with L1 and L2 held
 ADJUST_SENSOR = "&inc_dec_kp C_VOL_UP C_VOL_DN"
 BASE_SENSOR = "&inc_dec_kp C_VOL_UP C_VOL_DN"
 
@@ -264,6 +265,7 @@ def adjust_layer():
     out = ["&none"] * 46
     out[ADJUST_BOOT_POS] = "&bootloader"   # label is `bootloader` at pinned v0.3 (&boot is a later rename)
     out[ADJUST_RESET_POS] = "&sys_reset"
+    out[ADJUST_BT_CLEAR_POS] = "&bt BT_CLR"
     return out
 
 
@@ -315,6 +317,7 @@ def generate(variant, lrows, rrows, tleft, tright):
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/keys.h>
 #include <dt-bindings/zmk/bt.h>
+#include <dt-bindings/zmk/pointing.h>
 
 / {{
     /* Home-row mods, ZMK's documented "timeless" recipe: balanced flavor,
@@ -324,6 +327,13 @@ def generate(variant, lrows, rrows, tleft, tright):
      * hold-trigger-on-release so same-hand modifier combos still work.
      * One behavior per hand so the trigger lists can differ. */
     behaviors {{
+        dial_scroll: dial_scroll {{
+            compatible = "zmk,behavior-sensor-rotate";
+            #sensor-binding-cells = <0>;
+            // 100 wheel units/s at a 16 ms tick gives a whole event.
+            tap-ms = <25>;
+            bindings = <&msc MOVE_Y(100)>, <&msc MOVE_Y(-100)>;
+        }};
         hml: home_row_mod_left {{
             compatible = "zmk,behavior-hold-tap";
             #binding-cells = <2>;
@@ -526,7 +536,8 @@ def validate(text, variant, lrows, rrows, tleft, tright):
     if "if-layers = <1 2>;" not in text or "then-layer = <3>;" not in text:
         bad.append("conditional_layers L1+L2 -> 3 missing")
     # adjust content: the bootloader recipe stays anchored (v0.3 label)
-    want_idx = {ADJUST_BOOT_POS: "&bootloader", ADJUST_RESET_POS: "&sys_reset"}
+    want_idx = {ADJUST_BOOT_POS: "&bootloader", ADJUST_RESET_POS: "&sys_reset",
+                ADJUST_BT_CLEAR_POS: "&bt BT_CLR"}
     adj_toks = BIND_RE.findall(layers[3][1])
     if len(adj_toks) == 48:
         for pos, want_b in want_idx.items():

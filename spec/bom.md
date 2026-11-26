@@ -42,7 +42,7 @@ other part is identified by exact `MPN` text — no guessed vendor links.
 | Qty | Part | Notes |
 |---|---|---|
 | 1 | Switch plate, **1.2mm** | Through-cut OUTLINE and CUTOUT from the plate DXF. Use PORON as a punch template. Verify switch clip retention on a same-material coupon. |
-| 8 of each thickness | PORON 4701-30, 240kg/m³ candidate, 7×4mm pads | Target **3.0mm** bottom and **1.5mm** top. Confirm exact grade, density, thickness, tolerances and backing with the supplier. Qualify compression on the assembled coupon. |
+| 8 of each thickness | PORON 4701-30, 320 kg/m³ sample candidate, 7×4mm pads | Target **3.0mm** bottom and **1.5mm** top. Candidate stock is **3.18 mm** and **1.57 mm** nominal. Check total thickness including adhesive and qualify fit and preload before adopting it. |
 | 8 | N52 disc magnet Ø4×2mm, axially magnetized | TUB pockets, Ø4.3×2.2mm, face up flush at the lip plane. |
 | 8 | N52 disc magnet Ø4×0.5mm, axially magnetized | COVER pockets, Ø4.3×0.7mm, face down flush at the lip plane. Verify pull force on the assembled first article. |
 

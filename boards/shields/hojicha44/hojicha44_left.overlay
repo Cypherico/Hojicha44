@@ -2,16 +2,13 @@
  * Hojicha44 LEFT half overlay — the split central (see .github/workflows/
  * build.yml; the central role default lives in Kconfig.defconfig).
  *
- * Split link: straight TRRS cable over BLE-split debug: left TIP carries
- * left-TX (D1 = P0.06), left RING1 carries left-RX (D0 = P0.08). The
- * far-end crossover is copper (right half swaps at its MCU), so the
- * board's uart0_default (RX=P0.08 pull-up, TX=P0.06) is correct as-is —
- * do NOT redefine board pinctrl here, just enable the peripheral.
+ * Split traffic uses BLE. Leave the exposed TRRS debug pins inactive
+ * in the standard firmware.
  */
 #include "hojicha44.dtsi"
 
 &uart0 {
-    status = "okay";
+    status = "disabled";
 };
 
 &left_encoder {

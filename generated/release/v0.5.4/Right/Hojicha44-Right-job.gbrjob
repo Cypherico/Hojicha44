@@ -5,13 +5,13 @@
       "Application": "Pcbnew",
       "Version": "10.0.6"
     },
-    "CreationDate": "2026-11-23T20:14:56+11:00"
+    "CreationDate": "2026-11-26T13:11:02+11:00"
   },
   "GeneralSpecs": {
     "ProjectId": {
       "Name": "Hojicha44-Right",
       "GUID": "486f6a69-6368-4613-9434-2d5269676874",
-      "Revision": "0.5"
+      "Revision": "0.5.4"
     },
     "Size": {
       "X": 150.599,
@@ -24,8 +24,6 @@
   "DesignRules": [
     {
       "Layers": "Outer",
-      "PadToPad": 0.0,
-      "PadToTrack": 0.0,
       "TrackToTrack": 0.2,
       "MinLineWidth": 0.25
     }
@@ -88,7 +86,6 @@
     },
     {
       "Type": "SolderMask",
-      "Color": "Green",
       "Thickness": 0.01,
       "Name": "Top Solder Mask"
     },
@@ -111,7 +108,6 @@
     },
     {
       "Type": "SolderMask",
-      "Color": "Green",
       "Thickness": 0.01,
       "Name": "Bottom Solder Mask"
     },

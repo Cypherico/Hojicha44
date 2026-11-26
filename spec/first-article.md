@@ -6,7 +6,7 @@ seating, cable fit and switch lead clearance on the first pair. The
 
 Do these in order, both halves where marked ×2. Nothing here can be proven
 in software — this is the release gate for the physical items. Prints:
-`out/fit/Hojicha44-{Left,Right}-fit.pdf` (Edge.Cuts + silk + fab + F.Cu
+`out/fit/Hojicha44-{Left,Right}-fit.svg` or the corresponding PDF (Edge.Cuts + silk + fab + F.Cu
 pads, 1:1 — print at 100% / actual size, then calibrate: column-adjacent
 key centres must measure **19.00mm**; if not, the print scaled and nothing
 below counts). The fit sheet shows the PCB only; the 16.2 x 12.4mm encoder
@@ -60,10 +60,17 @@ batch; it never forbade coupons.
 
 ## 1. Paper fit test (before ordering the batch)
 
-- [ ] **Check the fit PDFs against the current boards.** If the PDFs are
-  absent or predate the latest Edge.Cuts, export a 1:1 PDF per half with
-  `kicad-cli pcb export pdf --mode-single --scale 1 --layers Edge.Cuts,F.Silkscreen,F.Fab,F.Cu`
-  and provide the output PDF and input board paths.
+- [ ] **Check the fit sheets against the current boards.** Export a
+  board-sized SVG per half with KiCad. If making a PDF, center the SVG
+  on paper at its stated dimensions in millimetres.
+  ```sh
+  mkdir -p out/fit
+  for half in Left Right; do
+    kicad-cli pcb export svg --mode-single --fit-page-to-board --exclude-drawing-sheet \
+      --scale 1 --black-and-white --layers Edge.Cuts,F.Silkscreen,F.Fab,F.Cu \
+      -o "out/fit/Hojicha44-$half-fit.svg" "pcb/kicad/Hojicha44-$half.kicad_pcb"
+  done
+  ```
 - [ ] **Choc cutout test coupon (PRE-ORDER, new in rev 2) — the support
   strategy hinges on this.**
   *What it is:* a **test piece** — one small offcut of the REAL plate
@@ -173,8 +180,9 @@ batch; it never forbade coupons.
   actual jack and verify each contact with an inserted plug. At the nominal
   22.40mm face-to-face spacing, check both mating depths, boot fit in the
   10.5mm open bays, and cable routing.
-- [ ] Plug and unplug the battery harness through the JST access window.
-  Check the wire exit and bend with the cover installed. Test continuity
+- [ ] Remove the magnetic cover and test mating and unplugging the battery
+  harness. If needed, lift the suspended assembly for access. Refit
+  the cover and check the wire exit and bend. Test continuity
   and confirm pin 1 is pack positive on each half before connecting power.
   During a firm keypress, the connector and wires must clear the walls.
 - [ ] Fab limits confirmed with the chosen fab BEFORE ordering: 2-layer

@@ -51,6 +51,10 @@ but every design-shaped field below has exactly one right answer.
 | Electrical Test | **Flying Probe Fully Test** | trivial adder at qty 5; catches what the eye won't |
 | Gold fingers / Castellated / Edge plating / Blind slots / UL / Humidity card | **No ×6** | none apply; edge plating would even trigger extra review |
 
+The Gerber job records the release revision and finish. Set mask color in
+the quote. Upload both separate Excellon drill files with each half's
+Gerbers and review the plated slots and non-plated holes in CAM.
+
 ## Ordering mechanics (two designs, one keyboard)
 
 - **Left and Right are two separate designs.** Either one checkout with
