@@ -10,18 +10,11 @@ BASE="https://raw.githubusercontent.com/braindefender/KLP-Lame-Keycaps/$COMMIT/S
 VARIANTS=(Saddle Saddle_Tilted Saddle_Homing Normal Normal_Homing Normal_Tilted Thumb)
 mkdir -p "$DIR"
 
-if [ -f "$DIR/PINNED_SOURCE.txt" ] && [ "$(cat "$DIR/PINNED_SOURCE.txt")" = "$STAMP" ]; then
-  complete=true
-  for v in "${VARIANTS[@]}"; do
-    if ! grep -q '^ISO-10303-21;' "$DIR/klp_${v}.step"; then
-      complete=false
-      break
-    fi
-  done
-  if [ "$complete" = true ]; then
-    printf '%s\n' "$STAMP"
-    exit 0
-  fi
+CHECKSUMS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/keycaps.sha256"
+if [ -f "$DIR/PINNED_SOURCE.txt" ] && [ "$(cat "$DIR/PINNED_SOURCE.txt")" = "$STAMP" ] &&
+   (cd "$DIR" && shasum -a 256 -c "$CHECKSUMS" >/dev/null 2>&1); then
+  printf '%s\n' "$STAMP"
+  exit 0
 fi
 
 staged=$(mktemp -d "$DIR/.keycaps.XXXXXXXX")
@@ -30,11 +23,8 @@ for v in "${VARIANTS[@]}"; do
   f="$staged/klp_${v}.step"
   curl --fail --silent --show-error --location --output "$f" \
     "$BASE/Choc_Stem_Choc_Size_${v}.step"
-  if ! grep -q '^ISO-10303-21;' "$f"; then
-    printf 'Expected a STEP file for %s\n' "$v" >&2
-    exit 1
-  fi
 done
+(cd "$staged" && shasum -a 256 -c "$CHECKSUMS")
 rm -f -- "$DIR/PINNED_SOURCE.txt"
 for v in "${VARIANTS[@]}"; do
   mv -- "$staged/klp_${v}.step" "$DIR/"

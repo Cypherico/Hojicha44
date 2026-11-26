@@ -1,0 +1,5 @@
+# Direct dependencies for a provisioned Python 3.12 render environment.
+cadquery==2.5.2
+trimesh==5.1.1
+ezdxf==1.4.4
+pillow==13.0.0

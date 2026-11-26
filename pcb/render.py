@@ -15,7 +15,7 @@ linking the community Kailh Choc V1 model; the repo tree is never
 touched.
 
   Switch model: koktoh/keyswitch_model, Choc V1 Red
-  (master/choc/v1/KiCad/red.wrl, StepUp-exported, same pipeline as our
+  (choc/v1/KiCad/red.wrl, StepUp-exported, same pipeline as our
   verified socket model). Measured 15.0 x 15.0 x 11.0mm = the published
   PG1350 15*15*11 profile exactly. Red = representative render variant
   only; the BOM leaves linear/tactile/clicky to the builder.
@@ -28,6 +28,7 @@ touched.
   --rotate '-50,0,205', no post-flip. (The old '-50,0,25' + sips -r 180
   looked from the number-row side; Z+180 absorbs the 180.)
 """
+import hashlib
 import os
 import re
 import shutil
@@ -42,7 +43,7 @@ EXPORT_DIR = os.environ.get(
     "H44_PCB_RENDER_OUT", os.path.join(REPO, "generated", "renders", "v0.5.4", "pcb"))
 
 MODEL_URL = ("https://raw.githubusercontent.com/koktoh/keyswitch_model"
-             "/master/choc/v1/KiCad/red.wrl")
+             "/1202f1e3970c3af55983df804e3b1fe13fc28c30/choc/v1/KiCad/red.wrl")
 
 KICAD_CLI = (
     shutil.which("kicad-cli")
@@ -56,8 +57,10 @@ def ensure_model(model_path):
     if not os.path.exists(model_path):
         print(f'downloading {MODEL_URL}')
         urllib.request.urlretrieve(MODEL_URL, model_path)
-    assert os.path.getsize(model_path) > 100000, \
-        f'switch model download failed ({model_path})'
+    with open(model_path, "rb") as model:
+        digest = hashlib.file_digest(model, "sha256").hexdigest()
+    if digest != "e41046cdb557a7e836f2ced757f022f0a6ad47015c7b86eb420869794d01d8a6":
+        raise ValueError(f"Switch model checksum mismatch: {model_path}")
 
 
 def sw_instances(pcb_path):

@@ -27,4 +27,4 @@ Set each half where your hands naturally land. The staggered columns follow your
 
 [Left top](generated/renders/v0.5.4/pcb/Hojicha44-Left-top.png) · [Left bottom](generated/renders/v0.5.4/pcb/Hojicha44-Left-bottom.png) · [Right top](generated/renders/v0.5.4/pcb/Hojicha44-Right-top.png) · [Right bottom](generated/renders/v0.5.4/pcb/Hojicha44-Right-bottom.png)
 
-The design files are available for anyone who wants to inspect or adapt the board. [KiCad projects](pcb/kicad/) · [Ergogen layout](layout/ergogen/config.yaml) · [Case design](case/) · [Hardware audit](audit.md)
+The design files are available for anyone who wants to inspect or adapt the board. [KiCad projects](pcb/kicad/) · [Ergogen layout](layout/ergogen/config.yaml) · [Case design](case/)

@@ -3,7 +3,6 @@
 Each half has a tub and cover derived from the PCB and plate geometry.
 `case/out/` holds the v0.5.4 first-article candidate, with a lined
 USB-C channel, a separate power-switch recess and a lowered thumb lip.
-[Product audit](../audit.md)
 
 ## Layout
 
@@ -71,13 +70,11 @@ Older entries retain the measurements for their own builds.
 
 - v0.5.4. The case fits the underside diodes through the modeled gasket
   travel. The switch plate uses through-cuts. A routed PCB relief clears
-  the TRRS boot at the jack face. See the
-  [v0.5.4 fit record](../audit.md#v054-underside-diodes).
+  the TRRS boot at the jack face.
 - v0.5.3. The 3.20mm cover roofs the component recesses and lowers the
   thumb lip to 5.20mm. The 14.0mm USB-C channel has a 1.25mm sill and
   a liner tied to the tub. The power switch has a separate actuator
-  opening, and the TRRS bore blends into the side wall. See the
-  [v0.5.3 fit record](../audit.md#v053-fabrication-verification).
+  opening, and the TRRS bore blends into the side wall.
 
 - v4.2 (2026-10-24, review-triage + strength round): **PETG at 100%
   infill is a supported self-print material** (user decision): strength

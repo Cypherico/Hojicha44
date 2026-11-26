@@ -257,3 +257,17 @@ The studio floor is a 4 m plane 0.2 mm under the tub bottom, with the
 same procedural treatment. It is created after the assembly bbox is
 measured, so it never affects camera framing, registration, or the
 explode distances; the soft key lights draw the contact shadow.
+
+## Hosted notebook prerequisites
+
+Provision Blender, KiCad with stock 3D models, and Python 3.12 with the
+versions in [requirements-molab.txt](requirements-molab.txt) in a trusted
+runtime before launching `molab_hires_render.py`. Use verified vendor
+packages or an approved image. The notebook runs the render scripts from
+its configured repository checkout, so use a repository and ref you trust.
+
+- `H44_BLENDER` and `H44_KICAD_CLI` select the executables when they
+  are outside PATH.
+- `KICAD10_3DMODEL_DIR` points to the installed models.
+- `H44_RENDER_PYTHON` points to the provisioned environment's Python.
+- `H44_SILK_FONT` optionally points to an installed font.

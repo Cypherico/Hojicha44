@@ -51,8 +51,8 @@ def _():
           three* and marimo first runs the whole chain above it
           (bootstrap → smoke test → framecheck → renders). The same
           one-click trick works on any cell.
-        - Bootstrap is ~20–40 min (Blender + KiCad, python venv, case +
-          asset build). The three priority shots follow in ~2–4 h.
+        - Provision trusted Blender, KiCad and CAD Python before running.
+          See renders/README.md for the environment settings. The three priority shots follow in ~2–4 h.
         - *DOWNLOAD — the three* appears right after; grab the PNGs.
         - For the rest of the programme: set `GO_REST = True` in the
           gate cell and run it — the remaining shots render (bright/dark
@@ -86,9 +86,7 @@ def _():
     import shutil
     import subprocess
     import sys
-    import tarfile
     import time
-    import urllib.request
     import zipfile
     from concurrent.futures import ThreadPoolExecutor
     from pathlib import Path
@@ -104,9 +102,7 @@ def _():
         shutil,
         subprocess,
         sys,
-        tarfile,
         time,
-        urllib,
         zipfile,
     )
 
@@ -132,7 +128,6 @@ def _():
         "run_smoke": True,            # 800x500 E2E proof before the queue
         "run_framecheck": True,       # NDC pre-flight for every job
         "force": False,               # True = re-render even if recorded
-        "kicad_mode": "auto",         # auto | full | lite
         "rebuild_assets": False,      # True = rebuild even if fingerprint ok
     }
 
@@ -276,120 +271,11 @@ def _(CFG, Path, mo, os, platform, shutil, subprocess, sys):
 
 
 @app.cell
-def _(Path, hashlib, os, re, shutil, subprocess, time, urllib):
+def _(Path, hashlib, os, re, subprocess, time):
     # ------------------------------------------------------------------
     # toolkit — shared process/network helpers (the only cell importing
     # these stdlib modules; every other cell calls in here)
     # ------------------------------------------------------------------
-
-    _UA = {"User-Agent": "hojicha44-molab/1.1",
-           "Accept-Encoding": "identity"}
-
-    def _head_len(url, timeout=30):
-        """Total size via HEAD; None when unavailable."""
-        try:
-            req = urllib.request.Request(url, method="HEAD",
-                                         headers=dict(_UA))
-            with urllib.request.urlopen(req, timeout=timeout) as r:
-                return int(r.headers.get("Content-Length") or 0) or None
-        except Exception:  # noqa: BLE001
-            return None
-
-    def _dl_ranged(url, dst, total, what, timeout):
-        """8 MiB HTTP range requests — defeats egress that truncates
-        large whole-body responses (observed on molab: a 460 MB
-        AppImage cut at 10 MiB)."""
-        chunk = 8 << 20
-        pos = 0
-        with open(dst, "wb") as f:
-            while pos < total:
-                end = min(pos + chunk, total) - 1
-                for attempt in (1, 2):
-                    try:
-                        req = urllib.request.Request(url, headers={
-                            **_UA, "Range": f"bytes={pos}-{end}"})
-                        with urllib.request.urlopen(req,
-                                                    timeout=timeout) as r:
-                            data = r.read()
-                        if len(data) != end - pos + 1:
-                            raise IOError(
-                                f"range {pos}-{end}: got {len(data)} B")
-                        f.write(data)
-                        break
-                    except Exception as exc:  # noqa: BLE001
-                        if attempt == 2:
-                            print(f"    {what}: range {pos}-{end} failed "
-                                  f"twice: {exc}", flush=True)
-                            return False
-                pos = min(pos + chunk, total)
-                print(f"    {what}: {pos >> 20}/{total >> 20} MiB "
-                      f"(ranged)", flush=True)
-        if dst.stat().st_size != total:
-            return False
-        print(f"    {what}: {dst.stat().st_size >> 20} MiB -> {dst} "
-              f"(ranged)", flush=True)
-        return True
-
-    def dl(url, dst, what=None, retries=3, timeout=90, min_bytes=0):
-        """Verified download: every success is length-checked, and a
-        truncating endpoint is handled with a ranged fallback.
-
-        - expected length comes from the GET header, HEAD if absent
-        - a body shorter than expected (or than min_bytes) is a FAILURE,
-          never a silent success
-        - after `retries` whole-body attempts, switches to 8 MiB range
-          requests when the total size is known
-        """
-        dst = Path(dst)
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        what = what or dst.name
-        expected = None
-        for attempt in range(1, retries + 1):
-            if expected is None:
-                expected = _head_len(url)
-            try:
-                req = urllib.request.Request(url, headers=dict(_UA))
-                with urllib.request.urlopen(req, timeout=timeout) as r, \
-                        open(dst, "wb") as f:
-                    total = (int(r.headers.get("Content-Length") or 0)
-                             or expected or 0)
-                    done = 0
-                    mark = 0
-                    t0 = time.time()
-                    while True:
-                        chunk = r.read(1 << 20)
-                        if not chunk:
-                            break
-                        f.write(chunk)
-                        done += len(chunk)
-                        if done - mark >= 64 << 20:
-                            mark = done
-                            pct = f" ({100 * done / total:.0f}%)" \
-                                if total else ""
-                            rate = (done >> 20) / max(time.time() - t0,
-                                                      1e-9)
-                            print(f"    {what}: {done >> 20} MiB{pct} "
-                                  f"@ {rate:.0f} MiB/s", flush=True)
-                got = dst.stat().st_size
-                if min_bytes and got < min_bytes:
-                    raise IOError(f"only {got >> 20} MiB of "
-                                  f">= {min_bytes >> 20} MiB")
-                if total and got != total:
-                    raise IOError(f"truncated: got {got} B of "
-                                  f"{total} B")
-                print(f"    {what}: {got >> 20} MiB -> {dst}", flush=True)
-                return True
-            except Exception as exc:  # noqa: BLE001 — retried below
-                print(f"    {what}: attempt {attempt}/{retries} failed: "
-                      f"{exc}", flush=True)
-                if expected is None:
-                    expected = _head_len(url)
-                time.sleep(2 * attempt)
-        if expected and expected >= max(min_bytes, 1):
-            print(f"    {what}: whole-body attempts keep failing — "
-                  f"switching to ranged download", flush=True)
-            return _dl_ranged(url, dst, expected, what, timeout)
-        return False
 
     def run_capture(cmd, env=None, cwd=None, timeout=None):
         """Run to completion; returns (rc, combined stdout+stderr)."""
@@ -446,380 +332,51 @@ def _(Path, hashlib, os, re, shutil, subprocess, time, urllib):
                 h.update(chunk)
         return h.hexdigest()
 
-    def disk_free_gb(p):
-        return shutil.disk_usage(str(p)).free / 1e9
-
-    return dl, disk_free_gb, run_capture, run_stream, sha256_file
+    return run_capture, run_stream, sha256_file
 
 
 @app.cell
-def _(Path, WORK, dl, mo, os, re, sha256_file, shutil, subprocess, urllib):
-    # ------------------------------------------------------------------
-    # bootstrap 1/3 — Blender 5.2.3 LTS (the version the pipeline is
-    # verified against on macOS; identical upstream Linux x64 build)
-    # ------------------------------------------------------------------
-    BLENDER_VERSION = "5.2.3"
-    B_NAME = f"blender-{BLENDER_VERSION}-linux-x64"
-    B_BASE = "https://download.blender.org/release/Blender5.2"
-    root = WORK / "blender"
-    BLENDER = root / B_NAME / "blender"
-
-    if not BLENDER.exists():
-        tgz = WORK / f"{B_NAME}.tar.xz"
-        if not tgz.exists():
-            if not dl(f"{B_BASE}/{B_NAME}.tar.xz", tgz,
-                      what="blender tarball", retries=3,
-                      min_bytes=340_000_000):
-                raise RuntimeError("Blender download failed/validated — "
-                                   "check the sandbox network, then "
-                                   "re-run this cell.")
-        want = None
-        try:
-            with urllib.request.urlopen(
-                    f"{B_BASE}/blender-{BLENDER_VERSION}.sha256",
-                    timeout=60) as r:
-                for line in r.read().decode().splitlines():
-                    parts = line.split()
-                    if len(parts) == 2 and parts[1] == f"{B_NAME}.tar.xz":
-                        want = parts[0]
-        except Exception as exc:  # noqa: BLE001
-            print(f"  sha256 manifest unreachable ({exc}) — skipping "
-                  f"checksum", flush=True)
-        got = sha256_file(tgz)
-        if want is None:
-            print("  (publisher is download.blender.org; checksum "
-                  "skipped)", flush=True)
-        elif got != want:
-            tgz.unlink(missing_ok=True)
-            raise RuntimeError(f"Blender tarball sha256 mismatch:\n"
-                               f"  want {want}\n  got  {got}\n"
-                               f"Re-run the cell for a fresh download.")
-        else:
-            print(f"  sha256 OK ({got[:16]}...)", flush=True)
-        print(f"  extracting {tgz.name} (~1-2 min) ...", flush=True)
-        r = subprocess.run(["tar", "-xJf", str(tgz), "-C", str(root)])
-        if r.returncode != 0:
-            print("  tar failed — falling back to python tarfile",
-                  flush=True)
-            import tarfile as _tf  # underscored alias, marimo-local
-            with _tf.open(tgz, "r:xz") as tf:
-                tf.extractall(root)
-        tgz.unlink(missing_ok=True)
-    else:
-        print("  blender already extracted", flush=True)
-
-    def _probe():
-        r = subprocess.run([str(BLENDER), "--version"],
-                           capture_output=True, text=True, timeout=120)
-        return r.returncode, (r.stdout or "") + (r.stderr or "")
-
-    rc, out = _probe()
-    if rc != 0:
-        libs = re.findall(
-            r"error while loading shared libraries: ([^:\s]+)", out)
-        print(f"  blender cannot start; missing: {libs}", flush=True)
-        pkgs = ["libx11-6", "libxi6", "libxxf86vm1", "libxfixes3",
-                "libxrender1", "libxkbcommon0", "libsm6", "libice6",
-                "libgl1", "libegl1", "libgomp1", "libxshmfence1",
-                "libxcb1", "libxcb-xkb1"]
-        sudo = ["sudo"] if (os.geteuid() != 0 and shutil.which("sudo")) \
-            else []
-        if os.geteuid() != 0 and not sudo:
-            raise RuntimeError(
-                "Blender is missing system libraries and this sandbox "
-                "has no root/sudo to install them.\n"
-                f"Missing: {libs}\nPackages: {pkgs}\n"
-                "Post this on the molab discord and re-run once the "
-                "image is fixed.")
-        keep = []
-        for p in pkgs:
-            r = subprocess.run(sudo + ["apt-cache", "show", "-q", p],
-                               capture_output=True, text=True)
-            if r.returncode == 0 and r.stdout.strip():
-                keep.append(p)
-        print(f"  installing {len(keep)} packages via apt ...",
-              flush=True)
-        subprocess.run(sudo + ["apt-get", "update", "-qq"],
-                       capture_output=True)
-        r = subprocess.run(sudo + ["apt-get", "install", "-y", "-qq"]
-                           + keep, capture_output=True, text=True)
-        if r.returncode != 0:
-            print((r.stdout or "")[-2000:], flush=True)
-        rc, out = _probe()
-        if rc != 0:
-            raise RuntimeError(
-                "Blender still cannot start after installing "
-                f"libraries.\nLast probe:\n{out[-1500:]}")
-
-    BLENDER_VER = out.splitlines()[0].strip()
-    print(f"  {BLENDER_VER}", flush=True)
-    mo.md(f"**Blender ready:** `{BLENDER_VER}` — `{BLENDER}`")
+def _(Path, mo, os, shutil, subprocess):
+    executable = os.environ.get("H44_BLENDER") or shutil.which("blender")
+    if not executable:
+        raise RuntimeError("Provision Blender and set H44_BLENDER.")
+    BLENDER = Path(executable).resolve(strict=True)
+    BLENDER_VER = subprocess.check_output(
+        [str(BLENDER), "--version"], text=True).splitlines()[0]
+    mo.md(f"**Blender ready:** `{BLENDER_VER}`")
     return BLENDER, BLENDER_VER
 
 
 @app.cell
-def _(CFG, WORK, disk_free_gb, dl, mo, os, shutil, subprocess, tarfile):
-    # ------------------------------------------------------------------
-    # bootstrap 2/3 — KiCad 10.0.7 official AppImage (no root needed).
-    # "full" ships the 3D model packages; "lite" omits them and we fetch
-    # the exact two stock models the boards reference from the official
-    # kicad-packages3d library.
-    # ------------------------------------------------------------------
-    KICAD_VERSION = "10.0.7"
-    mode = CFG["kicad_mode"]
-    if mode == "auto":
-        mode = "full" if disk_free_gb(WORK) >= 6 else "lite"
-        print(f"  kicad mode auto: {disk_free_gb(WORK):.1f} GB free -> "
-              f"{mode}", flush=True)
-    lite = mode == "lite"
-    fname = (f"kicad-{KICAD_VERSION}-x86_64"
-             + ("-lite" if lite else "") + ".AppImage.tar")
-    mirrors = [
-        f"https://kicad-downloads.s3.cern.ch/appimage/stable/{fname}",
-        f"https://mirrors.mit.edu/kicad/appimage/stable/{fname}",
-        f"https://mirror.aarnet.edu.au/pub/kicad/appimage/stable/{fname}",
-    ]
-
-    kroot = WORK / "kicad-root"
-    squash = kroot / "squashfs-root"
-    cli = None
-    if squash.exists():
-        hits = list(squash.rglob("kicad-cli"))
-        cli = hits[0] if hits else None
-
-    def _valid_tar(p):
-        try:
-            with tarfile.open(p) as tf:
-                return bool(tf.getnames())
-        except Exception:  # noqa: BLE001
-            return False
-
-    if cli is None:
-        tar_path = WORK / fname
-        MIN = 250_000_000 if lite else 400_000_000
-        if tar_path.exists() and (tar_path.stat().st_size < MIN
-                                  or not _valid_tar(tar_path)):
-            print("  stale/truncated tar on disk — removed", flush=True)
-            tar_path.unlink()
-        if not tar_path.exists():
-            ok = False
-            for u in mirrors:
-                print(f"  trying {u}", flush=True)
-                if dl(u, tar_path, what=fname, retries=3, timeout=120,
-                      min_bytes=MIN) and _valid_tar(tar_path):
-                    ok = True
-                    break
-                print("  (download failed or invalid — trying the next "
-                      "mirror)", flush=True)
-                tar_path.unlink(missing_ok=True)
-            if not ok:
-                raise RuntimeError(
-                    "KiCad AppImage download failed from every mirror — "
-                    "re-run the cell, or set CFG['kicad_mode'] = 'lite'.")
-        print(f"  extracting tar ({tar_path.stat().st_size >> 20} MiB)"
-              f" ...", flush=True)
-        try:
-            subprocess.run(["tar", "-xf", str(tar_path), "-C",
-                            str(WORK)], check=True)
-        except subprocess.CalledProcessError:
-            tar_path.unlink(missing_ok=True)
-            raise RuntimeError(
-                "tar extraction failed — the bad archive was removed; "
-                "re-run this cell for a fresh download") from None
-        tar_path.unlink(missing_ok=True)
-        appimages = sorted(WORK.glob("kicad-*.AppImage"))
-        if not appimages:
-            raise RuntimeError("no .AppImage inside the KiCad tar")
-        app = appimages[0]
-        os.chmod(app, 0o755)
-        if squash.exists():
-            print("  clearing a partial extraction ...", flush=True)
-            shutil.rmtree(kroot, ignore_errors=True)
-        kroot.mkdir(parents=True, exist_ok=True)
-        print("  --appimage-extract (no FUSE needed; 1-4 min) ...",
-              flush=True)
-        r = subprocess.run([str(app), "--appimage-extract"],
-                           cwd=str(kroot), capture_output=True, text=True)
-        if r.returncode != 0 or not squash.exists():
-            raise RuntimeError("AppImage extraction failed:\n"
-                               + (r.stdout or "")[-1200:]
-                               + (r.stderr or "")[-1200:])
-        app.unlink(missing_ok=True)
-        hits = list(squash.rglob("kicad-cli"))
-        cli = hits[0] if hits else None
-        if cli is None:
-            raise RuntimeError("kicad-cli not found inside the AppImage")
-
-    models = None
-    for cand in (squash / "usr/share/kicad/3dmodels",
-                 squash / "share/kicad/3dmodels"):
-        if cand.is_dir():
-            models = cand
-            break
-
-    STOCK_MODELS = [
-        "Diode_SMD.3dshapes/D_SOD-123.step",
-        ("Connector_JST.3dshapes/"
-         "JST_PH_S2B-PH-K_1x02_P2.00mm_Horizontal.step"),
-    ]
-    extra_models = WORK / "kicad-models"
-    if models is None:
-        print("  lite AppImage: fetching the 2 referenced stock 3D "
-              "models ...", flush=True)
-        base = ("https://gitlab.com/kicad/libraries/kicad-packages3d/"
-                "-/raw/master/")
-        for rel in STOCK_MODELS:
-            dst = extra_models / rel
-            ok = dst.exists() and dst.stat().st_size > 4096
-            if not ok:
-                ok = dl(base + rel, dst, what=rel, retries=2, timeout=60)
-            if ok and dst.read_bytes()[:40].startswith(b"version https://"):
-                ok = dl(base + rel + "?inline=false", dst, what=rel,
-                        retries=2)
-            good = ok and dst.exists() and dst.stat().st_size > 4096
-            print(f"    {rel}: "
-                  + ("ok" if good else
-                     "MISSING (the board mesh will omit this part)"),
-                  flush=True)
-        models = extra_models
-
+def _(Path, WORK, mo, os, shutil, subprocess):
+    executable = os.environ.get("H44_KICAD_CLI") or shutil.which("kicad-cli")
+    models = os.environ.get("KICAD10_3DMODEL_DIR")
+    if not executable or not models or not Path(models).is_dir():
+        raise RuntimeError("Provision KiCad CLI and set KICAD10_3DMODEL_DIR.")
+    KICAD_CLI = Path(executable).resolve(strict=True)
     KICAD_ENV = {
         "KICAD_CONFIG_HOME": str(WORK / "kicad-config"),
-        "KICAD10_3DMODEL_DIR": str(models),
-        "KICAD9_3DMODEL_DIR": str(models),
-        "KICAD8_3DMODEL_DIR": str(models),
+        "KICAD10_3DMODEL_DIR": str(Path(models).resolve()),
     }
-    # kicad-cli normally resolves its bundled libs via rpath; only fall
-    # back to LD_LIBRARY_PATH when it genuinely cannot start (that var
-    # is kept OUT of the render envs so KiCad's bundled libs can never
-    # shadow Blender's or cadquery's)
-    env = os.environ.copy()
-    env.update(KICAD_ENV)
-    proc = subprocess.run([str(cli), "version"], env=env,
-                          capture_output=True, text=True)
-    if proc.returncode != 0:
-        libdir = squash / "usr/lib"
-        if libdir.is_dir():
-            KICAD_ENV["LD_LIBRARY_PATH"] = (
-                str(libdir) + os.pathsep
-                + os.environ.get("LD_LIBRARY_PATH", ""))
-            env.update(KICAD_ENV)
-            print("  kicad-cli needed LD_LIBRARY_PATH (bundled libs)",
-                  flush=True)
-            proc = subprocess.run([str(cli), "version"], env=env,
-                                  capture_output=True, text=True)
-    if proc.returncode != 0:
-        raise RuntimeError("kicad-cli cannot run:\n"
-                           + (proc.stdout or "")[-800:]
-                           + (proc.stderr or "")[-800:])
-    KICAD_VER = proc.stdout.strip().splitlines()[0]
-    KICAD_CLI = cli
-    KICAD_MODE = mode
-    src_note = "AppImage full" if models != extra_models else "fetched"
-    print(f"  {KICAD_VER} | models: {src_note}", flush=True)
-    mo.md(f"**KiCad ready:** `{KICAD_VER}` · mode `{mode}` · "
-          f"models `{models}`")
-    return KICAD_CLI, KICAD_ENV, KICAD_MODE, KICAD_VER
+    KICAD_VER = subprocess.check_output(
+        [str(KICAD_CLI), "version"], env={**os.environ, **KICAD_ENV},
+        text=True).strip()
+    mo.md(f"**KiCad ready:** `{KICAD_VER}`")
+    return KICAD_CLI, KICAD_ENV, KICAD_VER
 
 
 @app.cell
-def _(Path, WORK, dl, mo, os, run_capture, shutil, subprocess, sys):
-    # ------------------------------------------------------------------
-    # bootstrap 3/3 — python venv for the CAD/asset tooling
-    # (cadquery == the repo pin, trimesh, ezdxf, pillow) + the silk font
-    # ------------------------------------------------------------------
-    venv = WORK / "venv"
-    VENV_PY = venv / "bin/python"
-    VENV_BIN = venv / "bin"
-
-    def _find_uv():
-        cand = Path(sys.executable).parent / "uv"
-        return shutil.which("uv") or (str(cand) if cand.exists() else None)
-
-    if not VENV_PY.exists():
-        uv = _find_uv()
-        if not uv:
-            print("  no uv; installing it into the kernel env ...",
-                  flush=True)
-            subprocess.run([sys.executable, "-m", "pip", "install", "-q",
-                            "uv"], capture_output=True)
-            uv = _find_uv()
-        if uv:
-            print("  uv venv (python 3.12) ...", flush=True)
-            rc, out = run_capture([uv, "venv", "--python", "3.12",
-                                   str(venv)])
-            if rc != 0:
-                print("  3.12 unavailable; falling back to the system "
-                      "python", flush=True)
-                rc, out = run_capture([uv, "venv", str(venv)])
-            if rc != 0:
-                raise RuntimeError("uv venv failed:\n" + out[-1500:])
-        else:
-            print("  uv unavailable; python -m venv fallback", flush=True)
-            rc, out = run_capture([sys.executable, "-m", "venv",
-                                   str(venv)])
-            if rc != 0:
-                raise RuntimeError("venv creation failed:\n"
-                                   + out[-1500:])
-
-    print("  pip install pillow cadquery==2.5.2 trimesh ezdxf "
-          "(several minutes) ...", flush=True)
-    uv = _find_uv()
-    if uv:
-        rc, out = run_capture([uv, "pip", "install", "--python",
-                               str(VENV_PY), "-q", "pillow",
-                               "cadquery==2.5.2", "trimesh", "ezdxf"],
-                              timeout=1800)
-    else:
-        rc, out = run_capture([str(VENV_PY), "-m", "pip", "install", "-q",
-                               "pillow", "cadquery==2.5.2", "trimesh",
-                               "ezdxf"], timeout=1800)
-    if rc != 0:
-        raise RuntimeError("dependency install failed:\n" + out[-2000:])
-
-    rc, out = run_capture(
-        [str(VENV_PY), "-c",
-         "import cadquery, trimesh, ezdxf; from PIL import Image; "
-         "print('deps ok', cadquery.__version__)"], timeout=300)
-    if rc != 0:
-        # a half-built venv from an interrupted first run self-heals on
-        # the next pass
-        shutil.rmtree(venv, ignore_errors=True)
-        raise RuntimeError(
-            "venv self-test failed (wheel/ABI issue?) — the broken venv "
-            "was removed; re-run this cell to rebuild it.\n"
-            + out[-2000:])
-    print("  " + out.strip(), flush=True)
-
-    # silk font for the PCB artwork step (pcb_tex.py reads
-    # H44_SILK_FONT; Liberation Sans ~= the Mac's Arial metrics)
-    SILK_FONT = None
-    for cand in (
-        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
-    ):
-        if os.path.exists(cand):
-            SILK_FONT = cand
-            break
-    if SILK_FONT is None:
-        try:
-            import matplotlib as _mpl  # underscored alias, marimo-local
-            cand = Path(_mpl.get_data_path()) / "fonts/ttf/DejaVuSans.ttf"
-            if cand.exists():
-                SILK_FONT = str(cand)
-        except Exception:  # noqa: BLE001
-            pass
-    if SILK_FONT is None:
-        dst = WORK / "fonts/DejaVuSans.ttf"
-        good = dl("https://raw.githubusercontent.com/matplotlib/"
-                  "matplotlib/v3.8.0/lib/matplotlib/mpl-data/fonts/ttf/"
-                  "DejaVuSans.ttf", dst, what="DejaVuSans.ttf", retries=2)
-        if good and dst.stat().st_size > 100_000:
-            SILK_FONT = str(dst)
-    print(f"  silk font: {SILK_FONT or 'PIL default (no TTF found)'}",
-          flush=True)
-    mo.md(f"**venv ready** (`{out.strip()}`) · font `{SILK_FONT}`")
+def _(Path, mo, os, subprocess):
+    executable = os.environ.get("H44_RENDER_PYTHON")
+    if not executable:
+        raise RuntimeError("Set H44_RENDER_PYTHON to a provisioned CAD environment.")
+    VENV_PY = Path(executable).absolute()
+    VENV_BIN = VENV_PY.parent
+    subprocess.run([str(VENV_PY), "-c",
+                    "import cadquery, trimesh, ezdxf; from PIL import Image"],
+                   check=True)
+    SILK_FONT = os.environ.get("H44_SILK_FONT")
+    mo.md(f"**CAD Python ready:** `{VENV_PY}`")
     return SILK_FONT, VENV_BIN, VENV_PY
 
 
@@ -1013,7 +570,7 @@ def add_cam(name, loc, look_at, lens=50):
 
 @app.cell
 def _(CFG, KICAD_CLI, KICAD_ENV, PATCHES, REPO, VENV_BIN, VENV_PY, WORK,
-      dl, json, mo, os, sha256_file, subprocess):
+      json, mo, os, sha256_file, subprocess):
     # ------------------------------------------------------------------
     # assets — full self-build (the documented recipe, verbatim):
     # keycaps -> case generators -> build_assets (kicad-cli STEP export,
@@ -1060,7 +617,7 @@ def _(CFG, KICAD_CLI, KICAD_ENV, PATCHES, REPO, VENV_BIN, VENV_PY, WORK,
 
     print("  building assets (10-25 min total) ...", flush=True)
 
-    # 1. keycaps (pinned KLP Lame set) — repo script + python fallback
+    # 1. keycaps: require the verified repository fetch.
     capdir = WORK / "keycaps"
     capdir.mkdir(exist_ok=True)
     env = os.environ.copy()
@@ -1071,25 +628,8 @@ def _(CFG, KICAD_CLI, KICAD_ENV, PATCHES, REPO, VENV_BIN, VENV_PY, WORK,
                        text=True)
     tail = (r.stdout or "") + (r.stderr or "")
     print("   " + tail[-400:].replace("\n", "\n   "), flush=True)
-    need = ["Saddle", "Saddle_Tilted", "Saddle_Homing", "Normal",
-            "Normal_Homing", "Normal_Tilted", "Thumb"]
-    missing = [v for v in need
-               if not (capdir / f"klp_{v}.step").exists()
-               or (capdir / f"klp_{v}.step").stat().st_size < 4096]
-    if missing:
-        print(f"  keycaps: direct fallback for {missing} ...", flush=True)
-        base = ("https://raw.githubusercontent.com/braindefender/"
-                "KLP-Lame-Keycaps/master/STEP/Choc%20Stem%20%2B%20"
-                "Choc%20Size")
-        for v in missing:
-            dl(f"{base}/Choc_Stem_Choc_Size_{v}.step",
-               capdir / f"klp_{v}.step", what=f"klp_{v}.step", retries=3)
-        still = [v for v in need
-                 if not (capdir / f"klp_{v}.step").exists()
-                 or (capdir / f"klp_{v}.step").stat().st_size < 4096]
-        if still:
-            raise RuntimeError(f"keycap sources still missing: {still} "
-                               "— check the sandbox network")
+    if r.returncode:
+        raise RuntimeError(f"Pinned keycap fetch failed:\n{tail[-1200:]}")
 
     env.update({
         "CASE_OUT": str(REPO / "case/out-dev"),

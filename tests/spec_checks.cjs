@@ -145,8 +145,13 @@ try {
   const transform = /default_transform:\s*transform\s*\{([^}]+)\}/.exec(dtsi)[1];
   const cols = parseInt(/columns\s*=\s*<(\d+)>/.exec(transform)[1], 10);
   const rows = parseInt(/rows\s*=\s*<(\d+)>/.exec(transform)[1], 10);
-  const rcs = [.../map\s*=\s*<([\s\S]*?)>/.exec(transform)[1]
-    .matchAll(/RC\((\d+),\s*(\d+)\)/g)].map((m) => [+m[1], +m[2]]);
+  const map = /map\s*=\s*<([\s\S]*?)>/.exec(transform)[1];
+  const coordinate = /RC\((\d+),\s*(\d+)\)/g;
+  if (map.replace(coordinate, "").trim() !== "")
+    throw new Error("Unexpected token in matrix transform map");
+  const rcs = [...map.matchAll(coordinate)].map((m) => [+m[1], +m[2]]);
+  if (new Set(rcs.map(([r, c]) => `${r},${c}`)).size !== rcs.length)
+    throw new Error("Duplicate coordinate in matrix transform map");
   const have = (r, c) => rcs.some(([a, b]) => a === r && b === c);
   // all 4 variants + the active one must match spec/layout.yaml; a
   // legend edit without regenerating (or vice versa) fails here.

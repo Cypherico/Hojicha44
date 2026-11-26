@@ -1,8 +1,7 @@
 # Hojicha44 — first-article checklist (hands + parts required)
 
 Use the v0.5.4 PCB, plate and case files together. Confirm connector
-seating, cable fit and switch lead clearance on the first pair. The
-[product audit](../audit.md) records the CAD checks and their limits.
+seating, cable fit and switch lead clearance on the first pair.
 
 Do these in order, both halves where marked ×2. Nothing here can be proven
 in software — this is the release gate for the physical items. Prints:

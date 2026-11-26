@@ -176,6 +176,15 @@ def read_case_rim(tag):
 def chain_rim(segs):
     assert len(segs) > 8, "no perimeter loop"
     key = lambda p: (round(p[0], 2), round(p[1], 2))
+    degree = {}
+    for a, b in segs:
+        a, b = key(a), key(b)
+        if a == b:
+            raise ValueError(f"Zero-length Edge.Cuts segment at {a}")
+        for point in (a, b):
+            degree[point] = degree.get(point, 0) + 1
+    if any(count != 2 for count in degree.values()):
+        raise ValueError("Edge.Cuts perimeter must have two edges at each vertex")
     loop = [segs[0][0], segs[0][1]]
     used = {0}
     while len(loop) < len(segs) + 1:

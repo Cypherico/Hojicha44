@@ -4,7 +4,7 @@
 > and [plate and case manifest](../generated/print/v0.5.4/MANIFEST.txt).
 > The published v0.5.2 case fails the modeled USB-C envelope. Complete the
 > physical first-article checks before ordering a batch.
-> [First-article checklist](../spec/first-article.md) · [Audit](../audit.md)
+> [First-article checklist](../spec/first-article.md)
 
 [View the v0.5.4 PCB renders](../generated/renders/v0.5.4/README.md#pcb).
 The underside views show the relocated matrix diodes. The routed relief

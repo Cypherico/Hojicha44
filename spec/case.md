@@ -44,7 +44,7 @@ Encoder push over the window zone stays soft by design.
   top. This leaves 1.40mm nominally and 1.00mm with 0.40mm downward travel. A full-length lead design
   requires a deeper floor or local clearance preserving the floor web.
   Test the seated PCB through its gasket travel before placing acoustic
-  foam in the open regions. [Würth drawing](https://www.we-online.com/components/products/datasheet/450301014042.pdf) · [Assembly measurements](../audit.md)
+  foam in the open regions. [Würth drawing](https://www.we-online.com/components/products/datasheet/450301014042.pdf)
 
 - **Historical strength estimate (October 2026 cover; user: "strong enough
   in PETG, 100% infill okay, no exotic materials"):** measured minimum
